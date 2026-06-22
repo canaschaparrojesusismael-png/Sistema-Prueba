@@ -1,10 +1,7 @@
-/**
- * main.js – Carrusel, Drag & Drop, Crop, Modal Premium
- * Sistema Nacional de Orquestas – Firebase Edition
- */
+import { auth, db } from "./firebase-init.js";
+
 (function () {
   "use strict";
-
   const CAROUSEL_STORAGE = "sistemaOrquestas_carousel";
 
   function loadCarouselData() {
@@ -42,7 +39,7 @@
     updateCarouselDisplay();
   }
 
-  // --- RECORTE DE IMAGEN (CROP) ---
+  // --- CROP ---
   let cropCallback = null;
   function abrirCropModal(file, callback) {
     cropCallback = callback;
@@ -131,34 +128,21 @@
     });
   }
 
-  // --- DRAG & DROP ZONE ---
+  // --- DRAG & DROP ---
   function initDragDrop() {
     const dropZone = document.getElementById("drop-zone");
     const fileInput = document.querySelector("#carousel-items .img-file");
     if (!dropZone) return;
-
-    ["dragenter", "dragover", "dragleave", "drop"].forEach(eventName => {
-      dropZone.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); });
-    });
-
-    ["dragenter", "dragover"].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.add("active")));
-    ["dragleave", "drop"].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.remove("active")));
-
+    ["dragenter","dragover","dragleave","drop"].forEach(e => dropZone.addEventListener(e, ev => { ev.preventDefault(); ev.stopPropagation(); }));
+    ["dragenter","dragover"].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.add("active")));
+    ["dragleave","drop"].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.remove("active")));
     dropZone.addEventListener("drop", (e) => {
       const files = e.dataTransfer.files;
-      if (files.length > 0) {
-        abrirCropModal(files[0], (dataUrl) => {
-          if (dataUrl) {
-            const urlInput = document.querySelector("#carousel-items .img-url");
-            if (urlInput) urlInput.value = dataUrl;
-          }
-        });
-      }
+      if (files.length > 0) abrirCropModal(files[0], (dataUrl) => {
+        if (dataUrl) { const urlInput = document.querySelector("#carousel-items .img-url"); if (urlInput) urlInput.value = dataUrl; }
+      });
     });
-
-    dropZone.addEventListener("click", () => {
-      if (fileInput) fileInput.click();
-    });
+    dropZone.addEventListener("click", () => { if (fileInput) fileInput.click(); });
   }
 
   // --- MODAL CARRUSEL ---
@@ -172,10 +156,7 @@
       <div class="modal-content premium-modal">
         <button class="modal-close-btn" id="carousel-close-btn">&times;</button>
         <h2>Gestión del Carrusel</h2>
-        <div class="drop-zone" id="drop-zone">
-          <p>🎵 Arrastra una imagen aquí</p>
-          <p style="font-size:0.8rem;color:#888;">o haz clic para seleccionar</p>
-        </div>
+        <div class="drop-zone" id="drop-zone"><p>🎵 Arrastra una imagen aquí</p><p style="font-size:0.8rem;color:#888;">o haz clic para seleccionar</p></div>
         <div id="carousel-items"></div>
         <button id="add-image-btn" class="btn btn-submit">Agregar Imagen</button>
         <button id="save-carousel-btn" class="btn btn-submit" style="background: var(--color-primario);">Guardar Cambios</button>
@@ -193,12 +174,7 @@
         const div = document.createElement("div");
         div.className = "carousel-item-editor";
         div.innerHTML = `
-          <div class="editor-row">
-            <label>URL:</label>
-            <input type="text" class="img-url" value="${item.src}" data-index="${idx}" />
-            <span>o archivo</span>
-            <input type="file" class="img-file" accept="image/*" data-index="${idx}" />
-          </div>
+          <div class="editor-row"><label>URL:</label><input type="text" class="img-url" value="${item.src}" data-index="${idx}" /><span>o archivo</span><input type="file" class="img-file" accept="image/*" data-index="${idx}" /></div>
           <div class="editor-row"><label>Título:</label><input type="text" class="img-alt" value="${item.alt}" /></div>
           <div class="editor-row"><label>Texto:</label><input type="text" class="img-text" value="${item.text}" /></div>
           <button class="btn btn-cerrar eliminar-item" data-index="${idx}">Eliminar</button>`;
@@ -239,18 +215,12 @@
     window.showCarouselModal = () => { workingData = [...carouselData]; renderItems(); modal.style.display = "flex"; };
   }
 
-  // Inicialización
   window.addEventListener("DOMContentLoaded", () => {
     updateCarouselDisplay();
     startAutoRotation();
     document.getElementById("prev-slide")?.addEventListener("click", () => { prevSlide(); stopAutoRotation(); startAutoRotation(); });
     document.getElementById("next-slide")?.addEventListener("click", () => { nextSlide(); stopAutoRotation(); startAutoRotation(); });
-
-    const session = Auth.getSession();
-    if (session && (session.role === "owner" || session.role === "admin") && Auth.hasPermission("edit_carousel")) {
-      initCarouselModal();
-    }
-
-    UI.render();
+    if (window.Auth.hasPermission("edit_carousel")) initCarouselModal();
+    window.UI.render();
   });
 })();
