@@ -1,5 +1,10 @@
+/**
+ * main.js – Carrusel, Drag & Drop, Crop, Modal Premium
+ * Sistema Nacional de Orquestas – Firebase Edition
+ */
 (function () {
   "use strict";
+
   const CAROUSEL_STORAGE = "sistemaOrquestas_carousel";
 
   function loadCarouselData() {
@@ -37,7 +42,7 @@
     updateCarouselDisplay();
   }
 
-  // --- RECORTE ---
+  // --- RECORTE DE IMAGEN (CROP) ---
   let cropCallback = null;
   function abrirCropModal(file, callback) {
     cropCallback = callback;
@@ -65,8 +70,7 @@
         let dragging = false, startX, startY, sLeft, sTop, sW, sH;
         const handle = cropArea.querySelector(".resize-handle");
         function down(e) {
-          e.preventDefault();
-          dragging = true;
+          e.preventDefault(); dragging = true;
           startX = e.clientX; startY = e.clientY;
           sLeft = cropX; sTop = cropY; sW = cropW; sH = cropH;
           document.addEventListener("pointermove", move);
@@ -76,10 +80,9 @@
           if (!dragging) return;
           const dx = e.clientX - startX, dy = e.clientY - startY;
           if (e.target === handle) {
-            let nW = sW + dx, nH = nW * (9/16);
-            if (nW < 50) nW = 50;
+            let nW = sW + dx; if (nW < 50) nW = 50;
             if (cropX + nW > displayW) nW = displayW - cropX;
-            if (cropY + nH > displayH) nH = displayH - cropY;
+            if (cropY + nW*(9/16) > displayH) { nW = (displayH - cropY) * (16/9); }
             cropW = nW; cropH = cropW * (9/16);
           } else {
             cropX = Math.max(0, Math.min(sLeft + dx, displayW - cropW));
@@ -87,11 +90,7 @@
           }
           update();
         }
-        function up() {
-          dragging = false;
-          document.removeEventListener("pointermove", move);
-          document.removeEventListener("pointerup", up);
-        }
+        function up() { dragging = false; document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", up); }
         cropArea.addEventListener("pointerdown", down);
         handle.addEventListener("pointerdown", down);
         document.getElementById("crop-confirm").onclick = () => {
@@ -100,7 +99,7 @@
           canvas.width = sw; canvas.height = sh;
           ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
           modal.style.display = "none";
-          cropCallback(canvas.toDataURL("image/jpeg", 0.9));
+          cropCallback(canvas.toDataURL("image/jpeg", 0.6));
         };
         document.getElementById("crop-cancel").onclick = () => { modal.style.display = "none"; cropCallback(null); };
         modal.style.display = "flex";
@@ -116,6 +115,7 @@
     div.className = "modal-overlay crop-modal";
     div.innerHTML = `
       <div class="modal-content crop-content">
+        <button class="modal-close-btn" id="crop-close-btn">&times;</button>
         <h2>Recortar imagen</h2>
         <div class="crop-container"><img id="crop-source" /><div id="crop-area" class="crop-area"><div class="resize-handle"></div></div></div>
         <canvas id="crop-canvas" style="display:none;"></canvas>
@@ -125,6 +125,40 @@
         </div>
       </div>`;
     document.body.appendChild(div);
+    document.getElementById("crop-close-btn").addEventListener("click", () => {
+      document.getElementById("crop-modal").style.display = "none";
+      if (cropCallback) cropCallback(null);
+    });
+  }
+
+  // --- DRAG & DROP ZONE ---
+  function initDragDrop() {
+    const dropZone = document.getElementById("drop-zone");
+    const fileInput = document.querySelector("#carousel-items .img-file");
+    if (!dropZone) return;
+
+    ["dragenter", "dragover", "dragleave", "drop"].forEach(eventName => {
+      dropZone.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); });
+    });
+
+    ["dragenter", "dragover"].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.add("active")));
+    ["dragleave", "drop"].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.remove("active")));
+
+    dropZone.addEventListener("drop", (e) => {
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        abrirCropModal(files[0], (dataUrl) => {
+          if (dataUrl) {
+            const urlInput = document.querySelector("#carousel-items .img-url");
+            if (urlInput) urlInput.value = dataUrl;
+          }
+        });
+      }
+    });
+
+    dropZone.addEventListener("click", () => {
+      if (fileInput) fileInput.click();
+    });
   }
 
   // --- MODAL CARRUSEL ---
@@ -135,8 +169,13 @@
     const modal = document.createElement("div");
     modal.className = "modal-overlay";
     modal.innerHTML = `
-      <div class="modal-content">
+      <div class="modal-content premium-modal">
+        <button class="modal-close-btn" id="carousel-close-btn">&times;</button>
         <h2>Gestión del Carrusel</h2>
+        <div class="drop-zone" id="drop-zone">
+          <p>🎵 Arrastra una imagen aquí</p>
+          <p style="font-size:0.8rem;color:#888;">o haz clic para seleccionar</p>
+        </div>
         <div id="carousel-items"></div>
         <button id="add-image-btn" class="btn btn-submit">Agregar Imagen</button>
         <button id="save-carousel-btn" class="btn btn-submit" style="background: var(--color-primario);">Guardar Cambios</button>
@@ -144,6 +183,7 @@
       </div>`;
     document.body.appendChild(modal);
     crearCropModal();
+    initDragDrop();
     let workingData = [...carouselData];
 
     function renderItems() {
@@ -154,9 +194,9 @@
         div.className = "carousel-item-editor";
         div.innerHTML = `
           <div class="editor-row">
-            <label>URL o archivo:</label>
+            <label>URL:</label>
             <input type="text" class="img-url" value="${item.src}" data-index="${idx}" />
-            <span>o</span>
+            <span>o archivo</span>
             <input type="file" class="img-file" accept="image/*" data-index="${idx}" />
           </div>
           <div class="editor-row"><label>Título:</label><input type="text" class="img-alt" value="${item.alt}" /></div>
@@ -178,9 +218,8 @@
         });
       }));
       container.querySelectorAll(".eliminar-item").forEach(btn => btn.addEventListener("click", () => {
-        const idx = +btn.dataset.index;
         sincronizarFormulario();
-        workingData.splice(idx, 1);
+        workingData.splice(+btn.dataset.index, 1);
         renderItems();
       }));
     }
@@ -196,15 +235,22 @@
     document.getElementById("add-image-btn").onclick = () => { sincronizarFormulario(); workingData.push({ src: "", alt: "", text: "" }); renderItems(); };
     document.getElementById("save-carousel-btn").onclick = () => { sincronizarFormulario(); guardarCarouselData(workingData); modal.style.display = "none"; };
     document.getElementById("close-modal").onclick = () => { workingData = [...carouselData]; modal.style.display = "none"; };
+    document.getElementById("carousel-close-btn").onclick = () => { workingData = [...carouselData]; modal.style.display = "none"; };
     window.showCarouselModal = () => { workingData = [...carouselData]; renderItems(); modal.style.display = "flex"; };
   }
 
+  // Inicialización
   window.addEventListener("DOMContentLoaded", () => {
     updateCarouselDisplay();
     startAutoRotation();
     document.getElementById("prev-slide")?.addEventListener("click", () => { prevSlide(); stopAutoRotation(); startAutoRotation(); });
     document.getElementById("next-slide")?.addEventListener("click", () => { nextSlide(); stopAutoRotation(); startAutoRotation(); });
-    if (Auth.hasPermission("edit_carousel")) initCarouselModal();
+
+    const session = Auth.getSession();
+    if (session && (session.role === "owner" || session.role === "admin") && Auth.hasPermission("edit_carousel")) {
+      initCarouselModal();
+    }
+
     UI.render();
   });
 })();
