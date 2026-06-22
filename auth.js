@@ -1,13 +1,3 @@
-/**
- * auth.js – Autenticación completa con Firebase (máscara de dominio)
- * Sistema Nacional de Orquestas
- * =====================================================================
- * - Importa auth y db desde firebase-init.js
- * - Concatena "@sistema.cma" al username para login y registro
- * - Soporta instancia secundaria para registro sin cerrar sesión
- * - Bloqueo de doble sesión (currentSessionId)
- * - Redirección a cambio de clave obligatorio
- */
 import { auth, db, firebaseConfig } from "./firebase-init.js";
 import {
   signInWithEmailAndPassword,
@@ -28,7 +18,6 @@ import { initializeApp as initSecondaryApp, deleteApp } from "https://www.gstati
 
 const DOMINIO = "@sistema.cma";
 
-// ===================== UTILIDADES =====================
 function generarClave() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
   let clave = "";
@@ -49,12 +38,10 @@ function getSecondaryAuthInstance() {
   return { secApp, secAuth };
 }
 
-// ===================== API PÚBLICA =====================
 window.Auth = {
   auth,
   db,
 
-  // --- LOGIN ---
   async login(username, password, remember = false) {
     try {
       const email = username + DOMINIO;
@@ -111,7 +98,6 @@ window.Auth = {
     }
   },
 
-  // --- REGISTRO DE USUARIO (desde panel admin) ---
   async registerUser(username, nombre, rango, agrupacion) {
     const { secApp, secAuth } = getSecondaryAuthInstance();
     try {
@@ -144,7 +130,6 @@ window.Auth = {
     }
   },
 
-  // --- CAMBIAR CONTRASEÑA (primer login) ---
   async changePassword(newPassword) {
     if (!auth.currentUser) return { success: false, error: "Sin sesión." };
     try {
@@ -159,7 +144,6 @@ window.Auth = {
     }
   },
 
-  // --- MONITOR DE DOBLE SESIÓN ---
   monitorSession(uid, currentSessionId) {
     const unsub = onSnapshot(doc(db, "usuarios", uid), (snap) => {
       if (!snap.exists()) return;
@@ -172,7 +156,6 @@ window.Auth = {
     window._sessionUnsub = unsub;
   },
 
-  // --- CERRAR SESIÓN ---
   async logout() {
     try {
       if (auth.currentUser) {
@@ -194,7 +177,6 @@ window.Auth = {
     window.location.href = "index.html";
   },
 
-  // --- OBTENER SESIÓN ACTUAL ---
   getSession() {
     const raw = sessionStorage.getItem("sistemaOrquestas_session") ||
                 localStorage.getItem("sistemaOrquestas_session");
@@ -202,25 +184,21 @@ window.Auth = {
     try { return JSON.parse(raw); } catch (e) { return null; }
   },
 
-  // --- VERIFICAR PERMISO ---
   hasPermission(perm) {
     const s = this.getSession();
     return s ? s.permissions.includes(perm) : false;
   },
 
-  // --- OBTENER ROL ---
   getRole() {
     const s = this.getSession();
     return s ? s.role : null;
   },
 
-  // --- LISTENER DE CAMBIO DE AUTENTICACIÓN ---
   onAuthChange(cb) {
     return onAuthStateChanged(auth, cb);
   }
 };
 
-// ===================== REACTIVAR MONITOR AL RECARGAR =====================
 (() => {
   const session = window.Auth.getSession();
   const currentSessionId = sessionStorage.getItem("currentSessionId") || localStorage.getItem("currentSessionId");
