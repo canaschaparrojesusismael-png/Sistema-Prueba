@@ -36,39 +36,29 @@
     </main>
 
     <!-- Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-        import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-            authDomain: "sistema-orquestas.firebaseapp.com",
-            projectId: "sistema-orquestas",
-            storageBucket: "sistema-orquestas.appspot.com",
-            messagingSenderId: "000000000000",
-            appId: "1:000000000000:web:xxxxxxxxxxxxxxxxxxxx"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
+        <script type="module">
+        import { auth, db } from "./firebase-init.js";
+        import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+        import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    
+        const DOMINIO = "@sistema.cma";
+    
         function generarUUID() {
             return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
                 const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
                 return v.toString(16);
             });
         }
-
+    
         document.getElementById("form-login").addEventListener("submit", async function (e) {
             e.preventDefault();
-            const email = document.getElementById("usuario").value.trim();
+            const username = document.getElementById("usuario").value.trim();
             const password = document.getElementById("password").value.trim();
             const remember = document.getElementById("remember").checked;
-            if (!email || !password) { alert("Complete todos los campos."); return; }
-
+            if (!username || !password) { alert("Complete todos los campos."); return; }
+    
             try {
+                const email = username + DOMINIO;
                 const userCredential = await signInWithEmailAndPassword(auth, email, password);
                 const user = userCredential.user;
                 const userDoc = await getDoc(doc(db, "usuarios", user.uid));
@@ -86,39 +76,33 @@
                 const sessionId = generarUUID();
                 sessionStorage.setItem("currentSessionId", sessionId);
                 if (remember) localStorage.setItem("currentSessionId", sessionId);
-
+    
                 await updateDoc(doc(db, "usuarios", user.uid), {
-                    isOnline: true,
-                    currentSessionId: sessionId,
-                    lastLogin: new Date().toISOString()
+                    isOnline: true, currentSessionId: sessionId, lastLogin: new Date().toISOString()
                 });
-
+    
                 const sessionData = {
                     id: user.uid, uid: user.uid, email: user.email,
+                    username: userData.username || username,
                     nombre: userData.nombre,
                     role: userData.rango,
                     firstName: userData.nombre?.split(" ")[0] || "",
                     lastName: userData.nombre?.split(" ").slice(1).join(" ") || "",
-                    age: userData.edad || 0,
-                    group: userData.agrupacion || "",
-                    state: userData.estado || "",
-                    nucleus: userData.nucleo || "",
+                    age: userData.edad || 0, group: userData.agrupacion || "",
+                    state: userData.estado || "", nucleus: userData.nucleo || "",
                     permissions: userData.rango === "owner" || userData.rango === "admin"
-                        ? ["view_profile", "access_panel", "edit_carousel", "manage_users"]
-                        : userData.rango === "profesor"
-                            ? ["view_profile", "access_panel"]
-                            : ["view_profile"],
+                        ? ["view_profile","access_panel","edit_carousel","manage_users"]
+                        : userData.rango === "profesor" ? ["view_profile","access_panel"] : ["view_profile"],
                     loginTime: Date.now()
                 };
                 sessionStorage.setItem("sistemaOrquestas_session", JSON.stringify(sessionData));
                 if (remember) localStorage.setItem("sistemaOrquestas_session", JSON.stringify(sessionData));
-
+    
                 window.location.href = "index.html";
             } catch (error) {
-                console.error("Error de login:", error);
                 alert("Error al iniciar sesión: " + error.message);
             }
         });
-    </script>
+</script>
 </body>
 </html>
