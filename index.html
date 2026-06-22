@@ -18,12 +18,10 @@
         <img id="orquestas" src="Estandarte.png" alt="Logo Sistema de Orquestas" />
       </div>
 
-      <!-- Contenedor dinámico de botones -->
       <div id="login-area" class="login-area">
         <a href="login.html" class="btn btn-login">Iniciar Sesión</a>
       </div>
 
-      <!-- Carrusel con flechas -->
       <div class="modulo-carrusel" id="carousel-container">
         <button class="carousel-arrow carousel-arrow-left" id="prev-slide">&#10094;</button>
         <div class="carrusel-caja">
@@ -50,6 +48,21 @@
     </div>
   </footer>
 
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script>
+    // Inicializar Firebase globalmente (compat)
+    firebase.initializeApp({
+      apiKey: "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+      authDomain: "sistema-orquestas.firebaseapp.com",
+      projectId: "sistema-orquestas",
+      storageBucket: "sistema-orquestas.appspot.com",
+      messagingSenderId: "000000000000",
+      appId: "1:000000000000:web:xxxxxxxxxxxxxxxxxxxx"
+    });
+  </script>
   <script src="auth.js"></script>
   <script src="ui-manager.js"></script>
   <script src="main.js"></script>
