@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>Iniciar Sesión - Sistema de Orquestas</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2.0">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -19,7 +22,7 @@
             <form class="login-form" id="form-login" novalidate>
                 <h2>Iniciar Sesión</h2>
                 <div class="input-group">
-                    <label for="usuario">Usuario</label>
+                    <label for="usuario">Usuario institucional</label>
                     <input type="text" id="usuario" placeholder="Usuario institucional" required>
                 </div>
                 <div class="input-group">
@@ -35,82 +38,74 @@
         </section>
     </main>
 
-    <!-- Firebase SDKs -->
-        <script type="module">
-            import { auth, db } from "./firebase-init.js";
-            import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
-            import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
-        
-            const DOMINIO = "@sistema.cma";
-        
-            function generarUUID() {
-                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-                    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-                    return v.toString(16);
-                });
-            }
-        
-            document.getElementById("form-login").addEventListener("submit", async function (e) {
-                e.preventDefault();
-                const username = document.getElementById("usuario").value.trim();
-                const password = document.getElementById("password").value.trim();
-                const remember = document.getElementById("remember").checked;
-                if (!username || !password) { alert("Complete todos los campos."); return; }
-        
-                try {
-                    const email = username + DOMINIO;
-                    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                    const user = userCredential.user;
-                    const userDoc = await getDoc(doc(db, "usuarios", user.uid));
-                    if (!userDoc.exists()) {
-                        await auth.signOut();
-                        alert("Usuario no registrado en el sistema.");
-                        return;
-                    }
-                    const userData = userDoc.data();
-                    if (userData.requiresPasswordChange) {
-                        sessionStorage.setItem("pendingPasswordChange", user.uid);
-                        window.location.href = "cambiar-clave.html";
-                        return;
-                    }
-                    const sessionId = generarUUID();
-                    sessionStorage.setItem("currentSessionId", sessionId);
-                    if (remember) localStorage.setItem("currentSessionId", sessionId);
-        
-                    await updateDoc(doc(db, "usuarios", user.uid), {
-                        isOnline: true,
-                        currentSessionId: sessionId,
-                        lastLogin: new Date().toISOString()
-                    });
-        
-                    const sessionData = {
-                        id: user.uid,
-                        uid: user.uid,
-                        email: user.email,
-                        username: userData.username || username,
-                        nombre: userData.nombre,
-                        role: userData.rango,
-                        firstName: userData.nombre?.split(" ")[0] || "",
-                        lastName: userData.nombre?.split(" ").slice(1).join(" ") || "",
-                        age: userData.edad || 0,
-                        group: userData.agrupacion || "",
-                        state: userData.estado || "",
-                        nucleus: userData.nucleo || "",
-                        permissions: userData.rango === "owner" || userData.rango === "admin"
-                            ? ["view_profile", "access_panel", "edit_carousel", "manage_users"]
-                            : userData.rango === "profesor"
-                                ? ["view_profile", "access_panel"]
-                                : ["view_profile"],
-                        loginTime: Date.now()
-                    };
-                    sessionStorage.setItem("sistemaOrquestas_session", JSON.stringify(sessionData));
-                    if (remember) localStorage.setItem("sistemaOrquestas_session", JSON.stringify(sessionData));
-        
-                    window.location.href = "index.html";
-                } catch (error) {
-                    alert("Error al iniciar sesión: " + error.message);
-                }
+    <script type="module" src="auth.js?v=2.0"></script>
+    <script type="module">
+        import { auth, db } from "./firebase-init.js";
+        import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
+        import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+
+        const DOMINIO = "@sistema.cma";
+
+        function generarUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+                const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
             });
+        }
+
+        document.getElementById("form-login").addEventListener("submit", async function (e) {
+            e.preventDefault();
+            const username = document.getElementById("usuario").value.trim();
+            const password = document.getElementById("password").value.trim();
+            const remember = document.getElementById("remember").checked;
+            if (!username || !password) { alert("Complete todos los campos."); return; }
+
+            try {
+                const email = username + DOMINIO;
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+                const userDoc = await getDoc(doc(db, "usuarios", user.uid));
+                if (!userDoc.exists()) {
+                    await auth.signOut();
+                    alert("Usuario no registrado en el sistema.");
+                    return;
+                }
+                const userData = userDoc.data();
+                if (userData.requiresPasswordChange) {
+                    sessionStorage.setItem("pendingPasswordChange", user.uid);
+                    window.location.href = "cambiar-clave.html";
+                    return;
+                }
+                const sessionId = generarUUID();
+                sessionStorage.setItem("currentSessionId", sessionId);
+                if (remember) localStorage.setItem("currentSessionId", sessionId);
+
+                await updateDoc(doc(db, "usuarios", user.uid), {
+                    isOnline: true, currentSessionId: sessionId, lastLogin: new Date().toISOString()
+                });
+
+                const sessionData = {
+                    id: user.uid, uid: user.uid, email: user.email,
+                    username: userData.username || username,
+                    nombre: userData.nombre,
+                    role: userData.rango,
+                    firstName: userData.nombre?.split(" ")[0] || "",
+                    lastName: userData.nombre?.split(" ").slice(1).join(" ") || "",
+                    age: userData.edad || 0, group: userData.agrupacion || "",
+                    state: userData.estado || "", nucleus: userData.nucleo || "",
+                    permissions: userData.rango === "owner" || userData.rango === "admin"
+                        ? ["view_profile","access_panel","edit_carousel","manage_users"]
+                        : userData.rango === "profesor" ? ["view_profile","access_panel"] : ["view_profile"],
+                    loginTime: Date.now()
+                };
+                sessionStorage.setItem("sistemaOrquestas_session", JSON.stringify(sessionData));
+                if (remember) localStorage.setItem("sistemaOrquestas_session", JSON.stringify(sessionData));
+
+                window.location.href = "index.html";
+            } catch (error) {
+                alert("Error al iniciar sesión: " + error.message);
+            }
+        });
     </script>
 </body>
 </html>
