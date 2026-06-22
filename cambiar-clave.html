@@ -31,43 +31,29 @@
         </form>
     </main>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-        import { getAuth, updatePassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-        import { getFirestore, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-            authDomain: "sistema-orquestas.firebaseapp.com",
-            projectId: "sistema-orquestas",
-            storageBucket: "sistema-orquestas.appspot.com",
-            messagingSenderId: "000000000000",
-            appId: "1:000000000000:web:xxxxxxxxxxxxxxxxxxxx"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
+        <script type="module">
+        import { auth, db } from "./firebase-init.js";
+        import { updatePassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+        import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    
         const uid = sessionStorage.getItem("pendingPasswordChange");
         if (!uid) window.location.href = "index.html";
-
+    
         // Esperar a que Firebase Auth esté listo
         onAuthStateChanged(auth, (user) => {
             if (!user || user.uid !== uid) {
                 window.location.href = "login.html";
                 return;
             }
-            // El usuario está autenticado, habilitamos el formulario (ya lo está)
         });
-
+    
         document.getElementById("form-cambio").addEventListener("submit", async (e) => {
             e.preventDefault();
             const nueva = document.getElementById("nueva").value;
             const confirmar = document.getElementById("confirmar").value;
             if (nueva !== confirmar) { alert("Las contraseñas no coinciden."); return; }
             if (nueva.length < 8) { alert("La contraseña debe tener al menos 8 caracteres."); return; }
-
+    
             try {
                 const user = auth.currentUser;
                 if (!user) throw new Error("No hay sesión activa.");
