@@ -3,43 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iniciar Sesión - Sistema de Orquestas</title>
+    <title>Cambiar Contraseña – Sistema de Orquestas</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        .cambio-wrapper {
+            max-width: 400px; margin: 100px auto; background: white;
+            padding: 2rem; border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1); text-align: center;
+        }
+        .cambio-wrapper h2 { color: var(--color-primario); margin-bottom: 1.5rem; }
+    </style>
 </head>
 <body>
-    <main class="login-wrapper">
-        <section class="login-visual">
-            <div class="visual-content">
-                <h1>Sistema Nacional de Orquestas</h1>
-                <p>"Música para iluminar, música para salvar."</p>
+    <main class="cambio-wrapper">
+        <h2>Cambio de Contraseña Obligatorio</h2>
+        <p style="margin-bottom:1.5rem;">Por seguridad, debes cambiar tu contraseña antes de continuar.</p>
+        <form id="form-cambio" novalidate>
+            <div class="input-group">
+                <label for="nueva">Nueva contraseña</label>
+                <input type="password" id="nueva" required minlength="8" />
             </div>
-        </section>
-        <section class="login-panel">
-            <form class="login-form" id="form-login" novalidate>
-                <h2>Iniciar Sesión</h2>
-                <div class="input-group">
-                    <label for="usuario">Usuario (email)</label>
-                    <input type="email" id="usuario" placeholder="correo@ejemplo.com" required>
-                </div>
-                <div class="input-group">
-                    <label for="password">Contraseña</label>
-                    <input type="password" id="password" placeholder="Ingresa tu contraseña" required>
-                </div>
-                <div class="input-group remember-group">
-                    <input type="checkbox" id="remember" />
-                    <label for="remember">Recuérdame</label>
-                </div>
-                <button type="submit" class="btn-submit">Iniciar Sesión</button>
-            </form>
-        </section>
+            <div class="input-group">
+                <label for="confirmar">Confirmar contraseña</label>
+                <input type="password" id="confirmar" required minlength="8" />
+            </div>
+            <button type="submit" class="btn-submit">Cambiar Contraseña</button>
+        </form>
     </main>
 
-    <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-        import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        import { getAuth, updatePassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+        import { getFirestore, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXX",
@@ -54,69 +49,36 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        function generarUUID() {
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-                const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
-            });
-        }
+        const uid = sessionStorage.getItem("pendingPasswordChange");
+        if (!uid) window.location.href = "index.html";
 
-        document.getElementById("form-login").addEventListener("submit", async function (e) {
+        // Esperar a que Firebase Auth esté listo
+        onAuthStateChanged(auth, (user) => {
+            if (!user || user.uid !== uid) {
+                window.location.href = "login.html";
+                return;
+            }
+            // El usuario está autenticado, habilitamos el formulario (ya lo está)
+        });
+
+        document.getElementById("form-cambio").addEventListener("submit", async (e) => {
             e.preventDefault();
-            const email = document.getElementById("usuario").value.trim();
-            const password = document.getElementById("password").value.trim();
-            const remember = document.getElementById("remember").checked;
-            if (!email || !password) { alert("Complete todos los campos."); return; }
+            const nueva = document.getElementById("nueva").value;
+            const confirmar = document.getElementById("confirmar").value;
+            if (nueva !== confirmar) { alert("Las contraseñas no coinciden."); return; }
+            if (nueva.length < 8) { alert("La contraseña debe tener al menos 8 caracteres."); return; }
 
             try {
-                const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                const user = userCredential.user;
-                const userDoc = await getDoc(doc(db, "usuarios", user.uid));
-                if (!userDoc.exists()) {
-                    await auth.signOut();
-                    alert("Usuario no registrado en el sistema.");
-                    return;
-                }
-                const userData = userDoc.data();
-                if (userData.requiresPasswordChange) {
-                    sessionStorage.setItem("pendingPasswordChange", user.uid);
-                    window.location.href = "cambiar-clave.html";
-                    return;
-                }
-                const sessionId = generarUUID();
-                sessionStorage.setItem("currentSessionId", sessionId);
-                if (remember) localStorage.setItem("currentSessionId", sessionId);
-
-                await updateDoc(doc(db, "usuarios", user.uid), {
-                    isOnline: true,
-                    currentSessionId: sessionId,
-                    lastLogin: new Date().toISOString()
-                });
-
-                const sessionData = {
-                    id: user.uid, uid: user.uid, email: user.email,
-                    nombre: userData.nombre,
-                    role: userData.rango,
-                    firstName: userData.nombre?.split(" ")[0] || "",
-                    lastName: userData.nombre?.split(" ").slice(1).join(" ") || "",
-                    age: userData.edad || 0,
-                    group: userData.agrupacion || "",
-                    state: userData.estado || "",
-                    nucleus: userData.nucleo || "",
-                    permissions: userData.rango === "owner" || userData.rango === "admin"
-                        ? ["view_profile", "access_panel", "edit_carousel", "manage_users"]
-                        : userData.rango === "profesor"
-                            ? ["view_profile", "access_panel"]
-                            : ["view_profile"],
-                    loginTime: Date.now()
-                };
-                sessionStorage.setItem("sistemaOrquestas_session", JSON.stringify(sessionData));
-                if (remember) localStorage.setItem("sistemaOrquestas_session", JSON.stringify(sessionData));
-
-                window.location.href = "index.html";
-            } catch (error) {
-                console.error("Error de login:", error);
-                alert("Error al iniciar sesión: " + error.message);
+                const user = auth.currentUser;
+                if (!user) throw new Error("No hay sesión activa.");
+                await updatePassword(user, nueva);
+                await updateDoc(doc(db, "usuarios", uid), { requiresPasswordChange: false });
+                sessionStorage.removeItem("pendingPasswordChange");
+                alert("Contraseña cambiada correctamente. Ahora inicia sesión.");
+                await signOut(auth);
+                window.location.href = "login.html";
+            } catch (err) {
+                alert("Error: " + err.message);
             }
         });
     </script>
