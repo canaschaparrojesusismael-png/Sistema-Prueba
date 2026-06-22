@@ -1,57 +1,61 @@
 /**
- * ui-manager.js – Gestión dinámica de UI (Firebase Edition)
- * Sistema Nacional de Orquestas
+ * ui-manager.js – Renderizado UI + Panel Admin en vivo
  */
-(function () {
-  "use strict";
+import { getFirestore, collection, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-  function renderizarUI() {
+// ========== RENDERIZADO PRINCIPAL ==========
+window.UI = {
+  render() {
     const loginArea = document.getElementById("login-area");
     const userNav = document.getElementById("user-nav");
-    const targetContainer = loginArea || userNav;
+    const target = loginArea || userNav;
     const carrusel = document.getElementById("carousel-container");
 
-    if (targetContainer) targetContainer.innerHTML = "";
+    if (target) target.innerHTML = "";
     if (carrusel) {
       const oldGear = carrusel.querySelector(".carousel-edit-btn");
       if (oldGear) oldGear.remove();
     }
 
-    const session = Auth.getSession();
+    const session = window.Auth.getSession();
 
     if (!session) {
-      if (targetContainer) {
-        targetContainer.innerHTML = `<a href="login.html" class="btn btn-login">Iniciar Sesión</a>`;
+      if (target) {
+        target.innerHTML = `<a href="login.html" class="btn btn-login">Iniciar Sesión</a>`;
       }
     } else {
-      renderAutenticado(session, targetContainer);
-      if ((session.role === "owner" || session.role === "admin") && Auth.hasPermission("edit_carousel")) {
-        renderBotonEngrane(carrusel);
+      this._renderAutenticado(session, target);
+      if ((session.role === "owner" || session.role === "admin") && window.Auth.hasPermission("edit_carousel")) {
+        this._renderBotonEngrane(carrusel);
+      }
+      // Si es admin, iniciamos panel en vivo
+      if (session.role === "owner" || session.role === "admin") {
+        this._initLivePanel();
       }
     }
-  }
+  },
 
-  function renderAutenticado(session, container) {
+  _renderAutenticado(session, container) {
     if (!container) return;
 
     const btnLogout = document.createElement("button");
     btnLogout.className = "btn btn-nav btn-cerrar";
     btnLogout.textContent = "Cerrar Sesión";
-    btnLogout.addEventListener("click", () => Auth.logout());
+    btnLogout.addEventListener("click", () => window.Auth.logout());
 
     const rutasProtegidas = ["panel.html", "piezas.html", "formacion.html", "miembros.html"];
-    const estaEnPanel = rutasProtegidas.some(ruta => window.location.pathname.includes(ruta));
+    const enPanel = rutasProtegidas.some(r => location.pathname.includes(r));
 
     const btnPanel = document.createElement("a");
-    btnPanel.href = estaEnPanel ? "index.html" : "panel.html";
+    btnPanel.href = enPanel ? "index.html" : "panel.html";
     btnPanel.className = "btn btn-nav btn-panel";
-    btnPanel.textContent = estaEnPanel ? "Volver al inicio" : "Acceder a la página";
+    btnPanel.textContent = enPanel ? "Volver al inicio" : "Acceder a la página";
 
-    const initial = session.firstName?.charAt(0)?.toUpperCase() || "?";
+    const initial = (session.firstName?.charAt(0) || "?").toUpperCase();
     const btnUser = document.createElement("button");
     btnUser.className = "btn btn-nav btn-user";
     btnUser.textContent = initial;
-    btnUser.setAttribute("type", "button");
+    btnUser.type = "button";
 
     const submenu = document.createElement("div");
     submenu.className = "user-submenu";
@@ -64,25 +68,48 @@
     submenu.style.display = "none";
     btnUser.appendChild(submenu);
 
-    btnUser.addEventListener("mouseenter", () => { submenu.style.display = "block"; });
-    btnUser.addEventListener("mouseleave", () => { submenu.style.display = "none"; });
-    submenu.addEventListener("mouseenter", () => { submenu.style.display = "block"; });
-    submenu.addEventListener("mouseleave", () => { submenu.style.display = "none"; });
+    btnUser.addEventListener("mouseenter", () => submenu.style.display = "block");
+    btnUser.addEventListener("mouseleave", () => submenu.style.display = "none");
+    submenu.addEventListener("mouseenter", () => submenu.style.display = "block");
+    submenu.addEventListener("mouseleave", () => submenu.style.display = "none");
 
     container.appendChild(btnLogout);
     container.appendChild(btnPanel);
     container.appendChild(btnUser);
-  }
+  },
 
-  function renderBotonEngrane(carrusel) {
+  _renderBotonEngrane(carrusel) {
     if (!carrusel) return;
-    const gearBtn = document.createElement("button");
-    gearBtn.className = "carousel-edit-btn";
-    gearBtn.innerHTML = "&#9881;";
-    gearBtn.title = "Editar carrusel";
-    gearBtn.addEventListener("click", () => { if (window.showCarouselModal) window.showCarouselModal(); });
-    carrusel.appendChild(gearBtn);
-  }
+    const gear = document.createElement("button");
+    gear.className = "carousel-edit-btn";
+    gear.innerHTML = "&#9881;";
+    gear.title = "Editar carrusel";
+    gear.addEventListener("click", () => {
+      if (window.showCarouselModal) window.showCarouselModal();
+    });
+    carrusel.appendChild(gear);
+  },
 
-  window.UI = { render: renderizarUI };
-})();
+  // ========== PANEL EN VIVO ==========
+  _initLivePanel() {
+    const db = getFirestore(window.Auth.db.app);
+    const q = query(collection(db, "usuarios"), where("isOnline", "==", true));
+    onSnapshot(q, (snapshot) => {
+      const tbody = document.querySelector("#online-users-table tbody");
+      if (!tbody) return;
+      tbody.innerHTML = "";
+      snapshot.forEach((doc) => {
+        const u = doc.data();
+        const row = tbody.insertRow();
+        row.innerHTML = `
+          <td><span class="online-dot"></span> ${u.nombre || "Sin nombre"}</td>
+          <td>${u.rango || "—"}</td>
+          <td>${u.agrupacion || "—"}</td>
+        `;
+      });
+    });
+  }
+};
+
+// Inicializar UI cuando el DOM esté listo
+document.addEventListener("DOMContentLoaded", () => window.UI.render());
