@@ -3,25 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <title>Sistema – Premium UI</title>
-  <link rel="stylesheet" href="estilos.css" />
+  <link rel="stylesheet" href="estilos.css?v=2.0" />
 </head>
 <body>
   <header class="barra-superior">
     <img id="Gobierno" src="datos.png" alt="Gobierno de Venezuela" />
     <nav id="user-nav" class="user-nav"></nav>
   </header>
-
   <main class="contenido-web">
     <div class="container">
       <div class="bloque-logo-sistema">
         <img id="orquestas" src="Estandarte.png" alt="Logo Sistema de Orquestas" />
       </div>
-
       <div id="login-area" class="login-area">
         <a href="login.html" class="btn btn-login">Iniciar Sesión</a>
       </div>
-
       <div class="modulo-carrusel" id="carousel-container">
         <button class="carousel-arrow carousel-arrow-left" id="prev-slide">&#10094;</button>
         <div class="carrusel-caja">
@@ -33,7 +33,6 @@
           <p id="carousel-desc">Texto explicativo del carrusel…</p>
         </div>
       </div>
-
       <section class="citas-grid">
         <blockquote>“Música para iluminar, música para salvar...”</blockquote>
         <blockquote>“La orquesta es el único espacio donde la solidaridad y el trabajo en equipo se convierten en arte.”</blockquote>
@@ -41,16 +40,11 @@
       </section>
     </div>
   </main>
-
   <footer class="pie-pagina">
-    <div class="footer-contenido">
-      <p>© 2026 Fundación Musical Simón Bolívar</p>
-    </div>
+    <div class="footer-contenido"><p>© 2026 Fundación Musical Simón Bolívar</p></div>
   </footer>
-
-  <!-- ===================== SCRIPTS MODULARES ===================== -->
-  <script type="module" src="auth.js"></script>
-  <script type="module" src="ui-manager.js"></script>
-  <script type="module" src="main.js"></script>
+  <script type="module" src="auth.js?v=2.0"></script>
+  <script type="module" src="ui-manager.js?v=2.0"></script>
+  <script type="module" src="main.js?v=2.0"></script>
 </body>
 </html>
