@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>Cambiar Contraseña – Sistema de Orquestas</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2.0">
     <style>
         .cambio-wrapper {
             max-width: 400px; margin: 100px auto; background: white;
@@ -31,29 +34,29 @@
         </form>
     </main>
 
-        <script type="module">
+    <script type="module" src="auth.js?v=2.0"></script>
+    <script type="module">
         import { auth, db } from "./firebase-init.js";
-        import { updatePassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-        import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-    
+        import { updatePassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
+        import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+
         const uid = sessionStorage.getItem("pendingPasswordChange");
         if (!uid) window.location.href = "index.html";
-    
-        // Esperar a que Firebase Auth esté listo
+
         onAuthStateChanged(auth, (user) => {
             if (!user || user.uid !== uid) {
                 window.location.href = "login.html";
                 return;
             }
         });
-    
+
         document.getElementById("form-cambio").addEventListener("submit", async (e) => {
             e.preventDefault();
             const nueva = document.getElementById("nueva").value;
             const confirmar = document.getElementById("confirmar").value;
             if (nueva !== confirmar) { alert("Las contraseñas no coinciden."); return; }
             if (nueva.length < 8) { alert("La contraseña debe tener al menos 8 caracteres."); return; }
-    
+
             try {
                 const user = auth.currentUser;
                 if (!user) throw new Error("No hay sesión activa.");
