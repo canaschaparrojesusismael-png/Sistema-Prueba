@@ -1,20 +1,20 @@
 /**
  * firebase-init.js – Configuración centralizada de Firebase
  * =====================================================================
- * ¡IMPORTANTE! Reemplaza las credenciales con las de tu proyecto real.
+ * ¡IMPORTANTE! Estas son las credenciales reales del proyecto.
  * =====================================================================
  */
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXX",        // <-- TU API KEY
-  authDomain: "sistema-orquestas.firebaseapp.com",       // <-- TU AUTH DOMAIN
-  projectId: "sistema-orquestas",                        // <-- TU PROJECT ID
-  storageBucket: "sistema-orquestas.appspot.com",        // <-- TU STORAGE BUCKET
-  messagingSenderId: "000000000000",                     // <-- TU SENDER ID
-  appId: "1:000000000000:web:xxxxxxxxxxxxxxxxxxxx"       // <-- TU APP ID
+  apiKey: "AIzaSyBHHCJM6JFb6IkaT-MgazyTGgOKJdjcKvo",
+  authDomain: "sistema-cma.firebaseapp.com",
+  projectId: "sistema-cma",
+  storageBucket: "sistema-cma.firebasestorage.app",
+  messagingSenderId: "356833587736",
+  appId: "1:356833587736:web:b44458eebc115eb98d096d"
 };
 
 const app = initializeApp(firebaseConfig);
