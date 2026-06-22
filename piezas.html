@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piezas – Sistema de Orquestas</title>
+    <link rel="stylesheet" href="estilos.css">
+    <style>
+        :root {
+            --color-primario: #1a237e;    /* Azul marino profundo */
+            --color-secundario: #4a148c;  /* Morado intenso */
+            --color-blanco: #ffffff;
+            --color-fondo: #f0f2f5;
+            --border-radius: 16px;
+            --shadow-soft: 0 10px 20px rgba(0,0,0,0.08);
+        }
+
+        .back-link {
+            display: inline-block;
+            margin: 1.5rem 0;
+            color: var(--color-primario);
+            font-weight: 600;
+            text-decoration: none;
+            font-size: 1rem;
+        }
+        .back-link:hover { text-decoration: underline; }
+
+        .grid-agrupaciones {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 25px;
+            padding: 20px 0;
+        }
+
+        @media (max-width: 900px) {
+            .grid-agrupaciones { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 600px) {
+            .grid-agrupaciones { grid-template-columns: 1fr; }
+        }
+
+        .card-agrupacion {
+            position: relative;
+            border-radius: var(--border-radius);
+            transition: transform 0.3s ease;
+        }
+        .card-agrupacion:hover {
+            transform: translateY(-5px);
+        }
+
+        .btn-agrupacion {
+            width: 100%;
+            min-height: 160px;
+            padding: 30px 20px;
+            background: linear-gradient(135deg, #ffffff 0%, #f9faff 100%);
+            border: 3px solid var(--color-primario);
+            border-radius: var(--border-radius);
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--color-primario);
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .btn-agrupacion::before {
+            content: "🎵";
+            font-size: 2rem;
+            display: block;
+        }
+        .btn-agrupacion:hover {
+            background: var(--color-primario);
+            color: white;
+            border-color: var(--color-primario);
+            box-shadow: 0 20px 35px rgba(26, 35, 126, 0.2);
+        }
+        .btn-agrupacion:hover::before {
+            content: "🎶";
+        }
+
+        .btn-eliminar-agrupacion {
+            position: absolute;
+            top: -12px;
+            right: -12px;
+            background: #d32f2f;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: none;
+            z-index: 10;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .btn-eliminar-agrupacion:hover { background: #b71c1c; }
+
+        .is-admin .btn-eliminar-agrupacion { display: block; }
+        .is-admin .btn-agregar-agrupacion { display: flex; }
+
+        .btn-agregar-agrupacion {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            min-height: 160px;
+            background: rgba(255,255,255,0.6);
+            border: 3px dashed var(--color-primario);
+            border-radius: var(--border-radius);
+            font-weight: 800;
+            color: var(--color-primario);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.2rem;
+            gap: 10px;
+            backdrop-filter: blur(4px);
+        }
+        .btn-agregar-agrupacion:hover {
+            background: var(--color-primario);
+            color: white;
+            border-style: solid;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 0.6rem;
+            margin: 0.5rem 0;
+            border: 1.5px solid #e0e4f0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body>
+    <header class="barra-superior">
+        <img src="datos.png" alt="Gobierno de Venezuela" style="max-height:50px;" />
+        <nav id="user-nav" class="user-nav"></nav>
+    </header>
+
+    <main class="contenido-web container">
+        <a class="back-link" href="panel.html">&larr; Volver al Panel</a>
+        <h2 style="color: var(--color-primario); font-weight: 800;">Agrupaciones</h2>
+
+        <div class="grid-agrupaciones" id="grid-agrupaciones"></div>
+    </main>
+
+    <!-- Modal para agregar agrupación (admin) -->
+    <div class="modal-overlay" id="modal-agrupacion">
+        <div class="modal-content">
+            <h2>Nueva Agrupación</h2>
+            <input type="text" id="input-nombre-agrupacion" class="modal-input" placeholder="Nombre de la agrupación" />
+            <button id="btn-guardar-agrupacion" class="btn btn-submit">Guardar</button>
+            <button id="btn-cerrar-modal" class="btn btn-cerrar">Cancelar</button>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script src="ui-manager.js"></script>
+    <script>
+        (function() {
+            if (!Auth.getSession()) window.location.href = "index.html";
+        })();
+
+        const STORAGE_AGRUPACIONES = "sistemaOrquestas_agrupaciones";
+        let agrupaciones = JSON.parse(localStorage.getItem(STORAGE_AGRUPACIONES)) || [
+            { id: "1", nombre: "Orquesta Infantil" },
+            { id: "2", nombre: "Alma Llanera" },
+            { id: "3", nombre: "Módulo de Práctica" }
+        ];
+
+        function guardarAgrupaciones() {
+            localStorage.setItem(STORAGE_AGRUPACIONES, JSON.stringify(agrupaciones));
+        }
+
+        function renderizarAgrupaciones() {
+            const grid = document.getElementById("grid-agrupaciones");
+            grid.innerHTML = "";
+
+            agrupaciones.forEach(agrup => {
+                const card = document.createElement("div");
+                card.className = "card-agrupacion";
+
+                const btn = document.createElement("button");
+                btn.className = "btn-agrupacion";
+                btn.textContent = agrup.nombre;
+                btn.addEventListener("click", () => {
+                    window.location.href = `repertorio.html?agrup=${encodeURIComponent(agrup.nombre)}`;
+                });
+
+                const btnEliminar = document.createElement("button");
+                btnEliminar.className = "btn-eliminar-agrupacion";
+                btnEliminar.innerHTML = "✖";
+                btnEliminar.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    if (confirm(`¿Eliminar "${agrup.nombre}"?`)) {
+                        agrupaciones = agrupaciones.filter(a => a.id !== agrup.id);
+                        guardarAgrupaciones();
+                        renderizarAgrupaciones();
+                    }
+                });
+
+                card.appendChild(btn);
+                card.appendChild(btnEliminar);
+                grid.appendChild(card);
+            });
+
+            const btnAgregar = document.createElement("button");
+            btnAgregar.className = "btn-agregar-agrupacion";
+            btnAgregar.innerHTML = "&#9881; Agregar Agrupación";
+            btnAgregar.addEventListener("click", () => {
+                document.getElementById("input-nombre-agrupacion").value = "";
+                document.getElementById("modal-agrupacion").style.display = "flex";
+            });
+            grid.appendChild(btnAgregar);
+
+            const session = Auth.getSession();
+            if (session && session.role === "Administrativo") {
+                grid.classList.add("is-admin");
+            } else {
+                grid.classList.remove("is-admin");
+            }
+        }
+
+        document.getElementById("btn-guardar-agrupacion").addEventListener("click", () => {
+            const nombre = document.getElementById("input-nombre-agrupacion").value.trim();
+            if (!nombre) return alert("Nombre obligatorio.");
+            agrupaciones.push({ id: Date.now().toString(36), nombre });
+            guardarAgrupaciones();
+            renderizarAgrupaciones();
+            document.getElementById("modal-agrupacion").style.display = "none";
+        });
+
+        document.getElementById("btn-cerrar-modal").addEventListener("click", () => {
+            document.getElementById("modal-agrupacion").style.display = "none";
+        });
+
+        window.addEventListener("DOMContentLoaded", () => {
+            UI.render();
+            renderizarAgrupaciones();
+        });
+    </script>
+</body>
+</html>

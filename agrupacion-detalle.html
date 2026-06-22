@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalle Agrupación – Sistema de Orquestas</title>
+    <link rel="stylesheet" href="estilos.css">
+    <style>
+        :root {
+            --color-primario: #1a237e;
+            --color-secundario: #4a148c;
+            --border-radius: 16px;
+            --shadow-soft: 0 10px 20px rgba(0,0,0,0.08);
+        }
+        .back-link { display: inline-block; margin: 1.5rem 0; color: var(--color-primario); font-weight: 600; text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
+
+        .pieza-card {
+            background: white; border: 1px solid #e0e4f0; border-radius: var(--border-radius);
+            padding: 25px; margin-bottom: 25px; box-shadow: var(--shadow-soft);
+        }
+        .instrumentos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-top: 15px; }
+        .btn-instrumento {
+            padding: 12px; background: #f0eeff; border: 2px solid var(--color-primario);
+            border-radius: 12px; font-weight: 600; color: var(--color-primario); cursor: pointer;
+            transition: all 0.3s ease; text-align: center;
+        }
+        .btn-instrumento:hover { background: var(--color-primario); color: white; transform: scale(1.03); }
+        .is-admin .btn-admin-accion { display: inline-block; }
+        .btn-admin-accion {
+            display: none; padding: 6px 12px; background: var(--color-primario); color: white;
+            border: none; border-radius: 15px; cursor: pointer; font-weight: 600; font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <header class="barra-superior">
+        <img src="datos.png" alt="Gobierno de Venezuela" style="max-height:50px;" />
+        <nav id="user-nav" class="user-nav"></nav>
+    </header>
+
+    <main class="contenido-web container" id="agrupacion-container">
+        <a class="back-link" href="piezas.html">&larr; Volver a Agrupaciones</a>
+        <h2 style="color: var(--color-primario); font-weight: 800;">Orquesta Infantil</h2>
+        <div id="piezas-container"></div>
+    </main>
+
+    <script src="auth.js"></script>
+    <script src="ui-manager.js"></script>
+    <script>
+        (function() { if (!Auth.getSession()) window.location.href = "index.html"; })();
+
+        const repertorio = [
+            { id: 1, titulo: "Pieza 1", instrumentos: ["Trompeta", "Violín 1", "Violín 2"] },
+            { id: 2, titulo: "Pieza 2", instrumentos: ["Flauta", "Violonchelo"] }
+        ];
+
+        function renderizarPiezas() {
+            const container = document.getElementById("piezas-container");
+            container.innerHTML = "";
+
+            repertorio.forEach(pieza => {
+                const card = document.createElement("section");
+                card.className = "pieza-card";
+                card.innerHTML = `<h3 style="color: var(--color-primario);">${pieza.titulo}</h3>`;
+
+                const grid = document.createElement("div");
+                grid.className = "instrumentos-grid";
+
+                pieza.instrumentos.forEach(inst => {
+                    const btn = document.createElement("button");
+                    btn.className = "btn-instrumento";
+                    btn.textContent = inst;
+                    btn.addEventListener("click", () => alert(`Ver partituras de ${inst} en ${pieza.titulo}`));
+                    grid.appendChild(btn);
+                });
+
+                card.appendChild(grid);
+
+                const btnAdmin = document.createElement("button");
+                btnAdmin.className = "btn-admin-accion";
+                btnAdmin.textContent = "Eliminar Pieza";
+                btnAdmin.addEventListener("click", () => {
+                    if (confirm(`¿Eliminar "${pieza.titulo}"?`)) alert("Pieza eliminada (simulado)");
+                });
+                card.appendChild(btnAdmin);
+
+                container.appendChild(card);
+            });
+        }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            UI.render();
+            renderizarPiezas();
+
+            const session = Auth.getSession();
+            if (session && (session.role === "Administrativo" || session.role === "Profesor")) {
+                document.getElementById("agrupacion-container").classList.add("is-admin");
+            }
+        });
+    </script>
+</body>
+</html>

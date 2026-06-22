@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Sistema de Orquestas</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <main class="login-wrapper">
+        <section class="login-visual">
+            <div class="visual-content">
+                <h1>Sistema Nacional de Orquestas</h1>
+                <p>"Música para iluminar, música para salvar."</p>
+            </div>
+        </section>
+        <section class="login-panel">
+            <form class="login-form" id="form-login" novalidate>
+                <h2>Iniciar Sesión</h2>
+                <div class="input-group">
+                    <label for="usuario">Usuario</label>
+                    <input type="text" id="usuario" placeholder="Ingresa tu usuario" required>
+                </div>
+                <div class="input-group">
+                    <label for="password">Contraseña</label>
+                    <input type="password" id="password" placeholder="Ingresa tu contraseña" required>
+                </div>
+                <div class="input-group remember-group">
+                    <input type="checkbox" id="remember" />
+                    <label for="remember">Recuérdame</label>
+                </div>
+                <button type="submit" class="btn-submit">Iniciar Sesión</button>
+            </form>
+        </section>
+    </main>
+    <script src="auth.js"></script>
+    <script>
+        document.getElementById("form-login").addEventListener("submit", function (e) {
+            e.preventDefault();
+            const usuario = document.getElementById("usuario").value.trim();
+            const password = document.getElementById("password").value.trim();
+            const remember = document.getElementById("remember").checked;
+            if (!usuario || !password) { alert("Complete todos los campos."); return; }
+            const exito = Auth.login(usuario, password, remember);
+            if (exito) {
+                window.location.href = "index.html";
+            } else {
+                alert("Usuario o contraseña incorrectos. Pruebe: estudiante1 / 123456, profesor1 / 123456, admin1 / 123456");
+            }
+        });
+    </script>
+</body>
+</html>

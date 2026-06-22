@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema – Premium UI</title>
+  <link rel="stylesheet" href="estilos.css" />
+</head>
+<body>
+  <header class="barra-superior">
+    <img id="Gobierno" src="datos.png" alt="Gobierno de Venezuela" />
+    <nav id="user-nav" class="user-nav"></nav>
+  </header>
+
+  <main class="contenido-web">
+    <div class="container">
+      <div class="bloque-logo-sistema">
+        <img id="orquestas" src="Estandarte.png" alt="Logo Sistema de Orquestas" />
+      </div>
+
+      <!-- Contenedor dinámico de botones -->
+      <div id="login-area" class="login-area">
+        <a href="login.html" class="btn btn-login">Iniciar Sesión</a>
+      </div>
+
+      <!-- Carrusel con flechas -->
+      <div class="modulo-carrusel" id="carousel-container">
+        <button class="carousel-arrow carousel-arrow-left" id="prev-slide">&#10094;</button>
+        <div class="carrusel-caja">
+          <img src="images.jpg" alt="Imagen del Carrusel" class="imagen-carrusel" id="carousel-image" />
+        </div>
+        <button class="carousel-arrow carousel-arrow-right" id="next-slide">&#10095;</button>
+        <div class="carrusel-texto">
+          <h2 id="carousel-title">Sistema Nacional de Orquestas</h2>
+          <p id="carousel-desc">Texto explicativo del carrusel…</p>
+        </div>
+      </div>
+
+      <section class="citas-grid">
+        <blockquote>“Música para iluminar, música para salvar...”</blockquote>
+        <blockquote>“La orquesta es el único espacio donde la solidaridad y el trabajo en equipo se convierten en arte.”</blockquote>
+        <blockquote>“La disciplina de la música nos enseña que la excelencia no es un acto, sino un hábito.”</blockquote>
+      </section>
+    </div>
+  </main>
+
+  <footer class="pie-pagina">
+    <div class="footer-contenido">
+      <p>© 2026 Fundación Musical Simón Bolívar</p>
+    </div>
+  </footer>
+
+  <script src="auth.js"></script>
+  <script src="ui-manager.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

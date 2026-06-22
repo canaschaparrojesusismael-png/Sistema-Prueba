@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Miembros – Sistema de Orquestas</title>
+    <link rel="stylesheet" href="estilos.css">
+    <style>
+        :root {
+            --color-primario: #1a237e;
+            --color-secundario: #4a148c;
+            --border-radius: 16px;
+            --shadow-soft: 0 10px 20px rgba(0,0,0,0.08);
+        }
+        .back-link { display: inline-block; margin: 1.5rem 0; color: var(--color-primario); font-weight: 600; text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
+
+        .roles-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-top: 20px; }
+        @media (max-width: 600px) { .roles-grid { grid-template-columns: 1fr; } }
+
+        .rol-card {
+            background: white; border: 2px solid #e0e4f0; border-radius: var(--border-radius);
+            padding: 30px; text-align: center; cursor: pointer; transition: all 0.3s ease; box-shadow: var(--shadow-soft);
+        }
+        .rol-card:hover { border-color: var(--color-primario); transform: translateY(-5px); }
+
+        .miembros-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; margin-top: 20px; }
+
+        .persona-card {
+            background: white; border: 1px solid #e0e4f0; border-radius: var(--border-radius);
+            padding: 20px; text-align: center; box-shadow: var(--shadow-soft); position: relative;
+        }
+        .avatar {
+            width: 70px; height: 70px; background: var(--color-primario); color: white; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.8rem;
+            margin: 0 auto 12px;
+        }
+        .is-admin .btn-admin-accion { display: inline-block; }
+        .btn-admin-accion {
+            display: none; position: absolute; top: -8px; right: -8px; background: #d32f2f;
+            color: white; border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <header class="barra-superior">
+        <img src="datos.png" alt="Gobierno de Venezuela" style="max-height:50px;" />
+        <nav id="user-nav" class="user-nav"></nav>
+    </header>
+
+    <main class="contenido-web container" id="miembros-container">
+        <a class="back-link" href="panel.html">&larr; Volver al Panel</a>
+        <h2 style="color: var(--color-primario); font-weight: 800;">Miembros</h2>
+        <div id="miembros-vista"></div>
+    </main>
+
+    <div class="modal-overlay" id="modal-persona">
+        <div class="modal-content">
+            <h2 id="modal-persona-title">Agregar Persona</h2>
+            <input type="hidden" id="persona-rol" />
+            <div class="editor-row"><label>Nombre:</label><input type="text" id="persona-nombre" class="modal-input" /></div>
+            <div class="editor-row"><label>Especialidad:</label><input type="text" id="persona-especialidad" class="modal-input" /></div>
+            <button id="btn-guardar-persona" class="btn btn-submit">Guardar</button>
+            <button id="btn-cerrar-modal-persona" class="btn btn-cerrar">Cancelar</button>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script src="ui-manager.js"></script>
+    <script>
+        (function() { if (!Auth.getSession()) window.location.href = "index.html"; })();
+
+        const STORAGE_MIEMBROS = "sistemaOrquestas_miembros";
+        let dataMiembros = JSON.parse(localStorage.getItem(STORAGE_MIEMBROS)) || {
+            profesores: [
+                { id: "1", nombre: "Juan Pérez", especialidad: "Violín" },
+                { id: "2", nombre: "Ana García", especialidad: "Piano" }
+            ],
+            estudiantes: [
+                { id: "3", nombre: "Luis Fernández", especialidad: "Trompeta" },
+                { id: "4", nombre: "María González", especialidad: "Flauta" }
+            ]
+        };
+        let vistaActual = "main";
+
+        function guardarMiembros() { localStorage.setItem(STORAGE_MIEMBROS, JSON.stringify(dataMiembros)); }
+
+        function renderizarVista() {
+            const container = document.getElementById("miembros-vista");
+            container.innerHTML = "";
+
+            if (vistaActual === "main") {
+                const grid = document.createElement("div");
+                grid.className = "roles-grid";
+
+                const cardProfes = document.createElement("div");
+                cardProfes.className = "rol-card";
+                cardProfes.innerHTML = `<h3>👩‍🏫 Profesores</h3>`;
+                cardProfes.addEventListener("click", () => { vistaActual = "profesores"; renderizarVista(); });
+                grid.appendChild(cardProfes);
+
+                const cardEstud = document.createElement("div");
+                cardEstud.className = "rol-card";
+                cardEstud.innerHTML = `<h3>👦 Estudiantes</h3>`;
+                cardEstud.addEventListener("click", () => { vistaActual = "estudiantes"; renderizarVista(); });
+                grid.appendChild(cardEstud);
+
+                container.appendChild(grid);
+            } else {
+                const backBtn = document.createElement("button");
+                backBtn.className = "back-link";
+                backBtn.innerHTML = "&larr; Volver";
+                backBtn.addEventListener("click", () => { vistaActual = "main"; renderizarVista(); });
+                container.appendChild(backBtn);
+
+                const titulo = document.createElement("h3");
+                titulo.style.color = "var(--color-primario)";
+                titulo.textContent = vistaActual === "profesores" ? "Profesores" : "Estudiantes";
+                container.appendChild(titulo);
+
+                const gridMiembros = document.createElement("div");
+                gridMiembros.className = "miembros-grid";
+
+                const lista = dataMiembros[vistaActual];
+                lista.forEach(persona => {
+                    const card = document.createElement("div");
+                    card.className = "persona-card";
+                    card.innerHTML = `
+                        <div class="avatar">${persona.nombre.charAt(0)}</div>
+                        <strong>${persona.nombre}</strong>
+                        <p style="color:#666; font-size:0.9rem;">${persona.especialidad}</p>
+                    `;
+
+                    const btnEliminar = document.createElement("button");
+                    btnEliminar.className = "btn-admin-accion";
+                    btnEliminar.innerHTML = "✖";
+                    btnEliminar.addEventListener("click", (e) => {
+                        e.stopPropagation();
+                        if (confirm(`¿Eliminar a ${persona.nombre}?`)) {
+                            dataMiembros[vistaActual] = dataMiembros[vistaActual].filter(p => p.id !== persona.id);
+                            guardarMiembros();
+                            renderizarVista();
+                        }
+                    });
+                    card.appendChild(btnEliminar);
+                    gridMiembros.appendChild(card);
+                });
+
+                const btnAgregar = document.createElement("button");
+                btnAgregar.className = "btn-modulo";
+                btnAgregar.style.borderStyle = "dashed";
+                btnAgregar.textContent = "+ Agregar";
+                btnAgregar.addEventListener("click", () => {
+                    document.getElementById("persona-rol").value = vistaActual;
+                    document.getElementById("persona-nombre").value = "";
+                    document.getElementById("persona-especialidad").value = "";
+                    document.getElementById("modal-persona").style.display = "flex";
+                });
+                gridMiembros.appendChild(btnAgregar);
+
+                container.appendChild(gridMiembros);
+            }
+        }
+
+        document.getElementById("btn-guardar-persona").addEventListener("click", () => {
+            const rol = document.getElementById("persona-rol").value;
+            const nombre = document.getElementById("persona-nombre").value.trim();
+            const especialidad = document.getElementById("persona-especialidad").value.trim();
+            if (!nombre) return alert("Nombre obligatorio.");
+            dataMiembros[rol].push({ id: Date.now().toString(36), nombre, especialidad });
+            guardarMiembros();
+            renderizarVista();
+            document.getElementById("modal-persona").style.display = "none";
+        });
+
+        document.getElementById("btn-cerrar-modal-persona").addEventListener("click", () => {
+            document.getElementById("modal-persona").style.display = "none";
+        });
+
+        window.addEventListener("DOMContentLoaded", () => {
+            UI.render();
+            renderizarVista();
+
+            const session = Auth.getSession();
+            if (session && session.role === "Administrativo") {
+                document.getElementById("miembros-container").classList.add("is-admin");
+            }
+        });
+    </script>
+</body>
+</html>
