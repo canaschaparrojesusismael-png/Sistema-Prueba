@@ -1,18 +1,29 @@
 /**
- * ===========================================================================
- * auth.js – Autenticación con Firebase (Firebase Auth + Firestore)
- * Sistema Nacional de Orquestas – Premium UI
- * ===========================================================================
- * Incluye:
- *  - Firebase App primaria (auth principal)
- *  - Instancia secundaria para registro de usuarios sin cerrar sesión
- *  - Roles: owner, admin, profesor, estudiante
- *  - Bloqueo de doble sesión (currentSessionId)
- *  - Redirección por cambio de clave obligatorio
+ * auth.js – Firebase Modular + Soporte de instancia secundaria
  */
 
-// ===================== CONFIGURACIÓN DE FIREBASE =====================
-// Reemplaza estos valores con los de tu proyecto Firebase
+import { initializeApp, getApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  updatePassword
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  onSnapshot,
+  collection,
+  query,
+  where
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ========== CONFIGURACIÓN ==========
 const firebaseConfig = {
   apiKey: "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXX",
   authDomain: "sistema-orquestas.firebaseapp.com",
@@ -22,27 +33,11 @@ const firebaseConfig = {
   appId: "1:000000000000:web:xxxxxxxxxxxxxxxxxxxx"
 };
 
-// ===================== INICIALIZACIÓN =====================
-// Importaciones desde CDN (ya disponibles globalmente como firebase.*)
-const { initializeApp, getApp, getApps, deleteApp } = firebase;
-const { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword } = firebase.auth;
-const { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, getDocs } = firebase.firestore;
-
-// --- App Primaria ---
-const app = initializeApp(firebaseConfig, "primary");
+const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// --- Instancia Secundaria (para registrar usuarios sin cerrar sesión) ---
-function getSecondaryAuth() {
-  const secondaryApp = initializeApp(firebaseConfig, "secondary" + Date.now());
-  const secAuth = getAuth(secondaryApp);
-  return { secondaryApp, secAuth };
-}
-
-// ===================== UTILIDADES =====================
-
-/** Genera una contraseña aleatoria de 8 caracteres */
+// ========== UTILIDADES ==========
 function generarClave() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
   let clave = "";
@@ -50,7 +45,6 @@ function generarClave() {
   return clave;
 }
 
-/** Genera un UUID v4 simple */
 function generarUUID() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
     const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
@@ -58,67 +52,60 @@ function generarUUID() {
   });
 }
 
-// ===================== API PÚBLICA =====================
+// Instancia secundaria para registro sin cerrar sesión
+function getSecondaryAuth() {
+  const secApp = initializeApp(firebaseConfig, "secondary" + Date.now());
+  const secAuth = getAuth(secApp);
+  return { secApp, secAuth };
+}
 
+// ========== API PÚBLICA (window.Auth) ==========
 window.Auth = {
   auth,
   db,
 
-  /**
-   * Inicia sesión con email/contraseña.
-   * Verifica roles, bloqueo de doble sesión y redirección por cambio de clave.
-   */
+  /** Login normal */
   async login(email, password, remember = false) {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      // Obtener datos del usuario desde Firestore
-      const userDoc = await getDoc(doc(db, "usuarios", user.uid));
-      if (!userDoc.exists()) {
+      const userCred = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCred.user;
+      const snap = await getDoc(doc(db, "usuarios", user.uid));
+      if (!snap.exists()) {
         await signOut(auth);
-        return { success: false, error: "Usuario no registrado en el sistema." };
+        return { success: false, error: "Usuario no registrado." };
       }
+      const data = snap.data();
 
-      const userData = userDoc.data();
-
-      // Verificar si requiere cambio de clave
-      if (userData.requiresPasswordChange) {
+      if (data.requiresPasswordChange) {
         sessionStorage.setItem("pendingPasswordChange", user.uid);
         return { success: true, requiresPasswordChange: true, uid: user.uid };
       }
 
-      // Generar ID de sesión único
       const sessionId = generarUUID();
       sessionStorage.setItem("currentSessionId", sessionId);
       if (remember) localStorage.setItem("currentSessionId", sessionId);
 
-      // Actualizar Firestore: online + sessionId
       await updateDoc(doc(db, "usuarios", user.uid), {
         isOnline: true,
         currentSessionId: sessionId,
         lastLogin: new Date().toISOString()
       });
 
-      // Listener de doble sesión
-      Auth.monitorSession(user.uid, sessionId);
+      this.monitorSession(user.uid, sessionId);
 
-      // Guardar datos de sesión en sessionStorage para UI rápida
       const sessionData = {
-        id: user.uid,
-        uid: user.uid,
-        email: user.email,
-        nombre: userData.nombre,
-        role: userData.rango, // "owner" | "admin" | "profesor" | "estudiante"
-        firstName: userData.nombre?.split(" ")[0] || "",
-        lastName: userData.nombre?.split(" ").slice(1).join(" ") || "",
-        age: userData.edad || 0,
-        group: userData.agrupacion || "",
-        state: userData.estado || "",
-        nucleus: userData.nucleo || "",
-        permissions: userData.rango === "owner" || userData.rango === "admin"
+        id: user.uid, uid: user.uid, email: user.email,
+        nombre: data.nombre,
+        role: data.rango,
+        firstName: data.nombre?.split(" ")[0] || "",
+        lastName: data.nombre?.split(" ").slice(1).join(" ") || "",
+        age: data.edad || 0,
+        group: data.agrupacion || "",
+        state: data.estado || "",
+        nucleus: data.nucleo || "",
+        permissions: (data.rango === "owner" || data.rango === "admin")
           ? ["view_profile", "access_panel", "edit_carousel", "manage_users"]
-          : userData.rango === "profesor"
+          : data.rango === "profesor"
             ? ["view_profile", "access_panel"]
             : ["view_profile"],
         loginTime: Date.now()
@@ -127,30 +114,19 @@ window.Auth = {
       if (remember) localStorage.setItem("sistemaOrquestas_session", JSON.stringify(sessionData));
 
       return { success: true, user: sessionData };
-    } catch (error) {
-      console.error("Error de login:", error);
-      return { success: false, error: error.message };
+    } catch (err) {
+      return { success: false, error: err.message };
     }
   },
 
-  /**
-   * Registra un nuevo usuario usando la instancia secundaria de Firebase.
-   * No cierra la sesión del admin actual.
-   * @param {string} email
-   * @param {string} nombre
-   * @param {string} rango - "profesor" | "estudiante"
-   * @param {string} agrupacion
-   * @returns {object} { success, clave, error }
-   */
+  /** Registrar usuario (admin no pierde sesión) */
   async registerUser(email, nombre, rango, agrupacion) {
-    const { secondaryApp, secAuth } = getSecondaryAuth();
+    const { secApp, secAuth } = getSecondaryAuth();
     try {
       const clave = generarClave();
-      // Crear usuario en Auth secundario
-      const userCredential = await createUserWithEmailAndPassword(secAuth, email, clave);
-      const uid = userCredential.user.uid;
+      const userCred = await createUserWithEmailAndPassword(secAuth, email, clave);
+      const uid = userCred.user.uid;
 
-      // Guardar datos en Firestore
       await setDoc(doc(db, "usuarios", uid), {
         nombre,
         rango,
@@ -158,74 +134,62 @@ window.Auth = {
         email,
         isOnline: false,
         currentSessionId: "",
-        requiresPasswordChange: true, // Debe cambiar clave en primer login
+        requiresPasswordChange: true,
         estado: "",
         nucleo: "",
         edad: 0,
         fechaCreacion: new Date().toISOString()
       });
 
-      // Cerrar sesión de la instancia secundaria
       await signOut(secAuth);
-      await deleteApp(secondaryApp);
-
+      await deleteApp(secApp);
       return { success: true, clave, uid };
-    } catch (error) {
-      console.error("Error al registrar usuario:", error);
-      try { await deleteApp(secondaryApp); } catch (e) { /* ignorar */ }
-      return { success: false, error: error.message };
+    } catch (err) {
+      try { await deleteApp(secApp); } catch (e) {}
+      return { success: false, error: err.message };
     }
   },
 
-  /** Cambia la contraseña del usuario actual (flujo de primer login) */
+  /** Cambiar contraseña (primer login) */
   async changePassword(newPassword) {
-    const user = auth.currentUser;
-    if (!user) return { success: false, error: "No hay sesión activa." };
+    if (!auth.currentUser) return { success: false, error: "Sin sesión." };
     try {
-      await updatePassword(user, newPassword);
-      // Actualizar Firestore: quitar flag
-      await updateDoc(doc(db, "usuarios", user.uid), {
+      await updatePassword(auth.currentUser, newPassword);
+      await updateDoc(doc(db, "usuarios", auth.currentUser.uid), {
         requiresPasswordChange: false
       });
       sessionStorage.removeItem("pendingPasswordChange");
       return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
+    } catch (err) {
+      return { success: false, error: err.message };
     }
   },
 
   /** Monitor de doble sesión */
   monitorSession(uid, currentSessionId) {
-    const unsub = onSnapshot(doc(db, "usuarios", uid), (snapshot) => {
-      if (!snapshot.exists()) return;
-      const data = snapshot.data();
-      if (data.currentSessionId && data.currentSessionId !== currentSessionId) {
-        // Otra sesión iniciada: forzar logout
+    const unsub = onSnapshot(doc(db, "usuarios", uid), (snap) => {
+      if (!snap.exists()) return;
+      const d = snap.data();
+      if (d.currentSessionId && d.currentSessionId !== currentSessionId) {
         alert("Se ha iniciado sesión en otro dispositivo. Esta sesión se cerrará.");
-        Auth.logout();
+        this.logout();
       }
     });
-    // Guardar referencia para cancelar al cerrar sesión
     window._sessionUnsub = unsub;
   },
 
-  /** Cierra sesión y limpia estado */
+  /** Cerrar sesión */
   async logout() {
     try {
-      const user = auth.currentUser;
-      if (user) {
-        await updateDoc(doc(db, "usuarios", user.uid), {
+      if (auth.currentUser) {
+        await updateDoc(doc(db, "usuarios", auth.currentUser.uid), {
           isOnline: false,
           currentSessionId: ""
         });
         await signOut(auth);
       }
-    } catch (e) { /* ignorar */ }
-    // Cancelar listener
-    if (window._sessionUnsub) {
-      window._sessionUnsub();
-      window._sessionUnsub = null;
-    }
+    } catch (e) {}
+    if (window._sessionUnsub) { window._sessionUnsub(); window._sessionUnsub = null; }
     localStorage.removeItem("sistemaOrquestas_session");
     sessionStorage.removeItem("sistemaOrquestas_session");
     localStorage.removeItem("currentSessionId");
@@ -233,12 +197,11 @@ window.Auth = {
     window.location.href = "index.html";
   },
 
-  /** Obtener sesión actual */
   getSession() {
-    const data = sessionStorage.getItem("sistemaOrquestas_session") ||
-                 localStorage.getItem("sistemaOrquestas_session");
-    if (!data) return null;
-    try { return JSON.parse(data); } catch (e) { return null; }
+    const raw = sessionStorage.getItem("sistemaOrquestas_session") ||
+                localStorage.getItem("sistemaOrquestas_session");
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch (e) { return null; }
   },
 
   hasPermission(perm) {
@@ -251,8 +214,7 @@ window.Auth = {
     return s ? s.role : null;
   },
 
-  /** Escucha cambios de autenticación (para restauración de sesión) */
-  onAuthChange(callback) {
-    return onAuthStateChanged(auth, callback);
+  onAuthChange(cb) {
+    return onAuthStateChanged(auth, cb);
   }
 };
