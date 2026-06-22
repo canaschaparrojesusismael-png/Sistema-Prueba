@@ -1,8 +1,12 @@
 /**
- * auth.js – Autenticación con máscara de dominio interno
+ * auth.js – Autenticación completa con Firebase (máscara de dominio)
+ * Sistema Nacional de Orquestas
  * =====================================================================
- * Importa auth, db y firebaseConfig desde el punto centralizado.
- * Las funciones login y registerUser concatenan "@sistema.cma" al username.
+ * - Importa auth y db desde firebase-init.js
+ * - Concatena "@sistema.cma" al username para login y registro
+ * - Soporta instancia secundaria para registro sin cerrar sesión
+ * - Bloqueo de doble sesión (currentSessionId)
+ * - Redirección a cambio de clave obligatorio
  */
 import { auth, db, firebaseConfig } from "./firebase-init.js";
 import {
@@ -11,20 +15,20 @@ import {
   signOut,
   onAuthStateChanged,
   updatePassword
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+} from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
 import {
   doc,
   getDoc,
   setDoc,
   updateDoc,
   onSnapshot
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth as getSecondaryAuthObj } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { initializeApp as initSecondaryApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+} from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+import { getAuth as getSecondaryAuthObj } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
+import { initializeApp as initSecondaryApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
+
+const DOMINIO = "@sistema.cma";
 
 // ===================== UTILIDADES =====================
-const DOMINIO = "@sistema.cma";   // Máscara de dominio interno
-
 function generarClave() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
   let clave = "";
@@ -39,7 +43,6 @@ function generarUUID() {
   });
 }
 
-// Instancia secundaria para registro (sin cerrar sesión)
 function getSecondaryAuthInstance() {
   const secApp = initSecondaryApp(firebaseConfig, "secondary" + Date.now());
   const secAuth = getSecondaryAuthObj(secApp);
@@ -51,7 +54,7 @@ window.Auth = {
   auth,
   db,
 
-  /** Login: el usuario escribe solo su ID (ej: "director") */
+  // --- LOGIN ---
   async login(username, password, remember = false) {
     try {
       const email = username + DOMINIO;
@@ -108,7 +111,7 @@ window.Auth = {
     }
   },
 
-  /** Registrar nuevo usuario (admin no pierde sesión) */
+  // --- REGISTRO DE USUARIO (desde panel admin) ---
   async registerUser(username, nombre, rango, agrupacion) {
     const { secApp, secAuth } = getSecondaryAuthInstance();
     try {
@@ -118,7 +121,7 @@ window.Auth = {
       const uid = userCred.user.uid;
 
       await setDoc(doc(db, "usuarios", uid), {
-        username,                     // ID plano guardado en Firestore
+        username,
         nombre,
         rango,
         agrupacion,
@@ -141,8 +144,22 @@ window.Auth = {
     }
   },
 
-  // ... (el resto de métodos: changePassword, monitorSession, logout, getSession, hasPermission, getRole, onAuthChange se mantienen igual)
+  // --- CAMBIAR CONTRASEÑA (primer login) ---
+  async changePassword(newPassword) {
+    if (!auth.currentUser) return { success: false, error: "Sin sesión." };
+    try {
+      await updatePassword(auth.currentUser, newPassword);
+      await updateDoc(doc(db, "usuarios", auth.currentUser.uid), {
+        requiresPasswordChange: false
+      });
+      sessionStorage.removeItem("pendingPasswordChange");
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  },
 
+  // --- MONITOR DE DOBLE SESIÓN ---
   monitorSession(uid, currentSessionId) {
     const unsub = onSnapshot(doc(db, "usuarios", uid), (snap) => {
       if (!snap.exists()) return;
@@ -155,6 +172,7 @@ window.Auth = {
     window._sessionUnsub = unsub;
   },
 
+  // --- CERRAR SESIÓN ---
   async logout() {
     try {
       if (auth.currentUser) {
@@ -165,7 +183,10 @@ window.Auth = {
         await signOut(auth);
       }
     } catch (e) {}
-    if (window._sessionUnsub) { window._sessionUnsub(); window._sessionUnsub = null; }
+    if (window._sessionUnsub) {
+      window._sessionUnsub();
+      window._sessionUnsub = null;
+    }
     localStorage.removeItem("sistemaOrquestas_session");
     sessionStorage.removeItem("sistemaOrquestas_session");
     localStorage.removeItem("currentSessionId");
@@ -173,6 +194,7 @@ window.Auth = {
     window.location.href = "index.html";
   },
 
+  // --- OBTENER SESIÓN ACTUAL ---
   getSession() {
     const raw = sessionStorage.getItem("sistemaOrquestas_session") ||
                 localStorage.getItem("sistemaOrquestas_session");
@@ -180,22 +202,25 @@ window.Auth = {
     try { return JSON.parse(raw); } catch (e) { return null; }
   },
 
+  // --- VERIFICAR PERMISO ---
   hasPermission(perm) {
     const s = this.getSession();
     return s ? s.permissions.includes(perm) : false;
   },
 
+  // --- OBTENER ROL ---
   getRole() {
     const s = this.getSession();
     return s ? s.role : null;
   },
 
+  // --- LISTENER DE CAMBIO DE AUTENTICACIÓN ---
   onAuthChange(cb) {
     return onAuthStateChanged(auth, cb);
   }
 };
 
-// Reactivar monitor de sesión si hay sesión persistente al recargar
+// ===================== REACTIVAR MONITOR AL RECARGAR =====================
 (() => {
   const session = window.Auth.getSession();
   const currentSessionId = sessionStorage.getItem("currentSessionId") || localStorage.getItem("currentSessionId");
