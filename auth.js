@@ -1,3 +1,13 @@
+// En tu método login de auth.js
+async login(username, password, remember = false) {
+    try {
+      const email = (username + DOMINIO).trim();
+      
+      // AGREGA ESTA LÍNEA PARA DEPURAR
+      console.log("DEBUG: Intentando autenticar correo:", email); 
+      
+      const userCred = await signInWithEmailAndPassword(auth, email, password);
+      // ... resto del código
 import { auth, db, firebaseConfig } from "./firebase-init.js";
 import {
   signInWithEmailAndPassword,
