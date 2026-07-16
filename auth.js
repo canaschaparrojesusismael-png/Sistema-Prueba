@@ -44,7 +44,12 @@ window.Auth = {
 
   async login(username, password, remember = false) {
     try {
-      const email = username + DOMINIO;
+      // .trim() elimina espacios al inicio y al final
+      const email = (username + DOMINIO).trim();
+      
+      // Debug: muestra en consola (F12) qué se está enviando
+      console.log("Intentando iniciar sesión con:", { email, password: "..." });
+
       const userCred = await signInWithEmailAndPassword(auth, email, password);
       const user = userCred.user;
       const snap = await getDoc(doc(db, "usuarios", user.uid));
@@ -102,7 +107,7 @@ window.Auth = {
     const { secApp, secAuth } = getSecondaryAuthInstance();
     try {
       const clave = generarClave();
-      const email = username + DOMINIO;
+      const email = (username + DOMINIO).trim();
       const userCred = await createUserWithEmailAndPassword(secAuth, email, clave);
       const uid = userCred.user.uid;
 
