@@ -89,19 +89,20 @@
         <div id="miembros-vista"></div>
     </main>
 
-    <!-- Modal para CREAR persona -->
+    <!-- Modal para CREAR persona (CORREGIDO) -->
     <div class="modal-overlay" id="modal-persona">
         <div class="modal-content">
             <button class="modal-close-btn" id="persona-close-btn">&times;</button>
             <h2>Agregar Registro</h2>
             <div class="editor-row"><label>Nombre:</label><input type="text" id="persona-nombre" class="modal-input"></div>
             <div class="editor-row"><label>Email:</label><input type="email" id="persona-email" class="modal-input"></div>
+            <div class="editor-row"><label>Edad:</label><input type="number" id="persona-edad" class="modal-input" value="0"></div>
             <div class="editor-row"><label>Rol:</label>
                 <select id="persona-rango" class="modal-input" disabled></select>
             </div>
             <div class="editor-row"><label>Agrupación:</label><input type="text" id="persona-agrupacion" class="modal-input"></div>
             <div class="editor-row" id="row-persona-estado"><label>Estado:</label>
-                <select id="persona-estado" class="modal-input"><option value="">Seleccione...</option></select>
+                <select id="persona-estado" class="modal-input"><option value="">Seleccione un estado...</option></select>
             </div>
             <div class="editor-row" id="row-persona-nucleo"><label>Núcleo:</label>
                 <select id="persona-nucleo" class="modal-input"><option value="">Seleccione un estado primero...</option></select>
@@ -143,8 +144,8 @@
         </div>
     </div>
 
-    <script type="module" src="auth.js?v=3.5"></script>
-    <script type="module" src="ui-manager.js?v=3.5"></script>
+    <script type="module" src="auth.js?v=3.6"></script>
+    <script type="module" src="ui-manager.js?v=3.6"></script>
     <script type="module">
         import { db, auth } from "./firebase-init.js";
         import { 
@@ -221,6 +222,20 @@
             } else {
                 rowEstado.style.display = "flex"; rowNucleo.style.display = "flex";
             }
+        }
+
+        // ========== INICIALIZAR MODAL DE CREACIÓN ==========
+        function inicializarModalCreacion() {
+            const selectEstado = document.getElementById("persona-estado");
+            selectEstado.innerHTML = '<option value="">Seleccione un estado...</option>';
+            ESTADOS_VENEZUELA.forEach(est => {
+                const opt = document.createElement("option");
+                opt.value = est;
+                opt.textContent = est;
+                selectEstado.appendChild(opt);
+            });
+            // Limpiar núcleos
+            document.getElementById("persona-nucleo").innerHTML = '<option value="">Seleccione un estado primero...</option>';
         }
 
         function initMiembros() {
@@ -356,8 +371,9 @@
                             document.getElementById("persona-rango").innerHTML = `<option value="${currentContext.rol}">${getRoleLabel(currentContext.rol)}</option>`;
                             document.getElementById("persona-nombre").value = "";
                             document.getElementById("persona-email").value = "";
+                            document.getElementById("persona-edad").value = "0";
                             document.getElementById("persona-agrupacion").value = "";
-                            llenarSelect("persona-estado", ESTADOS_VENEZUELA, currentContext.estado);
+                            inicializarModalCreacion();
                             toggleCamposSegunRango(currentContext.rol, 'persona');
                             if (currentContext.estado) {
                                 cargarNucleosPorEstado(currentContext.estado).then(nucs => {
@@ -426,7 +442,6 @@
                                     });
                                     card.appendChild(btnDel);
 
-                                    // Botón RESET (solo owner_supremo) – CON FEEDBACK VISUAL
                                     if (session.role === "owner_supremo") {
                                         const btnReset = document.createElement("button");
                                         btnReset.className = "btn-reset";
@@ -465,18 +480,44 @@
                 }
             }
 
+            // ========== LISTENERS PARA CARGAR NÚCLEOS ==========
             document.getElementById("persona-estado").addEventListener("change", async (e) => {
-                const nucs = await cargarNucleosPorEstado(e.target.value);
-                llenarSelect("persona-nucleo", nucs);
+                const estadoSeleccionado = e.target.value;
+                const selectNucleo = document.getElementById("persona-nucleo");
+                selectNucleo.innerHTML = '<option value="">Cargando...</option>';
+                if (!estadoSeleccionado) {
+                    selectNucleo.innerHTML = '<option value="">Seleccione un estado primero...</option>';
+                    return;
+                }
+                try {
+                    const nucleos = await cargarNucleosPorEstado(estadoSeleccionado);
+                    selectNucleo.innerHTML = '<option value="">Seleccione un núcleo...</option>';
+                    if (nucleos.length > 0) {
+                        nucleos.forEach(nuc => {
+                            const opt = document.createElement("option");
+                            opt.value = nuc;
+                            opt.textContent = nuc;
+                            selectNucleo.appendChild(opt);
+                        });
+                    } else {
+                        selectNucleo.innerHTML = '<option value="">No hay núcleos en este estado</option>';
+                    }
+                } catch (err) {
+                    console.error("Error al cargar núcleos:", err);
+                    window._showToast("Error cargando núcleos", "error");
+                }
             });
+
             document.getElementById("editar-estado").addEventListener("change", async (e) => {
                 const nucs = await cargarNucleosPorEstado(e.target.value);
                 llenarSelect("editar-nucleo", nucs);
             });
 
+            // ========== GUARDAR NUEVO USUARIO ==========
             document.getElementById("btn-guardar-persona").addEventListener("click", async () => {
                 const email = document.getElementById("persona-email").value.trim();
                 const nombre = document.getElementById("persona-nombre").value.trim();
+                const edad = parseInt(document.getElementById("persona-edad").value) || 0;
                 const rango = currentContext.rol;
                 const agrup = document.getElementById("persona-agrupacion").value.trim();
                 let estado = document.getElementById("persona-estado").value;
@@ -487,7 +528,7 @@
                 try {
                     const metodos = await fetchSignInMethodsForEmail(auth, email);
                     if (metodos.length > 0) { window._showToast("El correo ya existe.", "error"); return; }
-                    const res = await Auth.registerUser(email, nombre, rango, agrup, estado, nucleo);
+                    const res = await Auth.registerUser(email, nombre, rango, agrup, estado, nucleo, edad);
                     if (res.success) {
                         window._showToast(`Creado. Contraseña: ${res.clave}`, "success");
                         cerrarModal("modal-persona");
@@ -496,6 +537,7 @@
                 } catch (err) { window._showToast(err.message, "error"); }
             });
 
+            // ========== GUARDAR EDICIÓN ==========
             document.getElementById("btn-guardar-edicion").addEventListener("click", async () => {
                 const id = document.getElementById("editar-id").value;
                 const rango = document.getElementById("editar-rango").value;
@@ -514,6 +556,7 @@
                 } catch (err) { window._showToast(err.message, "error"); }
             });
 
+            // ========== CIERRES DE MODALES Y COPIAR ==========
             document.getElementById("btn-cerrar-modal-persona").addEventListener("click", () => cerrarModal("modal-persona"));
             document.getElementById("persona-close-btn").addEventListener("click", () => cerrarModal("modal-persona"));
             document.getElementById("btn-cerrar-modal-editar").addEventListener("click", () => cerrarModal("modal-editar"));
@@ -536,6 +579,7 @@
                 }
             });
 
+            // ========== ARRANQUE ==========
             window.addEventListener("auth-ready", () => { UI.render(); renderizarPantalla(); });
             if (window.Auth?.getSession()) { UI.render(); renderizarPantalla(); }
         }
