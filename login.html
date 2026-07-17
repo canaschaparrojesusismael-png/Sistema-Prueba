@@ -22,8 +22,8 @@
             <form class="login-form" id="form-login" novalidate>
                 <h2>Iniciar Sesión</h2>
                 <div class="input-group">
-                    <label for="usuario">Usuario institucional</label>
-                    <input type="text" id="usuario" placeholder="Usuario institucional" required>
+                    <label for="usuario">Correo electrónico</label>
+                    <input type="text" id="usuario" placeholder="Correo electrónico" required>
                 </div>
                 <div class="input-group">
                     <label for="password">Contraseña</label>
@@ -39,71 +39,28 @@
     </main>
 
     <script type="module" src="auth.js?v=2.0"></script>
-    <script type="module">
-        import { auth, db } from "./firebase-init.js";
-        import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
-        import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
-
-        const DOMINIO = "@sistema.cma";
-
-        function generarUUID() {
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-                const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
-            });
-        }
-
-        document.getElementById("form-login").addEventListener("submit", async function (e) {
+    <script>
+        document.getElementById("form-login").addEventListener("submit", async (e) => {
             e.preventDefault();
             const username = document.getElementById("usuario").value.trim();
             const password = document.getElementById("password").value.trim();
             const remember = document.getElementById("remember").checked;
-            if (!username || !password) { alert("Complete todos los campos."); return; }
 
-            try {
-                const email = username + DOMINIO;
-                const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                const user = userCredential.user;
-                const userDoc = await getDoc(doc(db, "usuarios", user.uid));
-                if (!userDoc.exists()) {
-                    await auth.signOut();
-                    alert("Usuario no registrado en el sistema.");
-                    return;
-                }
-                const userData = userDoc.data();
-                if (userData.requiresPasswordChange) {
-                    sessionStorage.setItem("pendingPasswordChange", user.uid);
+            if (!username || !password) {
+                alert("Complete todos los campos.");
+                return;
+            }
+
+            const resultado = await window.Auth.login(username, password, remember);
+
+            if (resultado.success) {
+                if (resultado.requiresPasswordChange) {
                     window.location.href = "cambiar-clave.html";
-                    return;
+                } else {
+                    window.location.href = "index.html";
                 }
-                const sessionId = generarUUID();
-                sessionStorage.setItem("currentSessionId", sessionId);
-                if (remember) localStorage.setItem("currentSessionId", sessionId);
-
-                await updateDoc(doc(db, "usuarios", user.uid), {
-                    isOnline: true, currentSessionId: sessionId, lastLogin: new Date().toISOString()
-                });
-
-                const sessionData = {
-                    id: user.uid, uid: user.uid, email: user.email,
-                    username: userData.username || username,
-                    nombre: userData.nombre,
-                    role: userData.rango,
-                    firstName: userData.nombre?.split(" ")[0] || "",
-                    lastName: userData.nombre?.split(" ").slice(1).join(" ") || "",
-                    age: userData.edad || 0, group: userData.agrupacion || "",
-                    state: userData.estado || "", nucleus: userData.nucleo || "",
-                    permissions: userData.rango === "owner" || userData.rango === "admin"
-                        ? ["view_profile","access_panel","edit_carousel","manage_users"]
-                        : userData.rango === "profesor" ? ["view_profile","access_panel"] : ["view_profile"],
-                    loginTime: Date.now()
-                };
-                sessionStorage.setItem("sistemaOrquestas_session", JSON.stringify(sessionData));
-                if (remember) localStorage.setItem("sistemaOrquestas_session", JSON.stringify(sessionData));
-
-                window.location.href = "index.html";
-            } catch (error) {
-                alert("Error al iniciar sesión: " + error.message);
+            } else {
+                alert("Error al iniciar sesión: " + resultado.error);
             }
         });
     </script>
