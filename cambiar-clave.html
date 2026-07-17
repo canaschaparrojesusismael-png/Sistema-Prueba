@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>Cambiar Contraseña – Sistema de Orquestas</title>
-    <link rel="stylesheet" href="style.css?v=2.2">
+    <link rel="stylesheet" href="style.css?v=2.3">
     <style>
         .cambio-wrapper {
             max-width: 400px; margin: 100px auto; background: white;
@@ -18,9 +18,9 @@
     </style>
 </head>
 <body>
-    <main class="cambio-wrapper">
-        <h2>Cambio de Contraseña Obligatorio</h2>
-        <p style="margin-bottom:1.5rem;">Por seguridad, debes cambiar tu contraseña antes de continuar.</p>
+    <main class="cambio-wrapper" id="main-content">
+        <h2>Cambio de Contraseña</h2>
+        <p id="info-message" style="margin-bottom: 1.5rem;">Introduce tu nueva contraseña.</p>
         <form id="form-cambio" novalidate>
             <div class="input-group">
                 <label for="nueva">Nueva contraseña</label>
@@ -34,38 +34,74 @@
         </form>
     </main>
 
-    <script type="module" src="auth.js?v=2.2"></script>
+    <script type="module" src="auth.js?v=2.3"></script>
     <script type="module">
         import { auth, db } from "./firebase-init.js";
-        import { updatePassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
+        import { updatePassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
         import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
 
-        const uid = sessionStorage.getItem("pendingPasswordChange");
-        if (!uid) window.location.href = "index.html";
+        // Limpiar cualquier bandera de cambio obligatorio que pudiera haber
+        sessionStorage.removeItem("pendingPasswordChange");
 
-        onAuthStateChanged(auth, (user) => {
-            if (!user || user.uid !== uid) {
-                window.location.href = "login.html";
+        const main = document.getElementById("main-content");
+        const form = document.getElementById("form-cambio");
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                // No hay sesión: mostrar mensaje y enlace para login
+                main.innerHTML = `
+                    <h2>No has iniciado sesión</h2>
+                    <p>Para cambiar tu contraseña, primero <a href="login.html">inicia sesión</a>.</p>
+                `;
                 return;
             }
+
+            // Si el usuario está autenticado, el formulario ya está activo
+            // y podemos proceder con el cambio.
         });
 
-        document.getElementById("form-cambio").addEventListener("submit", async (e) => {
+        form.addEventListener("submit", async (e) => {
             e.preventDefault();
             const nueva = document.getElementById("nueva").value;
             const confirmar = document.getElementById("confirmar").value;
-            if (nueva !== confirmar) { alert("Las contraseñas no coinciden."); return; }
-            if (nueva.length < 8) { alert("La contraseña debe tener al menos 8 caracteres."); return; }
+
+            if (nueva !== confirmar) {
+                alert("Las contraseñas no coinciden.");
+                return;
+            }
+            if (nueva.length < 8) {
+                alert("La contraseña debe tener al menos 8 caracteres.");
+                return;
+            }
 
             try {
                 const user = auth.currentUser;
                 if (!user) throw new Error("No hay sesión activa.");
+
+                // Cambiar la contraseña en Firebase Auth
                 await updatePassword(user, nueva);
-                await updateDoc(doc(db, "usuarios", uid), { requiresPasswordChange: false });
-                sessionStorage.removeItem("pendingPasswordChange");
-                alert("Contraseña cambiada correctamente. Ahora inicia sesión.");
-                await signOut(auth);
-                window.location.href = "login.html";
+
+                // Marcar en Firestore que ya no requiere cambio
+                await updateDoc(doc(db, "usuarios", user.uid), {
+                    requiresPasswordChange: false
+                });
+
+                // Actualizar la sesión local para reflejar el cambio
+                const rawSession = sessionStorage.getItem("sistemaOrquestas_session") ||
+                                   localStorage.getItem("sistemaOrquestas_session");
+                if (rawSession) {
+                    const sessionData = JSON.parse(rawSession);
+                    sessionData.requiresPasswordChange = false;
+                    sessionStorage.setItem("sistemaOrquestas_session", JSON.stringify(sessionData));
+                    // También actualizar localStorage si la sesión es persistente
+                    if (localStorage.getItem("sistemaOrquestas_session")) {
+                        localStorage.setItem("sistemaOrquestas_session", JSON.stringify(sessionData));
+                    }
+                }
+
+                alert("Contraseña cambiada correctamente. Serás redirigido al inicio.");
+                // Ir directamente a la página principal sin cerrar sesión
+                window.location.href = "index.html";
             } catch (err) {
                 alert("Error: " + err.message);
             }
