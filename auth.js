@@ -64,6 +64,24 @@ function generarClave() {
   return clave;
 }
 
+/** Genera una contraseña SEGURA de 12 caracteres (para reseteo) */
+function generarClaveSegura() {
+  const mayus = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const minus = "abcdefghjkmnpqrstuvwxyz";
+  const nums = "23456789";
+  const simb = "!@#$%&*";
+  const todos = mayus + minus + nums + simb;
+  let clave = "";
+  clave += mayus[Math.floor(Math.random() * mayus.length)];
+  clave += minus[Math.floor(Math.random() * minus.length)];
+  clave += nums[Math.floor(Math.random() * nums.length)];
+  clave += simb[Math.floor(Math.random() * simb.length)];
+  for (let i = 4; i < 12; i++) {
+    clave += todos[Math.floor(Math.random() * todos.length)];
+  }
+  return clave.split("").sort(() => Math.random() - 0.5).join("");
+}
+
 function generarUUID() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
     const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
@@ -77,7 +95,6 @@ function getSecondaryAuthInstance() {
   return { secApp, secAuth };
 }
 
-// Sistema simple de toast (notificaciones) global
 window._showToast = function (mensaje, tipo = "info") {
   const toast = document.createElement("div");
   toast.className = `toast toast-${tipo}`;
@@ -90,9 +107,8 @@ window.Auth = {
   auth,
   db,
   ROLES,
+  generarClaveSegura,
 
-  // ---------- FUNCIONES RBAC ----------
-  /** Verifica si el usuario actual puede VER a un usuario con cierto rol */
   canView(targetRole) {
     const session = this.getSession();
     if (!session) return false;
@@ -102,7 +118,6 @@ window.Auth = {
     return myLevel <= targetLevel;
   },
 
-  /** Verifica si el usuario actual puede EDITAR a un usuario con cierto rol */
   canEdit(targetRole) {
     const session = this.getSession();
     if (!session) return false;
@@ -112,26 +127,19 @@ window.Auth = {
     return myLevel < targetLevel;
   },
 
-  /** Verifica si el usuario actual puede gestionar el núcleo objetivo */
   canManageNucleo(targetNucleo) {
     const session = this.getSession();
     if (!session) return false;
     if (["owner_supremo","director_nacional"].includes(session.role)) return true;
-    if (session.role === "director_regional") {
-      return session.state === targetNucleo?.estado;
-    }
-    if (["director_nucleo","admin"].includes(session.role)) {
-      return session.nucleus === targetNucleo;
-    }
+    if (session.role === "director_regional") return session.state === targetNucleo?.estado;
+    if (["director_nucleo","admin"].includes(session.role)) return session.nucleus === targetNucleo;
     return false;
   },
 
-  // ---------- AUTENTICACIÓN ----------
   async login(username, password, remember = false) {
     try {
       let email = username.trim();
       if (!email.includes("@")) {
-        // DOMINIO vacío: el usuario debe escribir el correo completo
         window._showToast("Debes ingresar un correo electrónico válido", "error");
         return { success: false, error: "Correo inválido" };
       }
@@ -229,7 +237,6 @@ window.Auth = {
   onAuthChange(cb) { return onAuthStateChanged(auth, cb); }
 };
 
-// Al recargar, disparar evento si hay sesión
 (() => {
   const session = window.Auth.getSession();
   const currentSessionId = sessionStorage.getItem("currentSessionId") || localStorage.getItem("currentSessionId");
