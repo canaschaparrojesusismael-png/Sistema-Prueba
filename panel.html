@@ -217,7 +217,6 @@
             <div class="editor-row"><label>Hora:</label><input type="time" id="event-time" class="form-control" /></div>
             <div class="editor-row"><label>Lugar:</label><input type="text" id="event-location" class="form-control" /></div>
             
-            <!-- Solo admin ve estos campos -->
             <div class="editor-row" id="event-photo-row">
                 <label>Foto:</label>
                 <input type="text" id="event-photo" class="form-control" placeholder="URL de la imagen (o suba un archivo)" />
@@ -247,453 +246,453 @@
         </div>
     </div>
 
-    <script src="auth.js"></script>
-    <script src="ui-manager.js"></script>
+    <script type="module" src="auth.js?v=2.1"></script>
+    <script type="module" src="ui-manager.js?v=2.1"></script>
     <script>
-        // ================== BLINDAJE DE SEGURIDAD ==================
-        (function() {
-            const session = Auth.getSession();
-            if (!session) {
+        function initPanel() {
+            if (!window.Auth || !window.UI) {
+                setTimeout(initPanel, 100);
+                return;
+            }
+
+            if (!Auth.getSession()) {
                 window.location.href = "index.html";
                 return;
             }
-        })();
 
-        // ==================== FLYERS ====================
-        const FLYERS_STORAGE = "sistemaOrquestas_flyers";
-        let flyerData = JSON.parse(localStorage.getItem(FLYERS_STORAGE)) || [
-            { src: "flyer1.jpg", alt: "Flyer 1", text: "Información flyer 1" },
-            { src: "flyer2.jpg", alt: "Flyer 2", text: "Información flyer 2" }
-        ];
-        let flyerStartIndex = 0;
-        const MAX_VISIBLE = 4;
+            const FLYERS_STORAGE = "sistemaOrquestas_flyers";
+            let flyerData = JSON.parse(localStorage.getItem(FLYERS_STORAGE)) || [
+                { src: "flyer1.jpg", alt: "Flyer 1", text: "Información flyer 1" },
+                { src: "flyer2.jpg", alt: "Flyer 2", text: "Información flyer 2" }
+            ];
+            let flyerStartIndex = 0;
+            const MAX_VISIBLE = 4;
 
-        function renderFlyers() {
-            const container = document.getElementById("flyers-viewport");
-            const visible = flyerData.slice(flyerStartIndex, flyerStartIndex + MAX_VISIBLE);
-            container.innerHTML = visible.map(f => `<img class="flyer-card" src="${f.src}" alt="${f.alt}" title="${f.text}" />`).join("");
-        }
+            function renderFlyers() {
+                const container = document.getElementById("flyers-viewport");
+                const visible = flyerData.slice(flyerStartIndex, flyerStartIndex + MAX_VISIBLE);
+                container.innerHTML = visible.map(f => `<img class="flyer-card" src="${f.src}" alt="${f.alt}" title="${f.text}" />`).join("");
+            }
 
-        document.getElementById("prev-flyer").addEventListener("click", () => {
-            if (flyerData.length <= MAX_VISIBLE) return;
-            flyerStartIndex = (flyerStartIndex - 1 + flyerData.length) % flyerData.length;
-            renderFlyers();
-        });
-        document.getElementById("next-flyer").addEventListener("click", () => {
-            if (flyerData.length <= MAX_VISIBLE) return;
-            flyerStartIndex = (flyerStartIndex + 1) % flyerData.length;
-            renderFlyers();
-        });
+            document.getElementById("prev-flyer").addEventListener("click", () => {
+                if (flyerData.length <= MAX_VISIBLE) return;
+                flyerStartIndex = (flyerStartIndex - 1 + flyerData.length) % flyerData.length;
+                renderFlyers();
+            });
+            document.getElementById("next-flyer").addEventListener("click", () => {
+                if (flyerData.length <= MAX_VISIBLE) return;
+                flyerStartIndex = (flyerStartIndex + 1) % flyerData.length;
+                renderFlyers();
+            });
 
-        function abrirCropModal(file, callback) {
-            const modal = document.getElementById("crop-modal");
-            const img = document.getElementById("crop-source");
-            const canvas = document.getElementById("crop-canvas");
-            const ctx = canvas.getContext("2d");
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                img.src = e.target.result;
-                img.onload = function () {
-                    const cropArea = document.getElementById("crop-area");
-                    const naturalW = img.naturalWidth, naturalH = img.naturalHeight;
-                    const displayW = img.width, displayH = img.height;
-                    let cropW = Math.min(displayW, displayH * (16/9));
-                    let cropH = cropW * (9/16);
-                    let cropX = (displayW - cropW) / 2, cropY = (displayH - cropH) / 2;
-                    function update() {
-                        cropArea.style.left = cropX + "px";
-                        cropArea.style.top = cropY + "px";
-                        cropArea.style.width = cropW + "px";
-                        cropArea.style.height = cropH + "px";
-                    }
-                    update();
-                    let dragging = false, startX, startY, sLeft, sTop, sW, sH;
-                    const handle = cropArea.querySelector(".resize-handle");
-                    function down(e) {
-                        e.preventDefault();
-                        dragging = true;
-                        startX = e.clientX; startY = e.clientY;
-                        sLeft = cropX; sTop = cropY; sW = cropW; sH = cropH;
-                        document.addEventListener("pointermove", move);
-                        document.addEventListener("pointerup", up);
-                    }
-                    function move(e) {
-                        if (!dragging) return;
-                        const dx = e.clientX - startX, dy = e.clientY - startY;
-                        if (e.target === handle) {
-                            let nW = sW + dx, nH = nW * (9/16);
-                            if (nW < 50) nW = 50;
-                            if (cropX + nW > displayW) nW = displayW - cropX;
-                            if (cropY + nH > displayH) nH = displayH - cropY;
-                            cropW = nW; cropH = cropW * (9/16);
-                        } else {
-                            cropX = Math.max(0, Math.min(sLeft + dx, displayW - cropW));
-                            cropY = Math.max(0, Math.min(sTop + dy, displayH - cropH));
+            function abrirCropModal(file, callback) {
+                const modal = document.getElementById("crop-modal");
+                const img = document.getElementById("crop-source");
+                const canvas = document.getElementById("crop-canvas");
+                const ctx = canvas.getContext("2d");
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    img.src = e.target.result;
+                    img.onload = function () {
+                        const cropArea = document.getElementById("crop-area");
+                        const naturalW = img.naturalWidth, naturalH = img.naturalHeight;
+                        const displayW = img.width, displayH = img.height;
+                        let cropW = Math.min(displayW, displayH * (16/9));
+                        let cropH = cropW * (9/16);
+                        let cropX = (displayW - cropW) / 2, cropY = (displayH - cropH) / 2;
+                        function update() {
+                            cropArea.style.left = cropX + "px";
+                            cropArea.style.top = cropY + "px";
+                            cropArea.style.width = cropW + "px";
+                            cropArea.style.height = cropH + "px";
                         }
                         update();
-                    }
-                    function up() {
-                        dragging = false;
-                        document.removeEventListener("pointermove", move);
-                        document.removeEventListener("pointerup", up);
-                    }
-                    cropArea.addEventListener("pointerdown", down);
-                    handle.addEventListener("pointerdown", down);
-                    document.getElementById("crop-confirm").onclick = () => {
-                        const sx = cropX * (naturalW / displayW), sy = cropY * (naturalH / displayH);
-                        const sw = cropW * (naturalW / displayW), sh = cropH * (naturalH / displayH);
-                        canvas.width = sw; canvas.height = sh;
-                        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
-                        modal.style.display = "none";
-                        callback(canvas.toDataURL("image/jpeg", 0.5));
-                    };
-                    document.getElementById("crop-cancel").onclick = () => {
-                        modal.style.display = "none";
-                        callback(null);
-                    };
-                    modal.style.display = "flex";
-                };
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function abrirFlyerModal() {
-            const modal = document.getElementById("flyer-modal");
-            const container = document.getElementById("flyer-items");
-            let working = flyerData.map(f => ({ ...f }));
-
-            function renderFlyerItems() {
-                container.innerHTML = working.map((f, i) => `<div class="carousel-item-editor">
-                    <div class="editor-row"><label>URL o archivo:</label>
-                        <input type="text" class="f-url" value="${f.src}" data-index="${i}" />
-                        <span>o</span>
-                        <input type="file" class="f-file" accept="image/*" data-index="${i}" />
-                    </div>
-                    <div class="editor-row"><label>Alt:</label><input type="text" class="f-alt" value="${f.alt}" /></div>
-                    <div class="editor-row"><label>Texto:</label><input type="text" class="f-text" value="${f.text}" /></div>
-                    <button class="btn btn-cerrar eliminar-flyer" data-index="${i}">Eliminar</button>
-                </div>`).join("");
-
-                container.querySelectorAll(".f-file").forEach(inp => {
-                    inp.addEventListener("change", function (e) {
-                        const idx = parseInt(this.dataset.index);
-                        const file = e.target.files[0];
-                        if (!file) return;
-                        abrirCropModal(file, (croppedDataUrl) => {
-                            if (croppedDataUrl) {
-                                const urlInput = container.querySelector(`.f-url[data-index="${idx}"]`);
-                                if (urlInput) urlInput.value = croppedDataUrl;
-                                if (working[idx]) working[idx].src = croppedDataUrl;
+                        let dragging = false, startX, startY, sLeft, sTop, sW, sH;
+                        const handle = cropArea.querySelector(".resize-handle");
+                        function down(e) {
+                            e.preventDefault();
+                            dragging = true;
+                            startX = e.clientX; startY = e.clientY;
+                            sLeft = cropX; sTop = cropY; sW = cropW; sH = cropH;
+                            document.addEventListener("pointermove", move);
+                            document.addEventListener("pointerup", up);
+                        }
+                        function move(e) {
+                            if (!dragging) return;
+                            const dx = e.clientX - startX, dy = e.clientY - startY;
+                            if (e.target === handle) {
+                                let nW = sW + dx, nH = nW * (9/16);
+                                if (nW < 50) nW = 50;
+                                if (cropX + nW > displayW) nW = displayW - cropX;
+                                if (cropY + nH > displayH) nH = displayH - cropY;
+                                cropW = nW; cropH = cropW * (9/16);
+                            } else {
+                                cropX = Math.max(0, Math.min(sLeft + dx, displayW - cropW));
+                                cropY = Math.max(0, Math.min(sTop + dy, displayH - cropH));
                             }
-                            e.target.value = "";
+                            update();
+                        }
+                        function up() {
+                            dragging = false;
+                            document.removeEventListener("pointermove", move);
+                            document.removeEventListener("pointerup", up);
+                        }
+                        cropArea.addEventListener("pointerdown", down);
+                        handle.addEventListener("pointerdown", down);
+                        document.getElementById("crop-confirm").onclick = () => {
+                            const sx = cropX * (naturalW / displayW), sy = cropY * (naturalH / displayH);
+                            const sw = cropW * (naturalW / displayW), sh = cropH * (naturalH / displayH);
+                            canvas.width = sw; canvas.height = sh;
+                            ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+                            modal.style.display = "none";
+                            callback(canvas.toDataURL("image/jpeg", 0.5));
+                        };
+                        document.getElementById("crop-cancel").onclick = () => {
+                            modal.style.display = "none";
+                            callback(null);
+                        };
+                        modal.style.display = "flex";
+                    };
+                };
+                reader.readAsDataURL(file);
+            }
+
+            function abrirFlyerModal() {
+                const modal = document.getElementById("flyer-modal");
+                const container = document.getElementById("flyer-items");
+                let working = flyerData.map(f => ({ ...f }));
+
+                function renderFlyerItems() {
+                    container.innerHTML = working.map((f, i) => `<div class="carousel-item-editor">
+                        <div class="editor-row"><label>URL o archivo:</label>
+                            <input type="text" class="f-url" value="${f.src}" data-index="${i}" />
+                            <span>o</span>
+                            <input type="file" class="f-file" accept="image/*" data-index="${i}" />
+                        </div>
+                        <div class="editor-row"><label>Alt:</label><input type="text" class="f-alt" value="${f.alt}" /></div>
+                        <div class="editor-row"><label>Texto:</label><input type="text" class="f-text" value="${f.text}" /></div>
+                        <button class="btn btn-cerrar eliminar-flyer" data-index="${i}">Eliminar</button>
+                    </div>`).join("");
+
+                    container.querySelectorAll(".f-file").forEach(inp => {
+                        inp.addEventListener("change", function (e) {
+                            const idx = parseInt(this.dataset.index);
+                            const file = e.target.files[0];
+                            if (!file) return;
+                            abrirCropModal(file, (croppedDataUrl) => {
+                                if (croppedDataUrl) {
+                                    const urlInput = container.querySelector(`.f-url[data-index="${idx}"]`);
+                                    if (urlInput) urlInput.value = croppedDataUrl;
+                                    if (working[idx]) working[idx].src = croppedDataUrl;
+                                }
+                                e.target.value = "";
+                            });
                         });
                     });
-                });
 
-                container.querySelectorAll(".eliminar-flyer").forEach(btn => {
-                    btn.addEventListener("click", () => {
-                        const idx = parseInt(btn.dataset.index);
-                        sincronizarFlyerForm();
-                        working.splice(idx, 1);
-                        renderFlyerItems();
+                    container.querySelectorAll(".eliminar-flyer").forEach(btn => {
+                        btn.addEventListener("click", () => {
+                            const idx = parseInt(btn.dataset.index);
+                            sincronizarFlyerForm();
+                            working.splice(idx, 1);
+                            renderFlyerItems();
+                        });
                     });
-                });
-            }
+                }
 
-            function sincronizarFlyerForm() {
-                const items = [];
-                document.querySelectorAll(".carousel-item-editor").forEach(fila => {
-                    const urlInput = fila.querySelector(".f-url");
-                    const altInput = fila.querySelector(".f-alt");
-                    const textInput = fila.querySelector(".f-text");
-                    items.push({
-                        src: urlInput ? urlInput.value : "",
-                        alt: altInput ? altInput.value : "",
-                        text: textInput ? textInput.value : ""
+                function sincronizarFlyerForm() {
+                    const items = [];
+                    document.querySelectorAll(".carousel-item-editor").forEach(fila => {
+                        const urlInput = fila.querySelector(".f-url");
+                        const altInput = fila.querySelector(".f-alt");
+                        const textInput = fila.querySelector(".f-text");
+                        items.push({
+                            src: urlInput ? urlInput.value : "",
+                            alt: altInput ? altInput.value : "",
+                            text: textInput ? textInput.value : ""
+                        });
                     });
-                });
-                working = items;
-            }
+                    working = items;
+                }
 
-            renderFlyerItems();
-
-            document.getElementById("add-flyer-btn").onclick = () => {
-                sincronizarFlyerForm();
-                working.push({ src: "", alt: "", text: "" });
                 renderFlyerItems();
-            };
 
-            document.getElementById("save-flyers-btn").onclick = () => {
-                sincronizarFlyerForm();
-                flyerData = working.map(f => ({ ...f }));
-                localStorage.setItem(FLYERS_STORAGE, JSON.stringify(flyerData));
-                if (flyerStartIndex >= flyerData.length) flyerStartIndex = 0;
-                renderFlyers();
-                modal.style.display = "none";
-            };
+                document.getElementById("add-flyer-btn").onclick = () => {
+                    sincronizarFlyerForm();
+                    working.push({ src: "", alt: "", text: "" });
+                    renderFlyerItems();
+                };
 
-            document.getElementById("close-flyer-modal").onclick = () => {
-                modal.style.display = "none";
-            };
+                document.getElementById("save-flyers-btn").onclick = () => {
+                    sincronizarFlyerForm();
+                    flyerData = working.map(f => ({ ...f }));
+                    localStorage.setItem(FLYERS_STORAGE, JSON.stringify(flyerData));
+                    if (flyerStartIndex >= flyerData.length) flyerStartIndex = 0;
+                    renderFlyers();
+                    modal.style.display = "none";
+                };
 
-            modal.style.display = "flex";
-        }
+                document.getElementById("close-flyer-modal").onclick = () => {
+                    modal.style.display = "none";
+                };
 
-        // ==================== CALENDARIO ====================
-        const EVENTS_STORAGE = "sistemaOrquestas_events";
-        let events = JSON.parse(localStorage.getItem(EVENTS_STORAGE)) || [];
-        let currentMonth = new Date().getMonth();
-        let currentYear = new Date().getFullYear();
-        let eventPhotoBase64 = "";
-
-        function saveEvents() { 
-            localStorage.setItem(EVENTS_STORAGE, JSON.stringify(events)); 
-        }
-        function generarId() { 
-            return Date.now().toString(36) + Math.random().toString(36).substr(2, 5); 
-        }
-
-        function renderCalendar() {
-            const session = Auth.getSession();
-            const grid = document.getElementById("calendario-grid");
-            const title = document.getElementById("month-year");
-            const months = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-            
-            const dias = grid.querySelectorAll(".dia-numero");
-            dias.forEach(d => d.remove());
-            
-            title.textContent = `${months[currentMonth]} ${currentYear}`;
-
-            const firstDay = new Date(currentYear, currentMonth, 1).getDay() || 7;
-            const daysInMonth = new Date(currentYear, currentMonth+1, 0).getDate();
-            const daysInPrevMonth = new Date(currentYear, currentMonth, 0).getDate();
-
-            let eventosVisibles;
-            if (session.role === "Administrativo") {
-                eventosVisibles = events;
-            } else {
-                eventosVisibles = events.filter(ev => {
-                    const grupos = ev.groups;
-                    const rolNormalizado = session.role === "Estudiante" ? ["Estudiantes", "Estudiante"] :
-                                        session.role === "Profesor" ? ["Profesores", "Profesor"] :
-                                        [session.role];
-                    const grupoNormalizado = session.group ? [session.group] : [];
-                    
-                    return grupos.some(g => 
-                        g === "todos" ||
-                        rolNormalizado.includes(g) ||
-                        grupoNormalizado.includes(g)
-                    );
-                });
+                modal.style.display = "flex";
             }
 
-            let html = "";
-            for (let i = firstDay-1; i > 0; i--) {
-                html += `<div class="dia-numero otro-mes">${daysInPrevMonth - i + 1}</div>`;
-            }
-            for (let d = 1; d <= daysInMonth; d++) {
-                const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                const dayEvents = eventosVisibles.filter(ev => ev.date === dateStr);
-                let eventoHtml = dayEvents.map(ev => {
-                    let icon;
-                    if (ev.photo && ev.photo.trim() !== "") {
-                        icon = `<img src="${ev.photo}" style="width:16px;height:16px;border-radius:50%;vertical-align:middle;" />`;
-                    } else {
-                        const icons = {
-                            "todos": "👥",
-                            "Profesores": "👩‍🏫",
-                            "Estudiantes": "👦",
-                            "Orquesta Infantil": "🎻",
-                            "Orquesta Juvenil": "🎺"
-                        };
-                        icon = icons[ev.groups[0]] || "👥";
-                    }
-                    return `<span class="evento" style="background:${ev.color}" data-eventid="${ev.id}">${icon} ${ev.title}</span>`;
-                }).join("");
-                html += `<div class="dia-numero" data-date="${dateStr}">${d}${eventoHtml}</div>`;
-            }
-            const totalCells = firstDay-1 + daysInMonth;
-            const nextDays = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
-            for (let i = 1; i <= nextDays; i++) {
-                html += `<div class="dia-numero otro-mes">${i}</div>`;
-            }
-            grid.innerHTML += html;
-        }
+            const EVENTS_STORAGE = "sistemaOrquestas_events";
+            let events = JSON.parse(localStorage.getItem(EVENTS_STORAGE)) || [];
+            let currentMonth = new Date().getMonth();
+            let currentYear = new Date().getFullYear();
+            let eventPhotoBase64 = "";
 
-        document.getElementById("calendario-grid").addEventListener("click", (e) => {
-            const eventoEl = e.target.closest(".evento");
-            if (eventoEl) {
-                const eventId = eventoEl.dataset.eventid;
+            function saveEvents() { 
+                localStorage.setItem(EVENTS_STORAGE, JSON.stringify(events)); 
+            }
+            function generarId() { 
+                return Date.now().toString(36) + Math.random().toString(36).substr(2, 5); 
+            }
+
+            function renderCalendar() {
                 const session = Auth.getSession();
-                const esAdmin = session.role === "Administrativo";
-                abrirModalEvento(eventId, esAdmin);
-            }
-        });
+                const grid = document.getElementById("calendario-grid");
+                const title = document.getElementById("month-year");
+                const months = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+                
+                const dias = grid.querySelectorAll(".dia-numero");
+                dias.forEach(d => d.remove());
+                
+                title.textContent = `${months[currentMonth]} ${currentYear}`;
 
-        function abrirNuevoEvento() {
-            abrirModalEvento(null, true);
-        }
+                const firstDay = new Date(currentYear, currentMonth, 1).getDay() || 7;
+                const daysInMonth = new Date(currentYear, currentMonth+1, 0).getDate();
+                const daysInPrevMonth = new Date(currentYear, currentMonth, 0).getDate();
 
-        function abrirModalEvento(eventId, esEdicion) {
-            const session = Auth.getSession();
-            const esAdmin = session.role === "Administrativo";
-            const ev = eventId ? events.find(e => String(e.id) === String(eventId)) : null;
-
-            document.getElementById("event-id").value = eventId || "";
-            document.getElementById("event-date").value = ev ? ev.date : "";
-            document.getElementById("event-title").value = ev ? ev.title : "";
-            document.getElementById("event-time").value = ev ? (ev.time || "") : "";
-            document.getElementById("event-location").value = ev ? (ev.location || "") : "";
-            document.getElementById("event-photo").value = ev ? (ev.photo || "") : "";
-            document.getElementById("event-desc").value = ev ? (ev.desc || "") : "";
-            document.getElementById("event-color").value = ev ? (ev.color || "#ffeaa7") : "#ffeaa7";
-            document.getElementById("event-photo-file").value = "";
-            eventPhotoBase64 = ev ? (ev.photo || "") : "";
-
-            // Mostrar/ocultar filas exclusivas del admin
-            const photoRow = document.getElementById("event-photo-row");
-            const colorRow = document.getElementById("event-color-row");
-            const groupRow = document.getElementById("event-group-row");
-            const groupSelect = document.getElementById("event-group");
-            const preview = document.getElementById("event-photo-preview");
-
-            if (esAdmin && esEdicion) {
-                photoRow.style.display = "flex";
-                colorRow.style.display = "flex";
-                groupRow.style.display = "flex";
-            } else {
-                photoRow.style.display = "none";
-                colorRow.style.display = "none";
-                groupRow.style.display = "none";
-                // En modo lectura (no admin), ocultar previsualización si no hay foto
-                if (!ev || !ev.photo || ev.photo.trim() === "") {
-                    preview.style.display = "none";
+                let eventosVisibles;
+                if (session.role === "owner" || session.role === "admin") {
+                    eventosVisibles = events;
                 } else {
+                    eventosVisibles = events.filter(ev => {
+                        const grupos = ev.groups;
+                        const rolNormalizado = session.role === "Estudiante" ? ["Estudiantes", "Estudiante"] :
+                                            session.role === "Profesor" ? ["Profesores", "Profesor"] :
+                                            [session.role];
+                        const grupoNormalizado = session.group ? [session.group] : [];
+                        
+                        return grupos.some(g => 
+                            g === "todos" ||
+                            rolNormalizado.includes(g) ||
+                            grupoNormalizado.includes(g)
+                        );
+                    });
+                }
+
+                let html = "";
+                for (let i = firstDay-1; i > 0; i--) {
+                    html += `<div class="dia-numero otro-mes">${daysInPrevMonth - i + 1}</div>`;
+                }
+                for (let d = 1; d <= daysInMonth; d++) {
+                    const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                    const dayEvents = eventosVisibles.filter(ev => ev.date === dateStr);
+                    let eventoHtml = dayEvents.map(ev => {
+                        let icon;
+                        if (ev.photo && ev.photo.trim() !== "") {
+                            icon = `<img src="${ev.photo}" style="width:16px;height:16px;border-radius:50%;vertical-align:middle;" />`;
+                        } else {
+                            const icons = {
+                                "todos": "👥",
+                                "Profesores": "👩‍🏫",
+                                "Estudiantes": "👦",
+                                "Orquesta Infantil": "🎻",
+                                "Orquesta Juvenil": "🎺"
+                            };
+                            icon = icons[ev.groups[0]] || "👥";
+                        }
+                        return `<span class="evento" style="background:${ev.color}" data-eventid="${ev.id}">${icon} ${ev.title}</span>`;
+                    }).join("");
+                    html += `<div class="dia-numero" data-date="${dateStr}">${d}${eventoHtml}</div>`;
+                }
+                const totalCells = firstDay-1 + daysInMonth;
+                const nextDays = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+                for (let i = 1; i <= nextDays; i++) {
+                    html += `<div class="dia-numero otro-mes">${i}</div>`;
+                }
+                grid.innerHTML += html;
+            }
+
+            document.getElementById("calendario-grid").addEventListener("click", (e) => {
+                const eventoEl = e.target.closest(".evento");
+                if (eventoEl) {
+                    const eventId = eventoEl.dataset.eventid;
+                    const session = Auth.getSession();
+                    const esAdmin = (session.role === "owner" || session.role === "admin");
+                    abrirModalEvento(eventId, esAdmin);
+                }
+            });
+
+            function abrirNuevoEvento() {
+                abrirModalEvento(null, true);
+            }
+
+            function abrirModalEvento(eventId, esEdicion) {
+                const session = Auth.getSession();
+                const esAdmin = (session.role === "owner" || session.role === "admin");
+                const ev = eventId ? events.find(e => String(e.id) === String(eventId)) : null;
+
+                document.getElementById("event-id").value = eventId || "";
+                document.getElementById("event-date").value = ev ? ev.date : "";
+                document.getElementById("event-title").value = ev ? ev.title : "";
+                document.getElementById("event-time").value = ev ? (ev.time || "") : "";
+                document.getElementById("event-location").value = ev ? (ev.location || "") : "";
+                document.getElementById("event-photo").value = ev ? (ev.photo || "") : "";
+                document.getElementById("event-desc").value = ev ? (ev.desc || "") : "";
+                document.getElementById("event-color").value = ev ? (ev.color || "#ffeaa7") : "#ffeaa7";
+                document.getElementById("event-photo-file").value = "";
+                eventPhotoBase64 = ev ? (ev.photo || "") : "";
+
+                const photoRow = document.getElementById("event-photo-row");
+                const colorRow = document.getElementById("event-color-row");
+                const groupRow = document.getElementById("event-group-row");
+                const groupSelect = document.getElementById("event-group");
+                const preview = document.getElementById("event-photo-preview");
+
+                if (esAdmin && esEdicion) {
+                    photoRow.style.display = "flex";
+                    colorRow.style.display = "flex";
+                    groupRow.style.display = "flex";
+                } else {
+                    photoRow.style.display = "none";
+                    colorRow.style.display = "none";
+                    groupRow.style.display = "none";
+                    if (!ev || !ev.photo || ev.photo.trim() === "") {
+                        preview.style.display = "none";
+                    } else {
+                        preview.src = ev.photo;
+                        preview.style.display = "block";
+                    }
+                }
+
+                if (esAdmin && ev && ev.photo && ev.photo.trim() !== "") {
                     preview.src = ev.photo;
                     preview.style.display = "block";
+                } else if (!esAdmin) {
+                    // ya se manejó
+                } else {
+                    preview.style.display = "none";
                 }
+
+                if (esAdmin && esEdicion) {
+                    [...groupSelect.options].forEach(opt => {
+                        opt.selected = ev ? ev.groups.includes(opt.value) : false;
+                    });
+                }
+
+                const campos = document.querySelectorAll("#event-modal .form-control");
+                const fileInput = document.getElementById("event-photo-file");
+                campos.forEach(c => c.disabled = !(esAdmin && esEdicion));
+                if (fileInput) fileInput.disabled = !(esAdmin && esEdicion);
+                
+                document.getElementById("admin-controls").style.display = (esAdmin && esEdicion) ? "flex" : "none";
+
+                if (!ev) {
+                    document.getElementById("event-modal-title").textContent = "Agregar Evento";
+                } else if (esAdmin && esEdicion) {
+                    document.getElementById("event-modal-title").textContent = "Editar Evento";
+                } else {
+                    document.getElementById("event-modal-title").textContent = "Detalles del Evento";
+                }
+
+                document.getElementById("event-modal").style.display = "flex";
             }
 
-            // Previsualizar imagen si es admin y hay foto
-            if (esAdmin && ev && ev.photo && ev.photo.trim() !== "") {
-                preview.src = ev.photo;
-                preview.style.display = "block";
-            } else if (!esAdmin) {
-                // Ya se manejó arriba
-            } else {
-                preview.style.display = "none";
-            }
-
-            if (esAdmin && esEdicion) {
-                [...groupSelect.options].forEach(opt => {
-                    opt.selected = ev ? ev.groups.includes(opt.value) : false;
+            document.getElementById("event-photo-file").addEventListener("change", function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                abrirCropModal(file, (croppedDataUrl) => {
+                    if (croppedDataUrl) {
+                        document.getElementById("event-photo").value = croppedDataUrl;
+                        eventPhotoBase64 = croppedDataUrl;
+                        const preview = document.getElementById("event-photo-preview");
+                        preview.src = croppedDataUrl;
+                        preview.style.display = "block";
+                    }
+                    e.target.value = "";
                 });
-            }
-
-            const campos = document.querySelectorAll("#event-modal .form-control");
-            const fileInput = document.getElementById("event-photo-file");
-            campos.forEach(c => c.disabled = !(esAdmin && esEdicion));
-            if (fileInput) fileInput.disabled = !(esAdmin && esEdicion);
-            
-            document.getElementById("admin-controls").style.display = (esAdmin && esEdicion) ? "flex" : "none";
-
-            if (!ev) {
-                document.getElementById("event-modal-title").textContent = "Agregar Evento";
-            } else if (esAdmin && esEdicion) {
-                document.getElementById("event-modal-title").textContent = "Editar Evento";
-            } else {
-                document.getElementById("event-modal-title").textContent = "Detalles del Evento";
-            }
-
-            document.getElementById("event-modal").style.display = "flex";
-        }
-
-        document.getElementById("event-photo-file").addEventListener("change", function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            abrirCropModal(file, (croppedDataUrl) => {
-                if (croppedDataUrl) {
-                    document.getElementById("event-photo").value = croppedDataUrl;
-                    eventPhotoBase64 = croppedDataUrl;
-                    const preview = document.getElementById("event-photo-preview");
-                    preview.src = croppedDataUrl;
-                    preview.style.display = "block";
-                }
-                e.target.value = "";
             });
-        });
 
-        document.getElementById("save-event-btn").addEventListener("click", function() {
-            const id = document.getElementById("event-id").value;
-            const nuevoEvento = {
-                date: document.getElementById("event-date").value,
-                title: document.getElementById("event-title").value,
-                time: document.getElementById("event-time").value,
-                location: document.getElementById("event-location").value,
-                photo: eventPhotoBase64 || document.getElementById("event-photo").value,
-                desc: document.getElementById("event-desc").value,
-                color: document.getElementById("event-color").value,
-                groups: [...document.getElementById("event-group").selectedOptions].map(o => o.value)
-            };
+            document.getElementById("save-event-btn").addEventListener("click", function() {
+                const id = document.getElementById("event-id").value;
+                const nuevoEvento = {
+                    date: document.getElementById("event-date").value,
+                    title: document.getElementById("event-title").value,
+                    time: document.getElementById("event-time").value,
+                    location: document.getElementById("event-location").value,
+                    photo: eventPhotoBase64 || document.getElementById("event-photo").value,
+                    desc: document.getElementById("event-desc").value,
+                    color: document.getElementById("event-color").value,
+                    groups: [...document.getElementById("event-group").selectedOptions].map(o => o.value)
+                };
 
-            if (!nuevoEvento.date || !nuevoEvento.title) {
-                alert("La fecha y el título son obligatorios.");
-                return;
-            }
+                if (!nuevoEvento.date || !nuevoEvento.title) {
+                    alert("La fecha y el título son obligatorios.");
+                    return;
+                }
 
-            if (id) {
-                events = events.map(e => String(e.id) === String(id) ? { ...e, ...nuevoEvento } : e);
-            } else {
-                events.push({ id: generarId(), ...nuevoEvento });
-            }
+                if (id) {
+                    events = events.map(e => String(e.id) === String(id) ? { ...e, ...nuevoEvento } : e);
+                } else {
+                    events.push({ id: generarId(), ...nuevoEvento });
+                }
 
-            saveEvents();
-            renderCalendar();
-            document.getElementById("event-modal").style.display = "none";
-        });
-
-        document.getElementById("delete-event-btn").addEventListener("click", function() {
-            const id = document.getElementById("event-id").value;
-            if (!id) return;
-            if (confirm("¿Estás seguro de eliminar este evento?")) {
-                events = events.filter(e => String(e.id) !== String(id));
                 saveEvents();
                 renderCalendar();
                 document.getElementById("event-modal").style.display = "none";
+            });
+
+            document.getElementById("delete-event-btn").addEventListener("click", function() {
+                const id = document.getElementById("event-id").value;
+                if (!id) return;
+                if (confirm("¿Estás seguro de eliminar este evento?")) {
+                    events = events.filter(e => String(e.id) !== String(id));
+                    saveEvents();
+                    renderCalendar();
+                    document.getElementById("event-modal").style.display = "none";
+                }
+            });
+
+            document.getElementById("close-event-modal").addEventListener("click", function() {
+                document.getElementById("event-modal").style.display = "none";
+            });
+
+            document.getElementById("prev-month").addEventListener("click", function() {
+                if (currentMonth === 0) { currentMonth = 11; currentYear--; }
+                else currentMonth--;
+                renderCalendar();
+            });
+            document.getElementById("next-month").addEventListener("click", function() {
+                if (currentMonth === 11) { currentMonth = 0; currentYear++; }
+                else currentMonth++;
+                renderCalendar();
+            });
+
+            function mostrarControlesAdmin() {
+                const session = Auth.getSession();
+                if (session && (session.role === "owner" || session.role === "admin")) {
+                    document.getElementById("edit-flyers-btn").style.display = "block";
+                    document.getElementById("edit-calendar-btn").style.display = "block";
+                    document.getElementById("edit-flyers-btn").addEventListener("click", abrirFlyerModal);
+                    document.getElementById("edit-calendar-btn").addEventListener("click", abrirNuevoEvento);
+                }
             }
-        });
 
-        document.getElementById("close-event-modal").addEventListener("click", function() {
-            document.getElementById("event-modal").style.display = "none";
-        });
-
-        document.getElementById("prev-month").addEventListener("click", function() {
-            if (currentMonth === 0) { currentMonth = 11; currentYear--; }
-            else currentMonth--;
-            renderCalendar();
-        });
-        document.getElementById("next-month").addEventListener("click", function() {
-            if (currentMonth === 11) { currentMonth = 0; currentYear++; }
-            else currentMonth++;
-            renderCalendar();
-        });
-
-        function mostrarControlesAdmin() {
-            const session = Auth.getSession();
-            if (session && session.role === "Administrativo") {
-                document.getElementById("edit-flyers-btn").style.display = "block";
-                document.getElementById("edit-calendar-btn").style.display = "block";
-                document.getElementById("edit-flyers-btn").addEventListener("click", abrirFlyerModal);
-                document.getElementById("edit-calendar-btn").addEventListener("click", abrirNuevoEvento);
-            }
+            window.addEventListener("DOMContentLoaded", () => {
+                UI.render();
+                renderFlyers();
+                renderCalendar();
+                mostrarControlesAdmin();
+            });
         }
 
-        window.addEventListener("DOMContentLoaded", () => {
-            UI.render();
-            renderFlyers();
-            renderCalendar();
-            mostrarControlesAdmin();
-        });
+        initPanel();
     </script>
 </body>
 </html>
