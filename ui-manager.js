@@ -1,9 +1,9 @@
 /**
  * ui-manager.js – Renderizado UI + Panel Admin en vivo
  */
-import { getFirestore, collection, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+import { auth, db } from "./firebase-init.js";
 
-// ========== RENDERIZADO PRINCIPAL ==========
 window.UI = {
   render() {
     const loginArea = document.getElementById("login-area");
@@ -25,11 +25,10 @@ window.UI = {
       }
     } else {
       this._renderAutenticado(session, target);
-      if ((session.role === "owner" || session.role === "admin") && window.Auth.hasPermission("edit_carousel")) {
+      if (window.Auth.hasPermission("edit_carousel")) {
         this._renderBotonEngrane(carrusel);
       }
-      // Si es admin, iniciamos panel en vivo
-      if (session.role === "owner" || session.role === "admin") {
+      if (window.Auth.hasPermission("manage_users")) {
         this._initLivePanel();
       }
     }
@@ -90,11 +89,14 @@ window.UI = {
     carrusel.appendChild(gear);
   },
 
-  // ========== PANEL EN VIVO ==========
   _initLivePanel() {
-    const db = getFirestore(window.Auth.db.app);
+    if (window._livePanelUnsub) {
+      window._livePanelUnsub();
+      window._livePanelUnsub = null;
+    }
+
     const q = query(collection(db, "usuarios"), where("isOnline", "==", true));
-    onSnapshot(q, (snapshot) => {
+    window._livePanelUnsub = onSnapshot(q, (snapshot) => {
       const tbody = document.querySelector("#online-users-table tbody");
       if (!tbody) return;
       tbody.innerHTML = "";
@@ -111,5 +113,4 @@ window.UI = {
   }
 };
 
-// Inicializar UI cuando el DOM esté listo
 document.addEventListener("DOMContentLoaded", () => window.UI.render());
