@@ -2,7 +2,6 @@
    SISTEMA DE DISEÑO PREMIUM – VARIABLES CSS UNIFICADAS
    ================================================================ */
 :root {
-  /* Paleta de colores corporativos */
   --color-primario: #4138A9;
   --color-primario-claro: #5e58a8;
   --color-primario-oscuro: #2f267d;
@@ -16,20 +15,14 @@
   --color-sombra-fuerte: rgba(0, 0, 0, 0.15);
   --color-exito: #10b981;
   --color-alerta: #f59e0b;
-
-  /* Bordes y sombras */
   --border-radius: 16px;
   --border-radius-sm: 10px;
   --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.06);
   --shadow-modal: 0 20px 40px rgba(0, 0, 0, 0.15);
   --shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.12);
-
-  /* Transiciones */
   --transition-fast: all 0.2s ease;
   --transition-normal: all 0.3s ease;
   --transition-premium: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-
-  /* Tipografía */
   --font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
@@ -57,12 +50,10 @@ body.dark-mode {
   padding: 0;
   box-sizing: border-box;
 }
-
 html {
   font-size: 100%;
   scroll-behavior: smooth;
 }
-
 body {
   font-family: var(--font-family);
   background-color: var(--color-fondo);
@@ -72,9 +63,8 @@ body {
   flex-direction: column;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
-  padding-top: 40px;               /* espacio para la status bar fija */
+  padding-top: 40px;
 }
-
 img {
   display: block;
   max-width: 100%;
@@ -82,7 +72,7 @@ img {
 }
 
 /* ================================================================
-   STATUS BAR (siempre visible)
+   STATUS BAR
    ================================================================ */
 .status-bar {
   position: fixed;
@@ -112,7 +102,7 @@ img {
 }
 
 /* ================================================================
-   HEADER – BARRA SUPERIOR (pegado debajo de la status bar)
+   HEADER
    ================================================================ */
 .barra-superior {
   background: linear-gradient(135deg, var(--color-primario-oscuro), var(--color-primario-claro));
@@ -123,17 +113,15 @@ img {
   flex-wrap: wrap;
   gap: 1rem;
   position: sticky;
-  top: 36px;                       /* justo debajo de la status bar */
+  top: 36px;
   z-index: 100;
   box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
 }
-
 #Gobierno {
   max-height: 45px;
   width: auto;
   flex-shrink: 0;
 }
-
 .user-nav {
   display: flex;
   align-items: center;
@@ -143,14 +131,13 @@ img {
 }
 
 /* ================================================================
-   CONTENEDOR MAESTRO (ALINEACIÓN IZQUIERDA)
+   CONTENEDOR MAESTRO
    ================================================================ */
 .contenido-web {
   width: 100%;
   flex-grow: 1;
   padding: 1.5rem 0;
 }
-
 .container {
   width: 100%;
   max-width: 1300px;
@@ -158,7 +145,6 @@ img {
   padding: 0 1.5rem;
   text-align: left;
 }
-
 .bloque-logo-sistema {
   margin-bottom: 2rem;
   display: flex;
@@ -169,9 +155,6 @@ img {
   width: auto;
 }
 
-/* ================================================================
-   ÁREA DE LOGIN (ALINEADA A LA IZQUIERDA)
-   ================================================================ */
 #login-area {
   margin-bottom: 2rem;
   display: flex;
@@ -184,7 +167,7 @@ img {
 }
 
 /* ================================================================
-   BOTONES – SISTEMA UNIFICADO (CON :focus PARA ACCESIBILIDAD)
+   BOTONES
    ================================================================ */
 .btn-login,
 .btn-nav.btn-cerrar,
@@ -205,7 +188,6 @@ img {
   line-height: 1.4;
   gap: 0.4rem;
 }
-
 .btn-login {
   background: linear-gradient(135deg, rgba(242, 5, 5, 0.9), rgba(242, 5, 5, 0.75));
   color: var(--color-blanco);
@@ -219,7 +201,6 @@ img {
   filter: brightness(1.05);
   outline: none;
 }
-
 .btn-nav.btn-cerrar {
   background: var(--color-acento);
   color: white;
@@ -231,7 +212,6 @@ img {
   transform: scale(1.05);
   outline: none;
 }
-
 .btn-nav.btn-panel {
   background: var(--color-blanco);
   color: var(--color-primario);
@@ -245,9 +225,6 @@ img {
   outline: none;
 }
 
-/* ================================================================
-   BOTÓN USUARIO (INICIAL CIRCULAR)
-   ================================================================ */
 .btn-nav.btn-user {
   position: relative;
   width: 42px;
@@ -271,7 +248,6 @@ img {
   background: var(--color-primario);
   outline: none;
 }
-
 .user-submenu {
   position: absolute;
   top: calc(100% + 10px);
@@ -292,7 +268,7 @@ img {
 }
 
 /* ================================================================
-   TOAST (NOTIFICACIONES FLOTANTES)
+   TOAST
    ================================================================ */
 .toast {
   position: fixed;
@@ -326,7 +302,7 @@ img {
 }
 
 /* ================================================================
-   CARRUSEL
+   CARRUSEL, CITAS, PIE DE PÁGINA, MODALES (UNIFICADOS)
    ================================================================ */
 .modulo-carrusel {
   position: relative;
@@ -335,7 +311,6 @@ img {
   gap: 1.8rem;
   margin-bottom: 2.5rem;
 }
-
 .carrusel-caja {
   width: 100%;
   height: 400px;
@@ -351,7 +326,6 @@ img {
   box-shadow: var(--shadow-hover);
   transform: translateY(-2px);
 }
-
 .imagen-carrusel {
   width: 100%;
   height: 100%;
@@ -359,7 +333,6 @@ img {
   object-position: center;
   display: block;
 }
-
 .carousel-arrow {
   position: absolute;
   top: 50%;
@@ -389,7 +362,6 @@ img {
 .carousel-arrow-right {
   right: 10px;
 }
-
 .carrusel-texto {
   background-color: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(4px);
@@ -414,10 +386,6 @@ img {
   color: var(--color-texto);
   opacity: 0.9;
 }
-
-/* ================================================================
-   BOTÓN DE ENGRANE
-   ================================================================ */
 .carousel-edit-btn {
   position: absolute;
   top: -35px;
@@ -444,9 +412,6 @@ img {
   outline: none;
 }
 
-/* ================================================================
-   CITAS
-   ================================================================ */
 .citas-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -467,10 +432,6 @@ img {
 .citas-grid blockquote:hover {
   transform: translateY(-3px);
 }
-
-/* ================================================================
-   PIE DE PÁGINA
-   ================================================================ */
 .pie-pagina {
   background: linear-gradient(135deg, var(--color-primario-oscuro), var(--color-primario-claro));
   color: var(--color-blanco);
@@ -481,9 +442,7 @@ img {
   border-radius: var(--border-radius) var(--border-radius) 0 0;
 }
 
-/* ================================================================
-   MODALES UNIFICADOS (overlay + contenido + botón de cierre)
-   ================================================================ */
+/* Modales (z‑index asegurado) */
 .modal-overlay,
 .config-overlay {
   position: fixed;
@@ -496,14 +455,13 @@ img {
   display: none;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: 10000;               /* ← Asignado para tapar cualquier elemento */
   animation: fadeIn 0.3s ease;
 }
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
-
 .modal-content,
 .config-panel {
   background: var(--color-blanco);
@@ -521,7 +479,6 @@ img {
   from { transform: scale(0.9); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
-
 .modal-close-btn {
   position: absolute;
   top: 12px;
@@ -547,22 +504,6 @@ img {
   background: #d40404;
   transform: rotate(90deg) scale(1.1);
   outline: none;
-}
-
-/* Panel de configuración (contenido interno) */
-.config-panel h2 {
-  color: var(--color-primario);
-  margin-bottom: 1rem;
-}
-.config-section {
-  margin-bottom: 1.5rem;
-}
-.config-section h3 {
-  font-size: 1rem;
-  color: var(--color-primario);
-  margin-bottom: 0.5rem;
-  border-bottom: 1px solid #e0e4f0;
-  padding-bottom: 0.3rem;
 }
 
 /* ================================================================
@@ -687,15 +628,9 @@ img {
    RESPONSIVE – ADAPTACIÓN A MÓVILES Y TABLETAS
    ================================================================ */
 @media (min-width: 768px) {
-  .barra-superior {
-    padding: 1rem 2rem;
-  }
-  #Gobierno {
-    max-height: 55px;
-  }
-  .bloque-logo-sistema img {
-    max-height: 100px;
-  }
+  .barra-superior { padding: 1rem 2rem; }
+  #Gobierno { max-height: 55px; }
+  .bloque-logo-sistema img { max-height: 100px; }
   .modulo-carrusel {
     flex-direction: row;
     gap: 2.5rem;
@@ -707,46 +642,23 @@ img {
     aspect-ratio: auto;
     flex-shrink: 0;
   }
-  .carrusel-texto {
-    flex-grow: 1;
-  }
-  .carrusel-texto h2 {
-    font-size: 1.9rem;
-  }
-  .carrusel-texto p {
-    font-size: 1rem;
-  }
+  .carrusel-texto { flex-grow: 1; }
+  .carrusel-texto h2 { font-size: 1.9rem; }
+  .carrusel-texto p { font-size: 1rem; }
 }
 
 @media (min-width: 1024px) {
-  .carrusel-texto h2 {
-    font-size: 2.2rem;
-  }
-  .carrusel-texto p {
-    font-size: 1.1rem;
-  }
+  .carrusel-texto h2 { font-size: 2.2rem; }
+  .carrusel-texto p { font-size: 1.1rem; }
 }
 
 @media (max-width: 600px) {
-  .barra-superior {
-    justify-content: center;
-    text-align: center;
-  }
-  .user-nav {
-    width: 100%;
-    justify-content: center;
-  }
-  .btn-login,
-  .btn-nav.btn-cerrar,
-  .btn-nav.btn-panel {
+  .barra-superior { justify-content: center; text-align: center; }
+  .user-nav { width: 100%; justify-content: center; }
+  .btn-login, .btn-nav.btn-cerrar, .btn-nav.btn-panel {
     font-size: 0.8rem;
     padding: 0.45rem 1.2rem;
   }
-  .container {
-    padding: 0 1rem;
-  }
-  .status-bar {
-    font-size: 0.7rem;
-    gap: 0.8rem;
-  }
+  .container { padding: 0 1rem; }
+  .status-bar { font-size: 0.7rem; gap: 0.8rem; }
 }
