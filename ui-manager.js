@@ -25,9 +25,6 @@ window.UI = {
       this._renderConfigGear(target);
       this._renderStatusBar(session);
       if (window.Auth.checkPermission("manage_users")) this._initLivePanel();
-
-      // --- AVISO DE CONTRASEÑA ELIMINADO ---
-      // Ya no se muestra ningún toast relacionado con requiresPasswordChange
     }
   },
 
@@ -125,4 +122,5 @@ window.UI = {
   }
 };
 
-document.addEventListener("DOMContentLoaded", () => window.UI.render());
+// 🚀 Inicialización directa (sin DOMContentLoaded)
+window.UI.render();
