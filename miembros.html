@@ -6,39 +6,103 @@
     <title>Miembros – Sistema de Orquestas</title>
     <link rel="stylesheet" href="estilos.css">
     <style>
-        :root {
-            --color-primario: #1a237e;
-            --color-secundario: #4a148c;
-            --border-radius: 16px;
-            --shadow-soft: 0 10px 20px rgba(0,0,0,0.08);
+        .back-link {
+            display: inline-block;
+            margin: 1.5rem 0;
+            color: var(--color-primario);
+            font-weight: 600;
+            text-decoration: none;
         }
-        .back-link { display: inline-block; margin: 1.5rem 0; color: var(--color-primario); font-weight: 600; text-decoration: none; }
         .back-link:hover { text-decoration: underline; }
 
-        .roles-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-top: 20px; }
-        @media (max-width: 600px) { .roles-grid { grid-template-columns: 1fr; } }
+        .roles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
 
         .rol-card {
-            background: white; border: 2px solid #e0e4f0; border-radius: var(--border-radius);
-            padding: 30px; text-align: center; cursor: pointer; transition: all 0.3s ease; box-shadow: var(--shadow-soft);
+            background: var(--color-blanco);
+            border: 2px solid #e0e4f0;
+            border-radius: var(--border-radius);
+            padding: 2rem 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition-normal);
+            box-shadow: var(--shadow-card);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
         }
-        .rol-card:hover { border-color: var(--color-primario); transform: translateY(-5px); }
+        .rol-card:hover {
+            border-color: var(--color-primario);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-hover);
+        }
+        .rol-card .icono {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
 
-        .miembros-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; margin-top: 20px; }
+        .miembros-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
 
         .persona-card {
-            background: white; border: 1px solid #e0e4f0; border-radius: var(--border-radius);
-            padding: 20px; text-align: center; box-shadow: var(--shadow-soft); position: relative;
+            background: var(--color-blanco);
+            border: 1px solid #e0e4f0;
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: var(--shadow-card);
+            position: relative;
+            transition: var(--transition-fast);
         }
+        .persona-card:hover {
+            box-shadow: var(--shadow-hover);
+            transform: translateY(-2px);
+        }
+
         .avatar {
-            width: 70px; height: 70px; background: var(--color-primario); color: white; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.8rem;
-            margin: 0 auto 12px;
+            width: 64px;
+            height: 64px;
+            background: var(--color-primario);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.5rem;
+            margin: 0 auto 0.8rem;
         }
-        .is-admin .btn-admin-accion { display: inline-block; }
+
+        .is-admin .btn-admin-accion { display: inline-flex; align-items: center; justify-content: center; }
+
         .btn-admin-accion {
-            display: none; position: absolute; top: -8px; right: -8px; background: #d32f2f;
-            color: white; border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; font-weight: bold;
+            display: none;
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: var(--color-acento);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.9rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .btn-admin-accion:hover {
+            background: #d40404;
+            transform: scale(1.1);
         }
     </style>
 </head>
@@ -59,7 +123,18 @@
             <h2 id="modal-persona-title">Agregar Persona</h2>
             <input type="hidden" id="persona-rol" />
             <div class="editor-row"><label>Nombre:</label><input type="text" id="persona-nombre" class="modal-input" /></div>
-            <div class="editor-row"><label>Especialidad:</label><input type="text" id="persona-especialidad" class="modal-input" /></div>
+            <div class="editor-row"><label>Email:</label><input type="email" id="persona-email" class="modal-input" /></div>
+            <div class="editor-row"><label>Rol:</label>
+                <select id="persona-rango" class="modal-input">
+                    <option value="estudiante">Estudiante</option>
+                    <option value="profesor">Profesor</option>
+                    <option value="admin">Administrador</option>
+                    <option value="director_nucleo">Director de Núcleo</option>
+                </select>
+            </div>
+            <div class="editor-row"><label>Agrupación:</label><input type="text" id="persona-agrupacion" class="modal-input" /></div>
+            <div class="editor-row"><label>Estado:</label><input type="text" id="persona-estado" class="modal-input" /></div>
+            <div class="editor-row"><label>Núcleo:</label><input type="text" id="persona-nucleo" class="modal-input" /></div>
             <button id="btn-guardar-persona" class="btn btn-submit">Guardar</button>
             <button id="btn-cerrar-modal-persona" class="btn btn-cerrar">Cancelar</button>
         </div>
@@ -67,134 +142,190 @@
 
     <script type="module" src="auth.js?v=2.1"></script>
     <script type="module" src="ui-manager.js?v=2.1"></script>
-    <script>
-        function initMiembros() {
-            if (!window.Auth || !window.UI) {
-                setTimeout(initMiembros, 100);
-                return;
-            }
+    <script type="module">
+        import { db, auth } from "./firebase-init.js";
+        import {
+          collection, query, where, getDocs, deleteDoc, doc, onSnapshot
+        } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+        import { fetchSignInMethodsForEmail } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
 
-            if (!Auth.getSession()) {
+        function initMiembros() {
+            if (!window.Auth?.getSession()) {
                 window.location.href = "index.html";
                 return;
             }
 
-            const STORAGE_MIEMBROS = "sistemaOrquestas_miembros";
-            let dataMiembros = JSON.parse(localStorage.getItem(STORAGE_MIEMBROS)) || {
-                profesores: [
-                    { id: "1", nombre: "Juan Pérez", especialidad: "Violín" },
-                    { id: "2", nombre: "Ana García", especialidad: "Piano" }
-                ],
-                estudiantes: [
-                    { id: "3", nombre: "Luis Fernández", especialidad: "Trompeta" },
-                    { id: "4", nombre: "María González", especialidad: "Flauta" }
-                ]
-            };
+            const container = document.getElementById("miembros-container");
+            const session = window.Auth.getSession();
+
+            // Aplicar clase de administrador según el rango
+            const rolesAdmin = ["owner_supremo", "director_nacional", "director_regional", "director_nucleo", "admin"];
+            if (rolesAdmin.includes(session.role)) {
+                container.classList.add("is-admin");
+            }
+
             let vistaActual = "main";
 
-            function guardarMiembros() { localStorage.setItem(STORAGE_MIEMBROS, JSON.stringify(dataMiembros)); }
+            // Función para cargar miembros de forma optimizada
+            async function cargarMiembros(rango) {
+                if (!window.Auth.checkPermission("manage_users")) return [];
+
+                // Si es owner supremo o director nacional, ve todos los usuarios
+                if (["owner_supremo", "director_nacional"].includes(session.role)) {
+                    const q = query(collection(db, "usuarios"), where("rango", "==", rango));
+                    const snapshot = await getDocs(q);
+                    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                }
+
+                // Para otros roles, filtra por su núcleo
+                const q = query(
+                    collection(db, "usuarios"),
+                    where("rango", "==", rango),
+                    where("nucleo", "==", session.nucleus)
+                );
+                const snapshot = await getDocs(q);
+                return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            }
+
+            async function eliminarMiembro(uid) {
+                if (!window.Auth.checkPermission("manage_users")) {
+                    alert("No tienes permiso para eliminar usuarios.");
+                    return;
+                }
+                if (!confirm("¿Estás seguro de eliminar a este usuario?")) return;
+                try {
+                    await deleteDoc(doc(db, "usuarios", uid));
+                    alert("Usuario eliminado correctamente.");
+                    renderizarVista();
+                } catch (err) {
+                    alert("Error al eliminar: " + err.message);
+                }
+            }
 
             function renderizarVista() {
-                const container = document.getElementById("miembros-vista");
-                container.innerHTML = "";
+                const vistaContainer = document.getElementById("miembros-vista");
+                vistaContainer.innerHTML = "";
 
                 if (vistaActual === "main") {
                     const grid = document.createElement("div");
                     grid.className = "roles-grid";
 
-                    const cardProfes = document.createElement("div");
-                    cardProfes.className = "rol-card";
-                    cardProfes.innerHTML = `<h3>👩‍🏫 Profesores</h3>`;
-                    cardProfes.addEventListener("click", () => { vistaActual = "profesores"; renderizarVista(); });
-                    grid.appendChild(cardProfes);
+                    const categorias = [
+                        { clave: "estudiante", icono: "👦", label: "Estudiantes" },
+                        { clave: "profesor", icono: "👩‍🏫", label: "Profesores" },
+                        { clave: "admin", icono: "🛡️", label: "Administradores" },
+                        { clave: "director_nucleo", icono: "🏫", label: "Directores de Núcleo" },
+                        { clave: "director_regional", icono: "🌎", label: "Directores Regionales" },
+                        { clave: "director_nacional", icono: "🇻🇪", label: "Directores Nacionales" },
+                        { clave: "owner_supremo", icono: "👑", label: "Owner Supremo" }
+                    ];
 
-                    const cardEstud = document.createElement("div");
-                    cardEstud.className = "rol-card";
-                    cardEstud.innerHTML = `<h3>👦 Estudiantes</h3>`;
-                    cardEstud.addEventListener("click", () => { vistaActual = "estudiantes"; renderizarVista(); });
-                    grid.appendChild(cardEstud);
+                    categorias.forEach(cat => {
+                        const card = document.createElement("div");
+                        card.className = "rol-card";
+                        card.innerHTML = `<span class="icono">${cat.icono}</span><h3>${cat.label}</h3>`;
+                        card.addEventListener("click", () => {
+                            vistaActual = cat.clave;
+                            renderizarVista();
+                        });
+                        grid.appendChild(card);
+                    });
 
-                    container.appendChild(grid);
+                    vistaContainer.appendChild(grid);
                 } else {
                     const backBtn = document.createElement("button");
                     backBtn.className = "back-link";
                     backBtn.innerHTML = "&larr; Volver";
                     backBtn.addEventListener("click", () => { vistaActual = "main"; renderizarVista(); });
-                    container.appendChild(backBtn);
+                    vistaContainer.appendChild(backBtn);
 
                     const titulo = document.createElement("h3");
                     titulo.style.color = "var(--color-primario)";
-                    titulo.textContent = vistaActual === "profesores" ? "Profesores" : "Estudiantes";
-                    container.appendChild(titulo);
+                    titulo.textContent = vistaActual.charAt(0).toUpperCase() + vistaActual.slice(1);
+                    vistaContainer.appendChild(titulo);
 
                     const gridMiembros = document.createElement("div");
                     gridMiembros.className = "miembros-grid";
 
-                    const lista = dataMiembros[vistaActual];
-                    lista.forEach(persona => {
-                        const card = document.createElement("div");
-                        card.className = "persona-card";
-                        card.innerHTML = `
-                            <div class="avatar">${persona.nombre.charAt(0)}</div>
-                            <strong>${persona.nombre}</strong>
-                            <p style="color:#666; font-size:0.9rem;">${persona.especialidad}</p>
-                        `;
+                    cargarMiembros(vistaActual).then(miembros => {
+                        miembros.forEach(persona => {
+                            const card = document.createElement("div");
+                            card.className = "persona-card";
+                            card.innerHTML = `
+                                <div class="avatar">${persona.nombre?.charAt(0) || "?"}</div>
+                                <strong>${persona.nombre || "Sin nombre"}</strong>
+                                <p style="color:var(--color-texto-claro); font-size:0.85rem;">${persona.email || ""}</p>
+                                <p style="color:var(--color-texto-claro); font-size:0.8rem;">${persona.agrupacion || "Sin agrupación"}</p>
+                            `;
 
-                        const btnEliminar = document.createElement("button");
-                        btnEliminar.className = "btn-admin-accion";
-                        btnEliminar.innerHTML = "✖";
-                        btnEliminar.addEventListener("click", (e) => {
-                            e.stopPropagation();
-                            if (confirm(`¿Eliminar a ${persona.nombre}?`)) {
-                                dataMiembros[vistaActual] = dataMiembros[vistaActual].filter(p => p.id !== persona.id);
-                                guardarMiembros();
-                                renderizarVista();
+                            if (container.classList.contains("is-admin")) {
+                                const btnEliminar = document.createElement("button");
+                                btnEliminar.className = "btn-admin-accion";
+                                btnEliminar.innerHTML = "✖";
+                                btnEliminar.addEventListener("click", (e) => {
+                                    e.stopPropagation();
+                                    eliminarMiembro(persona.id);
+                                });
+                                card.appendChild(btnEliminar);
                             }
+
+                            gridMiembros.appendChild(card);
                         });
-                        card.appendChild(btnEliminar);
-                        gridMiembros.appendChild(card);
+                        vistaContainer.appendChild(gridMiembros);
                     });
-
-                    const btnAgregar = document.createElement("button");
-                    btnAgregar.className = "btn-modulo";
-                    btnAgregar.style.borderStyle = "dashed";
-                    btnAgregar.textContent = "+ Agregar";
-                    btnAgregar.addEventListener("click", () => {
-                        document.getElementById("persona-rol").value = vistaActual;
-                        document.getElementById("persona-nombre").value = "";
-                        document.getElementById("persona-especialidad").value = "";
-                        document.getElementById("modal-persona").style.display = "flex";
-                    });
-                    gridMiembros.appendChild(btnAgregar);
-
-                    container.appendChild(gridMiembros);
                 }
             }
 
-            document.getElementById("btn-guardar-persona").addEventListener("click", () => {
-                const rol = document.getElementById("persona-rol").value;
+            document.getElementById("btn-guardar-persona").addEventListener("click", async () => {
+                if (!window.Auth.checkPermission("manage_users")) {
+                    alert("No tienes permiso para crear usuarios.");
+                    return;
+                }
+
+                const email = document.getElementById("persona-email").value.trim();
                 const nombre = document.getElementById("persona-nombre").value.trim();
-                const especialidad = document.getElementById("persona-especialidad").value.trim();
-                if (!nombre) return alert("Nombre obligatorio.");
-                dataMiembros[rol].push({ id: Date.now().toString(36), nombre, especialidad });
-                guardarMiembros();
-                renderizarVista();
-                document.getElementById("modal-persona").style.display = "none";
+                const rango = document.getElementById("persona-rango").value;
+                const agrupacion = document.getElementById("persona-agrupacion").value.trim();
+                const estado = document.getElementById("persona-estado").value.trim();
+                const nucleo = document.getElementById("persona-nucleo").value.trim();
+
+                if (!email || !nombre) return alert("Nombre y email son obligatorios.");
+
+                try {
+                    const metodos = await fetchSignInMethodsForEmail(auth, email);
+                    if (metodos.length > 0) {
+                        alert("Este correo ya está registrado en el sistema.");
+                        return;
+                    }
+
+                    const resultado = await Auth.registerUser(email, nombre, rango, agrupacion, estado, nucleo);
+                    if (resultado.success) {
+                        alert(`Usuario creado. Contraseña temporal: ${resultado.clave}`);
+                        document.getElementById("modal-persona").style.display = "none";
+                        renderizarVista();
+                    } else {
+                        alert("Error: " + resultado.error);
+                    }
+                } catch (err) {
+                    alert("Error al validar el correo: " + err.message);
+                }
             });
 
             document.getElementById("btn-cerrar-modal-persona").addEventListener("click", () => {
                 document.getElementById("modal-persona").style.display = "none";
             });
 
-            window.addEventListener("DOMContentLoaded", () => {
+            // Usar el evento auth-ready para iniciar la UI sin race conditions
+            window.addEventListener("auth-ready", () => {
                 UI.render();
                 renderizarVista();
-
-                const session = Auth.getSession();
-                if (session && (session.role === "owner" || session.role === "admin")) {
-                    document.getElementById("miembros-container").classList.add("is-admin");
-                }
             });
+
+            // Si el evento ya se disparó antes de que este listener se registrara, cargamos directamente
+            if (window.Auth.getSession()) {
+                UI.render();
+                renderizarVista();
+            }
         }
 
         initMiembros();
