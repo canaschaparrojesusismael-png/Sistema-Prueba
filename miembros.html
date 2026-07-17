@@ -67,7 +67,7 @@
         </div>
     </div>
 
-    <!-- Modal EDITAR (ahora con Edad) -->
+    <!-- Modal EDITAR -->
     <div class="modal-overlay" id="modal-editar">
         <div class="modal-content">
             <button class="modal-close-btn" id="editar-close-btn">&times;</button>
@@ -96,11 +96,11 @@
         </div>
     </div>
 
-    <script type="module" src="auth.js?v=3.8"></script>
-    <script type="module" src="ui-manager.js?v=3.8"></script>
+    <script type="module" src="auth.js?v=4.0"></script>
+    <script type="module" src="ui-manager.js?v=4.0"></script>
     <script type="module">
         import { db, auth } from "./firebase-init.js";
-        import { collection, query, where, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+        import { collection, query, where, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
         import { fetchSignInMethodsForEmail } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-functions.js";
 
@@ -248,7 +248,7 @@
                     });
                     vc.appendChild(grid);
                 }
-                // ---------- MIEMBROS ----------
+                // ---------- MIEMBROS (solo activos) ----------
                 else if(vistaActual === "miembros") {
                     titulo.textContent = getRoleLabel(currentContext.rol);
                     let ruta = `<span>Rol:</span> ${getRoleLabel(currentContext.rol)}`;
@@ -267,7 +267,6 @@
                             $("persona-rango").innerHTML = `<option value="${currentContext.rol}">${getRoleLabel(currentContext.rol)}</option>`;
                             $("persona-nombre").value = $("persona-email").value = $("persona-agrupacion").value = "";
                             $("persona-edad").value = "0";
-                            // Poblar estados
                             const selEstado = $("persona-estado");
                             selEstado.innerHTML = '<option value="">Seleccione un estado...</option>';
                             ESTADOS_VENEZUELA.forEach(est => { const o = document.createElement("option"); o.value = est; o.textContent = est; if(est === currentContext.estado) o.selected = true; selEstado.appendChild(o); });
@@ -283,7 +282,7 @@
                     const gridM = document.createElement("div"); gridM.className = "miembros-grid";
                     const spinner = document.createElement("div"); spinner.className = "spinner"; vc.appendChild(spinner);
 
-                    let q = query(collection(db,"usuarios"), where("rango","==",currentContext.rol));
+                    let q = query(collection(db,"usuarios"), where("rango","==",currentContext.rol), where("estado","!=","inactivo"));
                     if(nivelDestino <= 50 && currentContext.estado) q = query(q, where("estado","==",currentContext.estado));
                     if(nivelDestino <= 40 && currentContext.nucleo) q = query(q, where("nucleo","==",currentContext.nucleo));
 
@@ -291,7 +290,7 @@
                         const snap = await getDocs(q);
                         spinner.remove();
                         if(snap.empty) {
-                            gridM.innerHTML = `<p style="grid-column:1/-1;text-align:center;">No se encontraron registros para esta selección.</p>`;
+                            gridM.innerHTML = `<p style="grid-column:1/-1;text-align:center;">No se encontraron registros activos para esta selección.</p>`;
                         } else {
                             snap.docs.forEach(d => {
                                 const p = { id:d.id, ...d.data() };
@@ -326,17 +325,27 @@
                                     });
                                     card.appendChild(btnEdit);
 
+                                    // Botón DESACTIVAR (eliminación lógica)
                                     const btnDel = document.createElement("button"); btnDel.className = "btn-admin-accion"; btnDel.innerHTML = "✖";
+                                    btnDel.title = "Desactivar usuario";
                                     btnDel.addEventListener("click", async (e) => {
                                         e.stopPropagation();
-                                        if(confirm(`¿Eliminar al usuario ${p.nombre}?`)) {
-                                            await deleteDoc(doc(db,"usuarios",p.id));
-                                            window._showToast("Usuario eliminado","success");
-                                            renderizarPantalla();
+                                        if(confirm(`¿Desactivar al usuario ${p.nombre}? No podrá iniciar sesión.`)) {
+                                            try {
+                                                await updateDoc(doc(db,"usuarios",p.id), {
+                                                    estado: "inactivo",
+                                                    fechaEliminacion: new Date().toISOString()
+                                                });
+                                                window._showToast("Usuario desactivado correctamente","success");
+                                                renderizarPantalla();
+                                            } catch (err) {
+                                                window._showToast("Error al desactivar: " + err.message,"error");
+                                            }
                                         }
                                     });
                                     card.appendChild(btnDel);
 
+                                    // Botón RESET (solo owner_supremo)
                                     if(session.role === "owner_supremo") {
                                         const btnReset = document.createElement("button"); btnReset.className = "btn-reset"; btnReset.innerHTML = "🔑";
                                         btnReset.addEventListener("click", async (e) => {
@@ -437,7 +446,6 @@
             renderizarPantalla();
         }
 
-        // Inicio seguro (una sola vez)
         if(window.Auth?.getSession()) initMiembros();
         else window.addEventListener("auth-ready", initMiembros, { once: true });
     </script>
