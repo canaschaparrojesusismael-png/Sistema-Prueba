@@ -149,7 +149,13 @@ window.Auth = {
       if (!snap.exists()) { await signOut(auth); return { success: false, error: "Usuario no registrado." }; }
       const data = snap.data();
 
-      // NO redirigimos: el administrador controla el cambio de contraseña con el botón 🔑
+      // Verificar si el usuario está inactivo
+      if (data.estado === "inactivo") {
+        await signOut(auth);
+        return { success: false, error: "Esta cuenta ha sido desactivada. Contacta al administrador." };
+      }
+
+      // NO redirigimos por cambio de contraseña
 
       const sessionId = generarUUID();
       sessionStorage.setItem("currentSessionId", sessionId);
@@ -190,6 +196,7 @@ window.Auth = {
       await setDoc(doc(db, "usuarios", uid), {
         username, nombre, rango, agrupacion, estado, nucleo, email,
         isOnline: false, currentSessionId: "", requiresPasswordChange: false,
+        estado: "activo", // Se añade el campo estado con valor "activo"
         edad: edad || 0, fechaCreacion: new Date().toISOString()
       });
       await signOut(secAuth); await deleteApp(secApp);
