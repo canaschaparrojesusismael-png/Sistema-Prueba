@@ -65,127 +65,139 @@
         </div>
     </div>
 
-    <script src="auth.js"></script>
-    <script src="ui-manager.js"></script>
+    <script type="module" src="auth.js?v=2.1"></script>
+    <script type="module" src="ui-manager.js?v=2.1"></script>
     <script>
-        (function() { if (!Auth.getSession()) window.location.href = "index.html"; })();
-
-        const STORAGE_MIEMBROS = "sistemaOrquestas_miembros";
-        let dataMiembros = JSON.parse(localStorage.getItem(STORAGE_MIEMBROS)) || {
-            profesores: [
-                { id: "1", nombre: "Juan Pérez", especialidad: "Violín" },
-                { id: "2", nombre: "Ana García", especialidad: "Piano" }
-            ],
-            estudiantes: [
-                { id: "3", nombre: "Luis Fernández", especialidad: "Trompeta" },
-                { id: "4", nombre: "María González", especialidad: "Flauta" }
-            ]
-        };
-        let vistaActual = "main";
-
-        function guardarMiembros() { localStorage.setItem(STORAGE_MIEMBROS, JSON.stringify(dataMiembros)); }
-
-        function renderizarVista() {
-            const container = document.getElementById("miembros-vista");
-            container.innerHTML = "";
-
-            if (vistaActual === "main") {
-                const grid = document.createElement("div");
-                grid.className = "roles-grid";
-
-                const cardProfes = document.createElement("div");
-                cardProfes.className = "rol-card";
-                cardProfes.innerHTML = `<h3>👩‍🏫 Profesores</h3>`;
-                cardProfes.addEventListener("click", () => { vistaActual = "profesores"; renderizarVista(); });
-                grid.appendChild(cardProfes);
-
-                const cardEstud = document.createElement("div");
-                cardEstud.className = "rol-card";
-                cardEstud.innerHTML = `<h3>👦 Estudiantes</h3>`;
-                cardEstud.addEventListener("click", () => { vistaActual = "estudiantes"; renderizarVista(); });
-                grid.appendChild(cardEstud);
-
-                container.appendChild(grid);
-            } else {
-                const backBtn = document.createElement("button");
-                backBtn.className = "back-link";
-                backBtn.innerHTML = "&larr; Volver";
-                backBtn.addEventListener("click", () => { vistaActual = "main"; renderizarVista(); });
-                container.appendChild(backBtn);
-
-                const titulo = document.createElement("h3");
-                titulo.style.color = "var(--color-primario)";
-                titulo.textContent = vistaActual === "profesores" ? "Profesores" : "Estudiantes";
-                container.appendChild(titulo);
-
-                const gridMiembros = document.createElement("div");
-                gridMiembros.className = "miembros-grid";
-
-                const lista = dataMiembros[vistaActual];
-                lista.forEach(persona => {
-                    const card = document.createElement("div");
-                    card.className = "persona-card";
-                    card.innerHTML = `
-                        <div class="avatar">${persona.nombre.charAt(0)}</div>
-                        <strong>${persona.nombre}</strong>
-                        <p style="color:#666; font-size:0.9rem;">${persona.especialidad}</p>
-                    `;
-
-                    const btnEliminar = document.createElement("button");
-                    btnEliminar.className = "btn-admin-accion";
-                    btnEliminar.innerHTML = "✖";
-                    btnEliminar.addEventListener("click", (e) => {
-                        e.stopPropagation();
-                        if (confirm(`¿Eliminar a ${persona.nombre}?`)) {
-                            dataMiembros[vistaActual] = dataMiembros[vistaActual].filter(p => p.id !== persona.id);
-                            guardarMiembros();
-                            renderizarVista();
-                        }
-                    });
-                    card.appendChild(btnEliminar);
-                    gridMiembros.appendChild(card);
-                });
-
-                const btnAgregar = document.createElement("button");
-                btnAgregar.className = "btn-modulo";
-                btnAgregar.style.borderStyle = "dashed";
-                btnAgregar.textContent = "+ Agregar";
-                btnAgregar.addEventListener("click", () => {
-                    document.getElementById("persona-rol").value = vistaActual;
-                    document.getElementById("persona-nombre").value = "";
-                    document.getElementById("persona-especialidad").value = "";
-                    document.getElementById("modal-persona").style.display = "flex";
-                });
-                gridMiembros.appendChild(btnAgregar);
-
-                container.appendChild(gridMiembros);
+        function initMiembros() {
+            if (!window.Auth || !window.UI) {
+                setTimeout(initMiembros, 100);
+                return;
             }
+
+            if (!Auth.getSession()) {
+                window.location.href = "index.html";
+                return;
+            }
+
+            const STORAGE_MIEMBROS = "sistemaOrquestas_miembros";
+            let dataMiembros = JSON.parse(localStorage.getItem(STORAGE_MIEMBROS)) || {
+                profesores: [
+                    { id: "1", nombre: "Juan Pérez", especialidad: "Violín" },
+                    { id: "2", nombre: "Ana García", especialidad: "Piano" }
+                ],
+                estudiantes: [
+                    { id: "3", nombre: "Luis Fernández", especialidad: "Trompeta" },
+                    { id: "4", nombre: "María González", especialidad: "Flauta" }
+                ]
+            };
+            let vistaActual = "main";
+
+            function guardarMiembros() { localStorage.setItem(STORAGE_MIEMBROS, JSON.stringify(dataMiembros)); }
+
+            function renderizarVista() {
+                const container = document.getElementById("miembros-vista");
+                container.innerHTML = "";
+
+                if (vistaActual === "main") {
+                    const grid = document.createElement("div");
+                    grid.className = "roles-grid";
+
+                    const cardProfes = document.createElement("div");
+                    cardProfes.className = "rol-card";
+                    cardProfes.innerHTML = `<h3>👩‍🏫 Profesores</h3>`;
+                    cardProfes.addEventListener("click", () => { vistaActual = "profesores"; renderizarVista(); });
+                    grid.appendChild(cardProfes);
+
+                    const cardEstud = document.createElement("div");
+                    cardEstud.className = "rol-card";
+                    cardEstud.innerHTML = `<h3>👦 Estudiantes</h3>`;
+                    cardEstud.addEventListener("click", () => { vistaActual = "estudiantes"; renderizarVista(); });
+                    grid.appendChild(cardEstud);
+
+                    container.appendChild(grid);
+                } else {
+                    const backBtn = document.createElement("button");
+                    backBtn.className = "back-link";
+                    backBtn.innerHTML = "&larr; Volver";
+                    backBtn.addEventListener("click", () => { vistaActual = "main"; renderizarVista(); });
+                    container.appendChild(backBtn);
+
+                    const titulo = document.createElement("h3");
+                    titulo.style.color = "var(--color-primario)";
+                    titulo.textContent = vistaActual === "profesores" ? "Profesores" : "Estudiantes";
+                    container.appendChild(titulo);
+
+                    const gridMiembros = document.createElement("div");
+                    gridMiembros.className = "miembros-grid";
+
+                    const lista = dataMiembros[vistaActual];
+                    lista.forEach(persona => {
+                        const card = document.createElement("div");
+                        card.className = "persona-card";
+                        card.innerHTML = `
+                            <div class="avatar">${persona.nombre.charAt(0)}</div>
+                            <strong>${persona.nombre}</strong>
+                            <p style="color:#666; font-size:0.9rem;">${persona.especialidad}</p>
+                        `;
+
+                        const btnEliminar = document.createElement("button");
+                        btnEliminar.className = "btn-admin-accion";
+                        btnEliminar.innerHTML = "✖";
+                        btnEliminar.addEventListener("click", (e) => {
+                            e.stopPropagation();
+                            if (confirm(`¿Eliminar a ${persona.nombre}?`)) {
+                                dataMiembros[vistaActual] = dataMiembros[vistaActual].filter(p => p.id !== persona.id);
+                                guardarMiembros();
+                                renderizarVista();
+                            }
+                        });
+                        card.appendChild(btnEliminar);
+                        gridMiembros.appendChild(card);
+                    });
+
+                    const btnAgregar = document.createElement("button");
+                    btnAgregar.className = "btn-modulo";
+                    btnAgregar.style.borderStyle = "dashed";
+                    btnAgregar.textContent = "+ Agregar";
+                    btnAgregar.addEventListener("click", () => {
+                        document.getElementById("persona-rol").value = vistaActual;
+                        document.getElementById("persona-nombre").value = "";
+                        document.getElementById("persona-especialidad").value = "";
+                        document.getElementById("modal-persona").style.display = "flex";
+                    });
+                    gridMiembros.appendChild(btnAgregar);
+
+                    container.appendChild(gridMiembros);
+                }
+            }
+
+            document.getElementById("btn-guardar-persona").addEventListener("click", () => {
+                const rol = document.getElementById("persona-rol").value;
+                const nombre = document.getElementById("persona-nombre").value.trim();
+                const especialidad = document.getElementById("persona-especialidad").value.trim();
+                if (!nombre) return alert("Nombre obligatorio.");
+                dataMiembros[rol].push({ id: Date.now().toString(36), nombre, especialidad });
+                guardarMiembros();
+                renderizarVista();
+                document.getElementById("modal-persona").style.display = "none";
+            });
+
+            document.getElementById("btn-cerrar-modal-persona").addEventListener("click", () => {
+                document.getElementById("modal-persona").style.display = "none";
+            });
+
+            window.addEventListener("DOMContentLoaded", () => {
+                UI.render();
+                renderizarVista();
+
+                const session = Auth.getSession();
+                if (session && (session.role === "owner" || session.role === "admin")) {
+                    document.getElementById("miembros-container").classList.add("is-admin");
+                }
+            });
         }
 
-        document.getElementById("btn-guardar-persona").addEventListener("click", () => {
-            const rol = document.getElementById("persona-rol").value;
-            const nombre = document.getElementById("persona-nombre").value.trim();
-            const especialidad = document.getElementById("persona-especialidad").value.trim();
-            if (!nombre) return alert("Nombre obligatorio.");
-            dataMiembros[rol].push({ id: Date.now().toString(36), nombre, especialidad });
-            guardarMiembros();
-            renderizarVista();
-            document.getElementById("modal-persona").style.display = "none";
-        });
-
-        document.getElementById("btn-cerrar-modal-persona").addEventListener("click", () => {
-            document.getElementById("modal-persona").style.display = "none";
-        });
-
-        window.addEventListener("DOMContentLoaded", () => {
-            UI.render();
-            renderizarVista();
-
-            const session = Auth.getSession();
-            if (session && session.role === "Administrativo") {
-                document.getElementById("miembros-container").classList.add("is-admin");
-            }
-        });
+        initMiembros();
     </script>
 </body>
 </html>
