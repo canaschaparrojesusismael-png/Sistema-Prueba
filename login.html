@@ -51,6 +51,10 @@
                 return;
             }
 
+            const btn = document.querySelector(".btn-submit");
+            btn.textContent = "Validando...";
+            btn.disabled = true;
+
             const resultado = await window.Auth.login(username, password, remember);
 
             if (resultado.success) {
@@ -61,6 +65,8 @@
                 }
             } else {
                 alert("Error al iniciar sesión: " + resultado.error);
+                btn.textContent = "Iniciar Sesión";
+                btn.disabled = false;
             }
         });
     </script>
