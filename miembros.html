@@ -1,56 +1,185 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Miembros – Sistema de Orquestas</title>
     <link rel="stylesheet" href="estilos.css">
     <style>
         .back-link { display:inline-block; margin:1.5rem 0; color:var(--color-primario); font-weight:600; text-decoration:none; }
         .roles-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:20px; margin-top:20px; }
-        .rol-card { background:var(--color-blanco); border:2px solid #e0e4f0; border-radius:var(--border-radius); padding:2rem 1.5rem; text-align:center; cursor:pointer; transition:var(--transition-normal); box-shadow:var(--shadow-card); display:flex; flex-direction:column; align-items:center; gap:0.5rem; }
+        .rol-card {
+            background:var(--color-blanco); border:2px solid #e0e4f0; border-radius:var(--border-radius);
+            padding:2rem 1.5rem; text-align:center; cursor:pointer; transition:var(--transition-normal);
+            box-shadow:var(--shadow-card); display:flex; flex-direction:column; align-items:center; gap:0.5rem;
+        }
         .rol-card:hover { border-color:var(--color-primario); transform:translateY(-4px); box-shadow:var(--shadow-hover); }
         .rol-card .icono { font-size:2.5rem; }
-        .miembros-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:20px; margin-top:20px; }
-        .persona-card { background:var(--color-blanco); border:1px solid #e0e4f0; border-radius:var(--border-radius); padding:1.5rem; text-align:center; box-shadow:var(--shadow-card); position:relative; transition:var(--transition-fast); }
+        .miembros-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:20px; margin-top:20px; }
+        .persona-card {
+            background:var(--color-blanco); border:1px solid #e0e4f0; border-radius:var(--border-radius);
+            padding:1.5rem; text-align:center; box-shadow:var(--shadow-card); position:relative;
+            transition:var(--transition-fast); display:flex; flex-direction:column; align-items:center; gap:0.4rem;
+        }
         .persona-card:hover { box-shadow:var(--shadow-hover); transform:translateY(-2px); }
-        .avatar { width:64px; height:64px; background:var(--color-primario); color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.5rem; margin:0 auto 0.8rem; }
+        .avatar {
+            width:64px; height:64px; background:var(--color-primario); color:white; border-radius:50%;
+            display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.5rem;
+            margin:0 auto 0.8rem;
+        }
         .is-admin .btn-admin-accion { display:inline-flex; align-items:center; justify-content:center; }
-        .btn-admin-accion { display:none; position:absolute; top:-10px; right:-10px; background:var(--color-acento); color:white; border:none; border-radius:50%; width:28px; height:28px; cursor:pointer; font-weight:bold; font-size:0.9rem; box-shadow:0 2px 8px rgba(0,0,0,0.2); }
+        .btn-admin-accion {
+            display:none; position:absolute; top:-10px; right:-10px; background:var(--color-acento);
+            color:white; border:none; border-radius:50%; width:28px; height:28px; cursor:pointer;
+            font-weight:bold; font-size:0.9rem; box-shadow:0 2px 8px rgba(0,0,0,0.2); z-index:5;
+        }
         .btn-admin-accion:hover { background:#d40404; transform:scale(1.1); }
+        .btn-editar {
+            position:absolute; top:-10px; right:24px; background:var(--color-primario);
+            color:white; border:none; border-radius:50%; width:28px; height:28px; cursor:pointer;
+            font-weight:bold; font-size:0.9rem; box-shadow:0 2px 8px rgba(0,0,0,0.2); z-index:5;
+            display:none;
+        }
+        .is-admin .btn-editar { display:flex; align-items:center; justify-content:center; }
+        .btn-editar:hover { background:var(--color-primario-oscuro); transform:scale(1.1); }
         .spinner { display:flex; justify-content:center; padding:2rem; }
-        .spinner::after { content:""; width:40px; height:40px; border:4px solid #e0e4f0; border-top-color:var(--color-primario); border-radius:50%; animation:spin 0.8s linear infinite; }
+        .spinner::after {
+            content:""; width:40px; height:40px; border:4px solid #e0e4f0;
+            border-top-color:var(--color-primario); border-radius:50%; animation:spin 0.8s linear infinite;
+        }
         @keyframes spin { to { transform:rotate(360deg); } }
+        .top-controls { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:1rem; }
     </style>
 </head>
 <body>
-    <header class="barra-superior"><img src="datos.png" alt="Gobierno de Venezuela" style="max-height:50px;"><nav id="user-nav" class="user-nav"></nav></header>
+    <header class="barra-superior">
+        <img src="datos.png" alt="Gobierno de Venezuela" style="max-height:50px;">
+        <nav id="user-nav" class="user-nav"></nav>
+    </header>
+
     <main class="contenido-web container" id="miembros-container">
         <a class="back-link" href="panel.html">&larr; Volver al Panel</a>
         <h2 class="titulo-pagina">Miembros</h2>
         <div id="miembros-vista"></div>
     </main>
-    <div class="modal-overlay" id="modal-persona"><div class="modal-content">
-        <button class="modal-close-btn" id="persona-close-btn">&times;</button>
-        <h2>Agregar Persona</h2>
-        <div class="editor-row"><label>Nombre:</label><input type="text" id="persona-nombre" class="modal-input"></div>
-        <div class="editor-row"><label>Email:</label><input type="email" id="persona-email" class="modal-input"></div>
-        <div class="editor-row"><label>Rol:</label><select id="persona-rango" class="modal-input"><option value="estudiante">Estudiante</option><option value="profesor">Profesor</option><option value="admin">Administrador</option><option value="director_nucleo">Director de Núcleo</option></select></div>
-        <div class="editor-row"><label>Agrupación:</label><input type="text" id="persona-agrupacion" class="modal-input"></div>
-        <div class="editor-row"><label>Estado:</label><select id="persona-estado" class="modal-input"><option value="">Seleccione...</option><option value="Táchira">Táchira</option><option value="Mérida">Mérida</option><option value="Zulia">Zulia</option></select></div>
-        <div class="editor-row"><label>Núcleo:</label><select id="persona-nucleo" class="modal-input"><option value="">Seleccione...</option><option value="Puente Real">Puente Real</option><option value="CMA María Auxiliadora">CMA María Auxiliadora</option><option value="San Cristóbal Centro">San Cristóbal Centro</option></select></div>
-        <button id="btn-guardar-persona" class="btn btn-submit">Guardar</button>
-        <button id="btn-cerrar-modal-persona" class="btn btn-cerrar">Cancelar</button>
-    </div></div>
 
-    <script type="module" src="auth.js?v=3.0"></script>
-    <script type="module" src="ui-manager.js?v=3.0"></script>
+    <!-- Modal para CREAR persona -->
+    <div class="modal-overlay" id="modal-persona">
+        <div class="modal-content">
+            <button class="modal-close-btn" id="persona-close-btn">&times;</button>
+            <h2>Agregar Persona</h2>
+            <div class="editor-row"><label>Nombre:</label><input type="text" id="persona-nombre" class="modal-input"></div>
+            <div class="editor-row"><label>Email:</label><input type="email" id="persona-email" class="modal-input"></div>
+            <div class="editor-row"><label>Rol:</label>
+                <select id="persona-rango" class="modal-input">
+                    <option value="estudiante">Estudiante</option>
+                    <option value="profesor">Profesor</option>
+                    <option value="admin">Administrador</option>
+                    <option value="director_nucleo">Director de Núcleo</option>
+                </select>
+            </div>
+            <div class="editor-row"><label>Agrupación:</label><input type="text" id="persona-agrupacion" class="modal-input"></div>
+            <div class="editor-row"><label>Estado:</label>
+                <select id="persona-estado" class="modal-input">
+                    <option value="">Seleccione...</option>
+                    <!-- Se llena dinámicamente -->
+                </select>
+            </div>
+            <div class="editor-row"><label>Núcleo:</label>
+                <select id="persona-nucleo" class="modal-input">
+                    <option value="">Seleccione un estado primero...</option>
+                    <!-- Se llena dinámicamente según el estado -->
+                </select>
+            </div>
+            <button id="btn-guardar-persona" class="btn btn-submit">Guardar</button>
+            <button id="btn-cerrar-modal-persona" class="btn btn-cerrar">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- Modal para EDITAR persona -->
+    <div class="modal-overlay" id="modal-editar">
+        <div class="modal-content">
+            <button class="modal-close-btn" id="editar-close-btn">&times;</button>
+            <h2>Editar Persona</h2>
+            <input type="hidden" id="editar-id">
+            <div class="editor-row"><label>Nombre:</label><input type="text" id="editar-nombre" class="modal-input"></div>
+            <div class="editor-row"><label>Email:</label><input type="email" id="editar-email" class="modal-input"></div>
+            <div class="editor-row"><label>Agrupación:</label><input type="text" id="editar-agrupacion" class="modal-input"></div>
+            <div class="editor-row"><label>Estado:</label>
+                <select id="editar-estado" class="modal-input">
+                    <option value="">Seleccione...</option>
+                    <!-- Se llena dinámicamente -->
+                </select>
+            </div>
+            <div class="editor-row"><label>Núcleo:</label>
+                <select id="editar-nucleo" class="modal-input">
+                    <option value="">Seleccione un estado primero...</option>
+                    <!-- Se llena dinámicamente -->
+                </select>
+            </div>
+            <button id="btn-guardar-edicion" class="btn btn-submit">Guardar Cambios</button>
+            <button id="btn-cerrar-modal-editar" class="btn btn-cerrar">Cancelar</button>
+        </div>
+    </div>
+
+    <script type="module" src="auth.js?v=3.2"></script>
+    <script type="module" src="ui-manager.js?v=3.2"></script>
     <script type="module">
         import { db, auth } from "./firebase-init.js";
-        import { collection, query, where, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+        import {
+            collection, query, where, getDocs, deleteDoc, doc, updateDoc, addDoc
+        } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
         import { fetchSignInMethodsForEmail } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
 
+        // ========== DATOS INMUTABLES (NO SE CONSULTAN A FIRESTORE) ==========
+        const ESTADOS_VENEZUELA = [
+            "Amazonas", "Anzoátegui", "Apure", "Aragua", "Barinas", "Bolívar",
+            "Carabobo", "Cojedes", "Delta Amacuro", "Distrito Capital",
+            "Falcón", "Guárico", "Lara", "Mérida", "Miranda", "Monagas",
+            "Nueva Esparta", "Portuguesa", "Sucre", "Táchira", "Trujillo",
+            "Vargas", "Yaracuy", "Zulia"
+        ];
+
+        // ========== FUNCIONES AUXILIARES ==========
         function cerrarModal(id) { document.getElementById(id).style.display = "none"; }
 
+        /** Llena un <select> con los estados venezolanos */
+        function llenarEstados(selectId, selectedValue = "") {
+            const select = document.getElementById(selectId);
+            if (!select) return;
+            select.innerHTML = '<option value="">Seleccione...</option>';
+            ESTADOS_VENEZUELA.forEach(estado => {
+                const opt = document.createElement("option");
+                opt.value = estado;
+                opt.textContent = estado;
+                if (estado === selectedValue) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+
+        /** Carga los núcleos desde Firestore filtrados por estado */
+        async function cargarNucleos(estado) {
+            if (!estado) return [];
+            const q = query(collection(db, "nucleos"), where("estado", "==", estado));
+            const snap = await getDocs(q);
+            return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
+
+        /** Llena un <select> de núcleos con los datos obtenidos */
+        function llenarNucleos(selectId, nucleos, selectedValue = "") {
+            const select = document.getElementById(selectId);
+            if (!select) return;
+            select.innerHTML = '<option value="">Seleccione...</option>';
+            nucleos.forEach(n => {
+                const opt = document.createElement("option");
+                opt.value = n.nombre;
+                opt.textContent = n.nombre;
+                if (n.nombre === selectedValue) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+
+        // ========== LÓGICA PRINCIPAL ==========
         function initMiembros() {
             if (!window.Auth?.getSession()) { window.location.href = "index.html"; return; }
             const container = document.getElementById("miembros-container");
@@ -73,8 +202,43 @@
             async function eliminarMiembro(uid, targetRole) {
                 if (!window.Auth.canEdit(targetRole)) { window._showToast("No tienes permiso para eliminar a este usuario.", "error"); return; }
                 if (!confirm("¿Eliminar a este usuario?")) return;
-                try { await deleteDoc(doc(db, "usuarios", uid)); window._showToast("Usuario eliminado.", "success"); renderizarVista(); }
-                catch (err) { window._showToast("Error: " + err.message, "error"); }
+                try {
+                    await deleteDoc(doc(db, "usuarios", uid));
+                    window._showToast("Usuario eliminado.", "success");
+                    renderizarVista();
+                } catch (err) { window._showToast("Error: " + err.message, "error"); }
+            }
+
+            function abrirEdicion(persona) {
+                document.getElementById("editar-id").value = persona.id;
+                document.getElementById("editar-nombre").value = persona.nombre || "";
+                document.getElementById("editar-email").value = persona.email || "";
+                document.getElementById("editar-agrupacion").value = persona.agrupacion || "";
+                // Llenar estados y seleccionar el actual
+                llenarEstados("editar-estado", persona.estado);
+                document.getElementById("editar-estado").addEventListener("change", async (e) => {
+                    const nucleos = await cargarNucleos(e.target.value);
+                    llenarNucleos("editar-nucleo", nucleos, persona.nucleo);
+                });
+                // Disparar el cambio para cargar los núcleos del estado actual
+                document.getElementById("editar-estado").dispatchEvent(new Event("change"));
+                document.getElementById("modal-editar").style.display = "flex";
+            }
+
+            async function guardarEdicion() {
+                const id = document.getElementById("editar-id").value;
+                const nombre = document.getElementById("editar-nombre").value.trim();
+                const email = document.getElementById("editar-email").value.trim();
+                const agrupacion = document.getElementById("editar-agrupacion").value.trim();
+                const estado = document.getElementById("editar-estado").value;
+                const nucleo = document.getElementById("editar-nucleo").value;
+                if (!nombre) { window._showToast("El nombre es obligatorio.", "error"); return; }
+                try {
+                    await updateDoc(doc(db, "usuarios", id), { nombre, email, agrupacion, estado, nucleo });
+                    window._showToast("Usuario actualizado correctamente.", "success");
+                    cerrarModal("modal-editar");
+                    renderizarVista();
+                } catch (err) { window._showToast("Error: " + err.message, "error"); }
             }
 
             function renderizarVista() {
@@ -99,18 +263,51 @@
                     });
                     vc.appendChild(grid);
                 } else {
+                    const topControls = document.createElement("div"); topControls.className = "top-controls";
                     const back = document.createElement("button"); back.className = "back-link"; back.innerHTML = "&larr; Volver";
-                    back.addEventListener("click", () => { vistaActual = "main"; renderizarVista(); }); vc.appendChild(back);
-                    const titulo = document.createElement("h3"); titulo.className = "titulo-pagina"; titulo.textContent = vistaActual; vc.appendChild(titulo);
+                    back.addEventListener("click", () => { vistaActual = "main"; renderizarVista(); });
+                    const titulo = document.createElement("h3"); titulo.className = "titulo-pagina"; titulo.textContent = vistaActual.replace("_", " ").toUpperCase();
+                    topControls.appendChild(back);
+                    topControls.appendChild(titulo);
+
+                    // Botón para crear nuevo registro (solo si tiene permiso)
+                    if (window.Auth.canEdit(vistaActual)) {
+                        const btnAdd = document.createElement("button"); btnAdd.className = "btn btn-submit";
+                        btnAdd.textContent = "+ Nuevo Registro";
+                        btnAdd.addEventListener("click", () => {
+                            document.getElementById("persona-rango").value = vistaActual;
+                            llenarEstados("persona-estado");
+                            llenarNucleos("persona-nucleo", []); // vacío hasta que seleccione estado
+                            document.getElementById("modal-persona").style.display = "flex";
+                        });
+                        topControls.appendChild(btnAdd);
+                    }
+                    vc.appendChild(topControls);
+
                     const gridM = document.createElement("div"); gridM.className = "miembros-grid";
-                    // Spinner de carga
                     const spinner = document.createElement("div"); spinner.className = "spinner"; vc.appendChild(spinner);
+
                     cargarMiembros(vistaActual).then(miembros => {
                         spinner.remove();
                         miembros.forEach(p => {
                             const card = document.createElement("div"); card.className = "persona-card";
-                            card.innerHTML = `<div class="avatar">${p.nombre?.charAt(0)||"?"}</div><strong>${p.nombre||"Sin nombre"}</strong><p class="email-miembro">${p.email||""}</p><p class="agrupacion-miembro">${p.agrupacion||"Sin agrupación"}</p>`;
+                            card.innerHTML = `
+                                <div class="avatar">${p.nombre?.charAt(0)||"?"}</div>
+                                <strong>${p.nombre||"Sin nombre"}</strong>
+                                <p class="email-miembro" style="font-size:0.85rem; color:var(--color-texto-claro);">${p.email||""}</p>
+                                <p class="agrupacion-miembro" style="font-size:0.85rem; font-weight:600; margin-top:0.5rem;">🎵 ${p.agrupacion||"Sin agrupación"}</p>
+                                <hr style="margin:10px 0; border:0; border-top:1px solid #e0e4f0; width:100%;">
+                                <p style="font-size:0.8rem; color:var(--color-primario);">📍 ${p.nucleo || 'Núcleo no asignado'}</p>
+                                <p style="font-size:0.75rem; color:var(--color-texto-claro);">${p.estado || 'Estado no definido'}</p>
+                            `;
+
                             if (window.Auth.canEdit(vistaActual)) {
+                                // Botón editar
+                                const btnEdit = document.createElement("button"); btnEdit.className = "btn-editar"; btnEdit.innerHTML = "✎";
+                                btnEdit.addEventListener("click", (e) => { e.stopPropagation(); abrirEdicion(p); });
+                                card.appendChild(btnEdit);
+
+                                // Botón eliminar
                                 const btnDel = document.createElement("button"); btnDel.className = "btn-admin-accion"; btnDel.innerHTML = "✖";
                                 btnDel.addEventListener("click", (e) => { e.stopPropagation(); eliminarMiembro(p.id, vistaActual); });
                                 card.appendChild(btnDel);
@@ -122,6 +319,15 @@
                 }
             }
 
+            // ========== EVENTOS ==========
+
+            // Al cambiar de estado en el modal de creación, cargar los núcleos correspondientes
+            document.getElementById("persona-estado").addEventListener("change", async (e) => {
+                const nucleos = await cargarNucleos(e.target.value);
+                llenarNucleos("persona-nucleo", nucleos);
+            });
+
+            // Crear nuevo usuario
             document.getElementById("btn-guardar-persona").addEventListener("click", async () => {
                 if (!window.Auth.checkPermission("manage_users")) { window._showToast("No tienes permiso.", "error"); return; }
                 const email = document.getElementById("persona-email").value.trim();
@@ -136,14 +342,24 @@
                     const metodos = await fetchSignInMethodsForEmail(auth, email);
                     if (metodos.length > 0) { window._showToast("El correo ya existe.", "error"); return; }
                     const res = await Auth.registerUser(email, nombre, rango, agrup, estado, nucleo);
-                    if (res.success) { window._showToast(`Usuario creado. Contraseña: ${res.clave}`, "success"); cerrarModal("modal-persona"); renderizarVista(); }
-                    else window._showToast("Error: " + res.error, "error");
+                    if (res.success) {
+                        window._showToast(`Usuario creado. Contraseña: ${res.clave}`, "success");
+                        cerrarModal("modal-persona");
+                        renderizarVista();
+                    } else { window._showToast("Error: " + res.error, "error"); }
                 } catch (err) { window._showToast("Error: " + err.message, "error"); }
             });
 
+            // Guardar edición
+            document.getElementById("btn-guardar-edicion").addEventListener("click", guardarEdicion);
+
+            // Cerrar modales
             document.getElementById("btn-cerrar-modal-persona").addEventListener("click", () => cerrarModal("modal-persona"));
             document.getElementById("persona-close-btn").addEventListener("click", () => cerrarModal("modal-persona"));
+            document.getElementById("btn-cerrar-modal-editar").addEventListener("click", () => cerrarModal("modal-editar"));
+            document.getElementById("editar-close-btn").addEventListener("click", () => cerrarModal("modal-editar"));
 
+            // Iniciar UI
             window.addEventListener("auth-ready", () => { UI.render(); renderizarVista(); });
             if (window.Auth?.getSession()) { UI.render(); renderizarVista(); }
         }
