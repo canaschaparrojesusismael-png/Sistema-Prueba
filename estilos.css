@@ -34,13 +34,34 @@
 }
 
 /* ================================================================
-   RESET Y BASE
+   MODO OSCURO
    ================================================================ */
-*, *::before, *::after {
-  margin: 0; padding: 0; box-sizing: border-box;
+body.dark-mode {
+  --color-fondo: #1a1a2e;
+  --color-blanco: #16213e;
+  --color-texto: #e0e0e0;
+  --color-texto-claro: #a0a0b0;
+  --color-secundario: #0f3460;
+  --color-sombra: rgba(255, 255, 255, 0.05);
+  --color-sombra-fuerte: rgba(255, 255, 255, 0.1);
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
-html { font-size: 100%; scroll-behavior: smooth; }
+/* ================================================================
+   RESET Y BASE
+   ================================================================ */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 100%;
+  scroll-behavior: smooth;
+}
 
 body {
   font-family: var(--font-family);
@@ -51,12 +72,47 @@ body {
   flex-direction: column;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  padding-top: 40px;               /* espacio para la status bar fija */
 }
 
-img { display: block; max-width: 100%; height: auto; }
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
 
 /* ================================================================
-   HEADER – BARRA SUPERIOR CON EFECTO VIDRIO
+   STATUS BAR (siempre visible)
+   ================================================================ */
+.status-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 36px;
+  background: var(--color-primario-oscuro);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 1.5rem;
+  gap: 1.5rem;
+  font-size: 0.8rem;
+  z-index: 200;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+.status-item svg {
+  flex-shrink: 0;
+}
+
+/* ================================================================
+   HEADER – BARRA SUPERIOR (pegado debajo de la status bar)
    ================================================================ */
 .barra-superior {
   background: linear-gradient(135deg, var(--color-primario-oscuro), var(--color-primario-claro));
@@ -67,12 +123,16 @@ img { display: block; max-width: 100%; height: auto; }
   flex-wrap: wrap;
   gap: 1rem;
   position: sticky;
-  top: 0;
+  top: 36px;                       /* justo debajo de la status bar */
   z-index: 100;
-  box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
 }
 
-#Gobierno { max-height: 45px; width: auto; flex-shrink: 0; }
+#Gobierno {
+  max-height: 45px;
+  width: auto;
+  flex-shrink: 0;
+}
 
 .user-nav {
   display: flex;
@@ -83,14 +143,18 @@ img { display: block; max-width: 100%; height: auto; }
 }
 
 /* ================================================================
-   CONTENEDOR MAESTRO
+   CONTENEDOR MAESTRO (ALINEACIÓN IZQUIERDA)
    ================================================================ */
-.contenido-web { width: 100%; flex-grow: 1; padding: 1.5rem 0; }
+.contenido-web {
+  width: 100%;
+  flex-grow: 1;
+  padding: 1.5rem 0;
+}
 
 .container {
   width: 100%;
   max-width: 1300px;
-  margin: 0 auto;
+  margin: 0;
   padding: 0 1.5rem;
   text-align: left;
 }
@@ -100,15 +164,18 @@ img { display: block; max-width: 100%; height: auto; }
   display: flex;
   justify-content: flex-start;
 }
-.bloque-logo-sistema img { max-height: 80px; width: auto; }
+.bloque-logo-sistema img {
+  max-height: 80px;
+  width: auto;
+}
 
 /* ================================================================
-   ÁREA DE LOGIN
+   ÁREA DE LOGIN (ALINEADA A LA IZQUIERDA)
    ================================================================ */
 #login-area {
   margin-bottom: 2rem;
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   align-items: center;
   gap: 1rem;
   flex-wrap: wrap;
@@ -117,7 +184,7 @@ img { display: block; max-width: 100%; height: auto; }
 }
 
 /* ================================================================
-   BOTONES – SISTEMA UNIFICADO DE TAMAÑOS
+   BOTONES – SISTEMA UNIFICADO (CON :focus PARA ACCESIBILIDAD)
    ================================================================ */
 .btn-login,
 .btn-nav.btn-cerrar,
@@ -140,15 +207,17 @@ img { display: block; max-width: 100%; height: auto; }
 }
 
 .btn-login {
-  background: linear-gradient(135deg, rgba(242,5,5,0.9), rgba(242,5,5,0.75));
+  background: linear-gradient(135deg, rgba(242, 5, 5, 0.9), rgba(242, 5, 5, 0.75));
   color: var(--color-blanco);
-  border: 1px solid rgba(255,255,255,0.3);
-  box-shadow: 0 4px 12px rgba(242,5,5,0.3);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 12px rgba(242, 5, 5, 0.3);
 }
-.btn-login:hover {
+.btn-login:hover,
+.btn-login:focus {
   transform: scale(1.05);
-  box-shadow: 0 8px 20px rgba(242,5,5,0.45);
+  box-shadow: 0 8px 20px rgba(242, 5, 5, 0.45);
   filter: brightness(1.05);
+  outline: none;
 }
 
 .btn-nav.btn-cerrar {
@@ -156,9 +225,11 @@ img { display: block; max-width: 100%; height: auto; }
   color: white;
   border: none;
 }
-.btn-nav.btn-cerrar:hover {
+.btn-nav.btn-cerrar:hover,
+.btn-nav.btn-cerrar:focus {
   background: #d40404;
   transform: scale(1.05);
+  outline: none;
 }
 
 .btn-nav.btn-panel {
@@ -167,9 +238,11 @@ img { display: block; max-width: 100%; height: auto; }
   border: 2px solid var(--color-primario);
   font-weight: 700;
 }
-.btn-nav.btn-panel:hover {
+.btn-nav.btn-panel:hover,
+.btn-nav.btn-panel:focus {
   background: var(--color-primario);
   color: var(--color-blanco);
+  outline: none;
 }
 
 /* ================================================================
@@ -193,7 +266,11 @@ img { display: block; max-width: 100%; height: auto; }
   cursor: pointer;
   transition: var(--transition-fast);
 }
-.btn-nav.btn-user:hover { background: var(--color-primario); }
+.btn-nav.btn-user:hover,
+.btn-nav.btn-user:focus {
+  background: var(--color-primario);
+  outline: none;
+}
 
 .user-submenu {
   position: absolute;
@@ -209,7 +286,44 @@ img { display: block; max-width: 100%; height: auto; }
   font-size: 0.85rem;
   display: none;
 }
-.user-submenu p { margin-bottom: 0.4rem; line-height: 1.3; }
+.user-submenu p {
+  margin-bottom: 0.4rem;
+  line-height: 1.3;
+}
+
+/* ================================================================
+   TOAST (NOTIFICACIONES FLOTANTES)
+   ================================================================ */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--color-primario);
+  color: white;
+  padding: 0.8rem 1.5rem;
+  border-radius: 25px;
+  box-shadow: var(--shadow-modal);
+  z-index: 9999;
+  font-weight: 600;
+  font-size: 0.9rem;
+  animation: slideIn 0.3s ease;
+}
+.toast-error {
+  background: var(--color-acento);
+}
+.toast-success {
+  background: var(--color-exito);
+}
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
 
 /* ================================================================
    CARRUSEL
@@ -250,7 +364,7 @@ img { display: block; max-width: 100%; height: auto; }
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(0,0,0,0.4);
+  background: rgba(0, 0, 0, 0.4);
   color: white;
   border: none;
   width: 40px;
@@ -264,20 +378,30 @@ img { display: block; max-width: 100%; height: auto; }
   z-index: 5;
   transition: background 0.3s;
 }
-.carousel-arrow:hover { background: rgba(0,0,0,0.7); }
-.carousel-arrow-left { left: 10px; }
-.carousel-arrow-right { right: 10px; }
+.carousel-arrow:hover,
+.carousel-arrow:focus {
+  background: rgba(0, 0, 0, 0.7);
+  outline: none;
+}
+.carousel-arrow-left {
+  left: 10px;
+}
+.carousel-arrow-right {
+  right: 10px;
+}
 
 .carrusel-texto {
-  background-color: rgba(255,255,255,0.95);
+  background-color: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(4px);
-  border: 1px solid rgba(0,0,0,0.05);
+  border: 1px solid rgba(0, 0, 0, 0.05);
   border-radius: var(--border-radius);
   padding: 2rem 1.8rem;
   box-shadow: var(--shadow-card);
   transition: var(--transition-normal);
 }
-.carrusel-texto:hover { box-shadow: var(--shadow-hover); }
+.carrusel-texto:hover {
+  box-shadow: var(--shadow-hover);
+}
 .carrusel-texto h2 {
   color: var(--color-primario);
   font-size: 1.5rem;
@@ -310,12 +434,14 @@ img { display: block; max-width: 100%; height: auto; }
   justify-content: center;
   cursor: pointer;
   z-index: 10;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   transition: transform 0.3s;
 }
-.carousel-edit-btn:hover {
+.carousel-edit-btn:hover,
+.carousel-edit-btn:focus {
   transform: rotate(90deg);
   background: var(--color-primario-oscuro);
+  outline: none;
 }
 
 /* ================================================================
@@ -338,7 +464,9 @@ img { display: block; max-width: 100%; height: auto; }
   box-shadow: var(--shadow-card);
   transition: transform 0.3s;
 }
-.citas-grid blockquote:hover { transform: translateY(-3px); }
+.citas-grid blockquote:hover {
+  transform: translateY(-3px);
+}
 
 /* ================================================================
    PIE DE PÁGINA
@@ -354,27 +482,33 @@ img { display: block; max-width: 100%; height: auto; }
 }
 
 /* ================================================================
-   MODAL PREMIUM CON ICONO DE CIERRE SVG
+   MODALES UNIFICADOS (overlay + contenido + botón de cierre)
    ================================================================ */
-.modal-overlay {
+.modal-overlay,
+.config-overlay {
   position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
   display: none;
   align-items: center;
   justify-content: center;
   z-index: 2000;
   animation: fadeIn 0.3s ease;
 }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
-.modal-content {
-  background: white;
-  padding: 2rem;
+.modal-content,
+.config-panel {
+  background: var(--color-blanco);
   border-radius: 12px;
+  padding: 2rem;
   width: 90%;
   max-width: 600px;
   max-height: 80vh;
@@ -406,11 +540,29 @@ img { display: block; max-width: 100%; height: auto; }
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(242,5,5,0.3);
+  box-shadow: 0 2px 8px rgba(242, 5, 5, 0.3);
 }
-.modal-close-btn:hover {
+.modal-close-btn:hover,
+.modal-close-btn:focus {
   background: #d40404;
   transform: rotate(90deg) scale(1.1);
+  outline: none;
+}
+
+/* Panel de configuración (contenido interno) */
+.config-panel h2 {
+  color: var(--color-primario);
+  margin-bottom: 1rem;
+}
+.config-section {
+  margin-bottom: 1.5rem;
+}
+.config-section h3 {
+  font-size: 1rem;
+  color: var(--color-primario);
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid #e0e4f0;
+  padding-bottom: 0.3rem;
 }
 
 /* ================================================================
@@ -431,7 +583,10 @@ img { display: block; max-width: 100%; height: auto; }
   background: #fff0f0;
   transform: scale(1.02);
 }
-.drop-zone p { font-weight: 600; color: var(--color-primario); }
+.drop-zone p {
+  font-weight: 600;
+  color: var(--color-primario);
+}
 
 /* ================================================================
    PANEL DE ADMINISTRACIÓN EN VIVO (TABLA)
@@ -444,17 +599,25 @@ img { display: block; max-width: 100%; height: auto; }
   margin: 1.5rem 0;
   box-shadow: var(--shadow-card);
 }
-.admin-live-table { width: 100%; border-collapse: collapse; }
-.admin-live-table th, .admin-live-table td {
+.admin-live-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.admin-live-table th,
+.admin-live-table td {
   padding: 0.75rem;
   border-bottom: 1px solid #e0e4f0;
   text-align: left;
 }
-.admin-live-table th { color: var(--color-primario); font-weight: 700; }
+.admin-live-table th {
+  color: var(--color-primario);
+  font-weight: 700;
+}
 .online-dot {
   display: inline-block;
-  width: 10px; height: 10px;
-  background: #4CAF50;
+  width: 10px;
+  height: 10px;
+  background: #4caf50;
   border-radius: 50%;
   margin-right: 6px;
 }
@@ -462,29 +625,39 @@ img { display: block; max-width: 100%; height: auto; }
 /* ================================================================
    RECORTE DE IMAGEN (CROP)
    ================================================================ */
-.crop-modal { z-index: 2500; }
-.crop-content { max-width: 700px; }
+.crop-modal {
+  z-index: 2500;
+}
+.crop-content {
+  max-width: 700px;
+}
 .crop-container {
   position: relative;
   display: inline-block;
   margin: 1rem 0;
   user-select: none;
 }
-#crop-source { display: block; max-width: 100%; max-height: 50vh; }
+#crop-source {
+  display: block;
+  max-width: 100%;
+  max-height: 50vh;
+}
 .crop-area {
   position: absolute;
   border: 2px dashed white;
-  box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
   cursor: move;
   box-sizing: border-box;
 }
 .resize-handle {
   position: absolute;
-  width: 12px; height: 12px;
+  width: 12px;
+  height: 12px;
   background: white;
   border: 2px solid var(--color-primario);
   border-radius: 50%;
-  bottom: -6px; right: -6px;
+  bottom: -6px;
+  right: -6px;
   cursor: nwse-resize;
 }
 .crop-buttons {
@@ -514,9 +687,15 @@ img { display: block; max-width: 100%; height: auto; }
    RESPONSIVE – ADAPTACIÓN A MÓVILES Y TABLETAS
    ================================================================ */
 @media (min-width: 768px) {
-  .barra-superior { padding: 1rem 2rem; }
-  #Gobierno { max-height: 55px; }
-  .bloque-logo-sistema img { max-height: 100px; }
+  .barra-superior {
+    padding: 1rem 2rem;
+  }
+  #Gobierno {
+    max-height: 55px;
+  }
+  .bloque-logo-sistema img {
+    max-height: 100px;
+  }
   .modulo-carrusel {
     flex-direction: row;
     gap: 2.5rem;
@@ -528,23 +707,46 @@ img { display: block; max-width: 100%; height: auto; }
     aspect-ratio: auto;
     flex-shrink: 0;
   }
-  .carrusel-texto { flex-grow: 1; }
-  .carrusel-texto h2 { font-size: 1.9rem; }
-  .carrusel-texto p { font-size: 1rem; }
+  .carrusel-texto {
+    flex-grow: 1;
+  }
+  .carrusel-texto h2 {
+    font-size: 1.9rem;
+  }
+  .carrusel-texto p {
+    font-size: 1rem;
+  }
 }
 
 @media (min-width: 1024px) {
-  .carrusel-texto h2 { font-size: 2.2rem; }
-  .carrusel-texto p { font-size: 1.1rem; }
+  .carrusel-texto h2 {
+    font-size: 2.2rem;
+  }
+  .carrusel-texto p {
+    font-size: 1.1rem;
+  }
 }
 
 @media (max-width: 600px) {
-  .barra-superior { justify-content: center; text-align: center; }
-  .user-nav { width: 100%; justify-content: center; }
-  #login-area { justify-content: center; }
-  .btn-login, .btn-nav.btn-cerrar, .btn-nav.btn-panel {
+  .barra-superior {
+    justify-content: center;
+    text-align: center;
+  }
+  .user-nav {
+    width: 100%;
+    justify-content: center;
+  }
+  .btn-login,
+  .btn-nav.btn-cerrar,
+  .btn-nav.btn-panel {
     font-size: 0.8rem;
     padding: 0.45rem 1.2rem;
   }
-  .container { padding: 0 1rem; }
+  .container {
+    padding: 0 1rem;
+  }
+  .status-bar {
+    font-size: 0.7rem;
+    gap: 0.8rem;
+  }
 }
