@@ -149,13 +149,11 @@ window.Auth = {
       if (!snap.exists()) { await signOut(auth); return { success: false, error: "Usuario no registrado." }; }
       const data = snap.data();
 
-      // Verificar si el usuario está inactivo
-      if (data.estado === "inactivo") {
+      // Verificar si la cuenta está desactivada (cuentaActiva === false)
+      if (data.cuentaActiva === false) {
         await signOut(auth);
         return { success: false, error: "Esta cuenta ha sido desactivada. Contacta al administrador." };
       }
-
-      // NO redirigimos por cambio de contraseña
 
       const sessionId = generarUUID();
       sessionStorage.setItem("currentSessionId", sessionId);
@@ -185,7 +183,7 @@ window.Auth = {
   async registerUser(username, nombre, rango, agrupacion, estado, nucleo, edad = 0) {
     const { secApp, secAuth } = getSecondaryAuthInstance();
     try {
-      const clave = generarClave();
+      const clave = generarClaveSegura(); // 🔐 Contraseña segura
       let email = username.trim();
       if (!email.includes("@")) {
         window._showToast("El email debe ser válido", "error");
@@ -195,8 +193,9 @@ window.Auth = {
       const uid = userCred.user.uid;
       await setDoc(doc(db, "usuarios", uid), {
         username, nombre, rango, agrupacion, estado, nucleo, email,
-        isOnline: false, currentSessionId: "", requiresPasswordChange: false,
-        estado: "activo", // Se añade el campo estado con valor "activo"
+        isOnline: false, currentSessionId: "",
+        requiresPasswordChange: true, // 🔐 Obligar cambio en primer login
+        cuentaActiva: true,           // Cuenta activa por defecto
         edad: edad || 0, fechaCreacion: new Date().toISOString()
       });
       await signOut(secAuth); await deleteApp(secApp);
