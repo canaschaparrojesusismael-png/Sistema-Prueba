@@ -113,11 +113,15 @@
         <div class="grid-partituras" id="grid-partituras"></div>
     </main>
 
-    <script src="auth.js"></script>
-    <script src="ui-manager.js"></script>
+    <script type="module" src="auth.js?v=2.1"></script>
+    <script type="module" src="ui-manager.js?v=2.1"></script>
     <script>
-        (function() {
-            // Blindaje de sesión
+        function initRepertorio() {
+            if (!window.Auth || !window.UI) {
+                setTimeout(initRepertorio, 100);
+                return;
+            }
+
             if (!Auth.getSession()) {
                 window.location.href = "index.html";
                 return;
@@ -127,13 +131,12 @@
             const agrupacionNombre = params.get("agrup") || "Sin nombre";
             document.getElementById("nombre-agrupacion").textContent = agrupacionNombre;
 
-            // --- VARIABLE PARA EL ARCHIVO (NO SE PUEDE GUARDAR EN dataset) ---
             let fileToUpload = null;
 
-            // --- IndexedDB ---
+            // IndexedDB – variable renombrada para no colisionar con Firestore
             const DB_NAME = "SistemaOrquestas_Rep";
             const DB_VERSION = 2;
-            let db;
+            let localDB;
 
             const request = indexedDB.open(DB_NAME, DB_VERSION);
             request.onupgradeneeded = (event) => {
@@ -146,7 +149,7 @@
                 }
             };
             request.onsuccess = (event) => {
-                db = event.target.result;
+                localDB = event.target.result;
                 cargarRepertorio();
             };
             request.onerror = () => {
@@ -159,8 +162,8 @@
             let instrumentoSeleccionado = "";
 
             function cargarRepertorio() {
-                if (!db) return;
-                const tx = db.transaction("repertorio", "readonly");
+                if (!localDB) return;
+                const tx = localDB.transaction("repertorio", "readonly");
                 const store = tx.objectStore("repertorio");
                 const getReq = store.get(agrupacionNombre);
                 getReq.onsuccess = () => {
@@ -184,15 +187,15 @@
             }
 
             function guardarRepertorio() {
-                if (!db) return;
-                const tx = db.transaction("repertorio", "readwrite");
+                if (!localDB) return;
+                const tx = localDB.transaction("repertorio", "readwrite");
                 const store = tx.objectStore("repertorio");
                 store.put({ agrupacion: agrupacionNombre, data: repertorio });
             }
 
             function guardarArchivo(id, blob, callback) {
-                if (!db) { callback(false); return; }
-                const tx = db.transaction("files", "readwrite");
+                if (!localDB) { callback(false); return; }
+                const tx = localDB.transaction("files", "readwrite");
                 const store = tx.objectStore("files");
                 const req = store.put({ id, data: blob });
                 req.onsuccess = () => callback(true);
@@ -200,8 +203,8 @@
             }
 
             function obtenerArchivo(id, callback) {
-                if (!db) { callback(null); return; }
-                const tx = db.transaction("files", "readonly");
+                if (!localDB) { callback(null); return; }
+                const tx = localDB.transaction("files", "readonly");
                 const store = tx.objectStore("files");
                 const req = store.get(id);
                 req.onsuccess = () => callback(req.result ? req.result.data : null);
@@ -209,8 +212,8 @@
             }
 
             function eliminarArchivo(id) {
-                if (!db) return;
-                const tx = db.transaction("files", "readwrite");
+                if (!localDB) return;
+                const tx = localDB.transaction("files", "readwrite");
                 const store = tx.objectStore("files");
                 store.delete(id);
             }
@@ -297,19 +300,20 @@
             function aplicarClaseAdmin() {
                 const session = Auth.getSession();
                 const main = document.getElementById("repertorio-container");
-                if (session && session.role === "Administrativo") main.classList.add("is-admin");
-                else main.classList.remove("is-admin");
+                if (session && (session.role === "owner" || session.role === "admin")) {
+                    main.classList.add("is-admin");
+                } else {
+                    main.classList.remove("is-admin");
+                }
             }
 
-            // --- Eventos de subida de archivos ---
             document.getElementById("btn-subir-pdf").addEventListener("click", () => {
                 document.getElementById("modal-subir-partitura").style.display = "flex";
                 document.getElementById("input-pdf").value = "";
                 document.getElementById("input-link-drive").value = "";
-                fileToUpload = null; // Limpiar archivo anterior
+                fileToUpload = null;
             });
 
-            // Guardamos el objeto File en una variable, NO en dataset
             document.getElementById("input-pdf").addEventListener("change", function(e) {
                 const file = e.target.files[0];
                 if (file) fileToUpload = file;
@@ -356,7 +360,6 @@
                 fileToUpload = null;
             });
 
-            // --- Añadir instrumento ---
             document.getElementById("btn-guardar-instrumento").addEventListener("click", () => {
                 const nombre = document.getElementById("input-nombre-instrumento").value.trim();
                 if (!nombre) return alert("Nombre obligatorio.");
@@ -372,12 +375,13 @@
                 document.getElementById("modal-instrumento").style.display = "none";
             });
 
-            // Inicializar UI
             window.addEventListener("DOMContentLoaded", () => {
                 UI.render();
-                if (db) cargarRepertorio(); // Por si la BD ya estaba lista antes del DOM
+                if (localDB) cargarRepertorio();
             });
-        })();
+        }
+
+        initRepertorio();
     </script>
 </body>
 </html>
