@@ -282,9 +282,18 @@
                     const gridM = document.createElement("div"); gridM.className = "miembros-grid";
                     const spinner = document.createElement("div"); spinner.className = "spinner"; vc.appendChild(spinner);
 
-                    let q = query(collection(db,"usuarios"), where("rango","==",currentContext.rol), where("estado","!=","inactivo"));
-                    if(nivelDestino <= 50 && currentContext.estado) q = query(q, where("estado","==",currentContext.estado));
-                    if(nivelDestino <= 40 && currentContext.nucleo) q = query(q, where("nucleo","==",currentContext.nucleo));
+                    // 🔧 CORRECCIÓN 1.1: filtro cuentaActiva + estado geográfico
+                    let q = query(
+                        collection(db, "usuarios"),
+                        where("rango", "==", currentContext.rol),
+                        where("cuentaActiva", "==", true)
+                    );
+                    if (nivelDestino <= 50 && currentContext.estado) {
+                        q = query(q, where("estado", "==", currentContext.estado));
+                    }
+                    if (nivelDestino <= 40 && currentContext.nucleo) {
+                        q = query(q, where("nucleo", "==", currentContext.nucleo));
+                    }
 
                     try {
                         const snap = await getDocs(q);
@@ -325,7 +334,7 @@
                                     });
                                     card.appendChild(btnEdit);
 
-                                    // Botón DESACTIVAR (eliminación lógica)
+                                    // Botón DESACTIVAR (usa cuentaActiva)
                                     const btnDel = document.createElement("button"); btnDel.className = "btn-admin-accion"; btnDel.innerHTML = "✖";
                                     btnDel.title = "Desactivar usuario";
                                     btnDel.addEventListener("click", async (e) => {
@@ -333,7 +342,7 @@
                                         if(confirm(`¿Desactivar al usuario ${p.nombre}? No podrá iniciar sesión.`)) {
                                             try {
                                                 await updateDoc(doc(db,"usuarios",p.id), {
-                                                    estado: "inactivo",
+                                                    cuentaActiva: false,
                                                     fechaEliminacion: new Date().toISOString()
                                                 });
                                                 window._showToast("Usuario desactivado correctamente","success");
