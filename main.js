@@ -215,12 +215,11 @@ import { auth, db } from "./firebase-init.js";
     window.showCarouselModal = () => { workingData = [...carouselData]; renderItems(); modal.style.display = "flex"; };
   }
 
-  window.addEventListener("DOMContentLoaded", () => {
-    updateCarouselDisplay();
-    startAutoRotation();
-    document.getElementById("prev-slide")?.addEventListener("click", () => { prevSlide(); stopAutoRotation(); startAutoRotation(); });
-    document.getElementById("next-slide")?.addEventListener("click", () => { nextSlide(); stopAutoRotation(); startAutoRotation(); });
-    if (window.Auth.hasPermission("edit_carousel")) initCarouselModal();
-    window.UI.render();
-  });
+  // 🚀 Inicialización directa (sin DOMContentLoaded)
+  updateCarouselDisplay();
+  startAutoRotation();
+  document.getElementById("prev-slide")?.addEventListener("click", () => { prevSlide(); stopAutoRotation(); startAutoRotation(); });
+  document.getElementById("next-slide")?.addEventListener("click", () => { nextSlide(); stopAutoRotation(); startAutoRotation(); });
+  if (window.Auth?.checkPermission("edit_carousel")) initCarouselModal();
+  window.UI?.render();
 })();
