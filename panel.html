@@ -10,8 +10,14 @@
             width: 220px;
             height: 150px;
             object-fit: cover;
-            border-radius: 8px;
+            border-radius: var(--border-radius-sm);
             border: 2px solid transparent;
+            box-shadow: var(--shadow-card);
+            transition: var(--transition-normal);
+        }
+        .flyer-card:hover {
+            border-color: var(--color-primario);
+            box-shadow: var(--shadow-hover);
         }
         .carrusel-flyers {
             display: flex;
@@ -21,7 +27,7 @@
             padding: 20px;
             margin: 20px 0;
             border-radius: var(--border-radius);
-            box-shadow: 0 2px 8px var(--color-sombra-suave);
+            box-shadow: var(--shadow-card);
             gap: 10px;
             position: relative;
         }
@@ -40,8 +46,9 @@
             font-size: 1.5rem;
             cursor: pointer;
             border-radius: 5px;
+            transition: var(--transition-fast);
         }
-        .flecha-btn:hover { background: #2a2370; }
+        .flecha-btn:hover { background: var(--color-primario-oscuro); }
         .dashboard-grid {
             display: grid;
             grid-template-columns: 2fr 1fr;
@@ -53,7 +60,7 @@
             border: 1px solid #e0e4f0;
             border-radius: var(--border-radius);
             padding: 20px;
-            box-shadow: 0 2px 8px var(--color-sombra-suave);
+            box-shadow: var(--shadow-card);
             position: relative;
             margin-top: 50px;
             overflow: visible;
@@ -91,7 +98,7 @@
             border-radius: 4px;
             min-height: 70px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: var(--transition-fast);
             font-size: 0.9rem;
             position: relative;
         }
@@ -117,8 +124,8 @@
             color: var(--color-texto);
             cursor: pointer;
             text-align: left;
-            box-shadow: 0 2px 5px var(--color-sombra-suave);
-            transition: all 0.3s ease;
+            box-shadow: var(--shadow-card);
+            transition: var(--transition-normal);
             text-decoration: none;
             display: block;
         }
@@ -177,9 +184,9 @@
         <div class="footer-contenido"><p>© 2026 Fundación Musical Simón Bolívar</p></div>
     </footer>
 
-    <!-- Modal flyers -->
     <div class="modal-overlay" id="flyer-modal">
         <div class="modal-content">
+            <button class="modal-close-btn" id="flyer-close-btn">&times;</button>
             <h2>Gestión de Flyers</h2>
             <div id="flyer-items"></div>
             <button id="add-flyer-btn" class="btn btn-submit">Agregar Flyer</button>
@@ -188,15 +195,13 @@
         </div>
     </div>
 
-    <!-- Modal recorte -->
     <div class="modal-overlay" id="crop-modal" style="z-index:2500;">
         <div class="modal-content" style="max-width:700px;">
+            <button class="modal-close-btn" id="crop-close-btn">&times;</button>
             <h2>Recortar imagen</h2>
             <div class="crop-container">
                 <img id="crop-source" />
-                <div id="crop-area" class="crop-area">
-                    <div class="resize-handle"></div>
-                </div>
+                <div id="crop-area" class="crop-area"><div class="resize-handle"></div></div>
             </div>
             <canvas id="crop-canvas" style="display:none;"></canvas>
             <div class="crop-buttons">
@@ -206,9 +211,9 @@
         </div>
     </div>
 
-    <!-- Modal eventos -->
     <div class="modal-overlay" id="event-modal">
         <div class="modal-content">
+            <button class="modal-close-btn" id="event-close-btn">&times;</button>
             <h2 id="event-modal-title">Detalles del Evento</h2>
             <input type="hidden" id="event-id" />
             
@@ -240,22 +245,19 @@
 
             <div id="admin-controls">
                 <button id="save-event-btn" class="btn btn-submit">Guardar</button>
-                <button id="delete-event-btn" class="btn btn-cerrar" style="background:#f20505; color:white;">Eliminar</button>
+                <button id="delete-event-btn" class="btn btn-cerrar" style="background:var(--color-acento); color:white;">Eliminar</button>
             </div>
             <button id="close-event-modal" class="btn btn-cerrar">Cerrar</button>
         </div>
     </div>
 
-    <script type="module" src="auth.js?v=2.1"></script>
-    <script type="module" src="ui-manager.js?v=2.1"></script>
-    <script>
-        function initPanel() {
-            if (!window.Auth || !window.UI) {
-                setTimeout(initPanel, 100);
-                return;
-            }
+    <script type="module" src="auth.js?v=2.2"></script>
+    <script type="module" src="ui-manager.js?v=2.2"></script>
+    <script type="module">
+        import { db } from "./firebase-init.js";
 
-            if (!Auth.getSession()) {
+        function initPanel() {
+            if (!window.Auth?.getSession()) {
                 window.location.href = "index.html";
                 return;
             }
@@ -351,6 +353,10 @@
                             modal.style.display = "none";
                             callback(null);
                         };
+                        document.getElementById("crop-close-btn").onclick = () => {
+                            modal.style.display = "none";
+                            callback(null);
+                        };
                         modal.style.display = "flex";
                     };
                 };
@@ -432,9 +438,8 @@
                     modal.style.display = "none";
                 };
 
-                document.getElementById("close-flyer-modal").onclick = () => {
-                    modal.style.display = "none";
-                };
+                document.getElementById("close-flyer-modal").onclick = () => modal.style.display = "none";
+                document.getElementById("flyer-close-btn").onclick = () => modal.style.display = "none";
 
                 modal.style.display = "flex";
             }
@@ -445,12 +450,8 @@
             let currentYear = new Date().getFullYear();
             let eventPhotoBase64 = "";
 
-            function saveEvents() { 
-                localStorage.setItem(EVENTS_STORAGE, JSON.stringify(events)); 
-            }
-            function generarId() { 
-                return Date.now().toString(36) + Math.random().toString(36).substr(2, 5); 
-            }
+            function saveEvents() { localStorage.setItem(EVENTS_STORAGE, JSON.stringify(events)); }
+            function generarId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 5); }
 
             function renderCalendar() {
                 const session = Auth.getSession();
@@ -468,21 +469,16 @@
                 const daysInPrevMonth = new Date(currentYear, currentMonth, 0).getDate();
 
                 let eventosVisibles;
-                if (session.role === "owner" || session.role === "admin") {
+                if (Auth.checkPermission("manage_users")) {
                     eventosVisibles = events;
                 } else {
                     eventosVisibles = events.filter(ev => {
                         const grupos = ev.groups;
-                        const rolNormalizado = session.role === "Estudiante" ? ["Estudiantes", "Estudiante"] :
-                                            session.role === "Profesor" ? ["Profesores", "Profesor"] :
+                        const rolNormalizado = session.role === "estudiante" ? ["Estudiantes", "Estudiante"] :
+                                            session.role === "profesor" ? ["Profesores", "Profesor"] :
                                             [session.role];
                         const grupoNormalizado = session.group ? [session.group] : [];
-                        
-                        return grupos.some(g => 
-                            g === "todos" ||
-                            rolNormalizado.includes(g) ||
-                            grupoNormalizado.includes(g)
-                        );
+                        return grupos.some(g => g === "todos" || rolNormalizado.includes(g) || grupoNormalizado.includes(g));
                     });
                 }
 
@@ -499,11 +495,8 @@
                             icon = `<img src="${ev.photo}" style="width:16px;height:16px;border-radius:50%;vertical-align:middle;" />`;
                         } else {
                             const icons = {
-                                "todos": "👥",
-                                "Profesores": "👩‍🏫",
-                                "Estudiantes": "👦",
-                                "Orquesta Infantil": "🎻",
-                                "Orquesta Juvenil": "🎺"
+                                "todos": "👥", "Profesores": "👩‍🏫", "Estudiantes": "👦",
+                                "Orquesta Infantil": "🎻", "Orquesta Juvenil": "🎺"
                             };
                             icon = icons[ev.groups[0]] || "👥";
                         }
@@ -523,19 +516,15 @@
                 const eventoEl = e.target.closest(".evento");
                 if (eventoEl) {
                     const eventId = eventoEl.dataset.eventid;
-                    const session = Auth.getSession();
-                    const esAdmin = (session.role === "owner" || session.role === "admin");
+                    const esAdmin = Auth.checkPermission("manage_users");
                     abrirModalEvento(eventId, esAdmin);
                 }
             });
 
-            function abrirNuevoEvento() {
-                abrirModalEvento(null, true);
-            }
+            function abrirNuevoEvento() { abrirModalEvento(null, true); }
 
             function abrirModalEvento(eventId, esEdicion) {
-                const session = Auth.getSession();
-                const esAdmin = (session.role === "owner" || session.role === "admin");
+                const esAdmin = Auth.checkPermission("manage_users");
                 const ev = eventId ? events.find(e => String(e.id) === String(eventId)) : null;
 
                 document.getElementById("event-id").value = eventId || "";
@@ -620,6 +609,10 @@
             });
 
             document.getElementById("save-event-btn").addEventListener("click", function() {
+                if (!Auth.checkPermission("manage_users")) {
+                    alert("No tienes permiso para modificar eventos.");
+                    return;
+                }
                 const id = document.getElementById("event-id").value;
                 const nuevoEvento = {
                     date: document.getElementById("event-date").value,
@@ -649,6 +642,10 @@
             });
 
             document.getElementById("delete-event-btn").addEventListener("click", function() {
+                if (!Auth.checkPermission("manage_users")) {
+                    alert("No tienes permiso para eliminar eventos.");
+                    return;
+                }
                 const id = document.getElementById("event-id").value;
                 if (!id) return;
                 if (confirm("¿Estás seguro de eliminar este evento?")) {
@@ -659,24 +656,26 @@
                 }
             });
 
-            document.getElementById("close-event-modal").addEventListener("click", function() {
+            document.getElementById("close-event-modal").addEventListener("click", () => {
+                document.getElementById("event-modal").style.display = "none";
+            });
+            document.getElementById("event-close-btn").addEventListener("click", () => {
                 document.getElementById("event-modal").style.display = "none";
             });
 
-            document.getElementById("prev-month").addEventListener("click", function() {
+            document.getElementById("prev-month").addEventListener("click", () => {
                 if (currentMonth === 0) { currentMonth = 11; currentYear--; }
                 else currentMonth--;
                 renderCalendar();
             });
-            document.getElementById("next-month").addEventListener("click", function() {
+            document.getElementById("next-month").addEventListener("click", () => {
                 if (currentMonth === 11) { currentMonth = 0; currentYear++; }
                 else currentMonth++;
                 renderCalendar();
             });
 
             function mostrarControlesAdmin() {
-                const session = Auth.getSession();
-                if (session && (session.role === "owner" || session.role === "admin")) {
+                if (Auth.checkPermission("edit_carousel")) {
                     document.getElementById("edit-flyers-btn").style.display = "block";
                     document.getElementById("edit-calendar-btn").style.display = "block";
                     document.getElementById("edit-flyers-btn").addEventListener("click", abrirFlyerModal);
@@ -684,15 +683,14 @@
                 }
             }
 
-            window.addEventListener("DOMContentLoaded", () => {
-                UI.render();
-                renderFlyers();
-                renderCalendar();
-                mostrarControlesAdmin();
-            });
+            UI.render();
+            renderFlyers();
+            renderCalendar();
+            mostrarControlesAdmin();
         }
 
-        initPanel();
+        window.addEventListener("auth-ready", initPanel);
+        if (window.Auth?.getSession()) initPanel();
     </script>
 </body>
 </html>
