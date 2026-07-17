@@ -7,12 +7,12 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>Cambiar Contraseña – Sistema de Orquestas</title>
-    <link rel="stylesheet" href="style.css?v=2.0">
+    <link rel="stylesheet" href="style.css?v=2.2">
     <style>
         .cambio-wrapper {
             max-width: 400px; margin: 100px auto; background: white;
-            padding: 2rem; border-radius: 16px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1); text-align: center;
+            padding: 2rem; border-radius: var(--border-radius);
+            box-shadow: var(--shadow-card); text-align: center;
         }
         .cambio-wrapper h2 { color: var(--color-primario); margin-bottom: 1.5rem; }
     </style>
@@ -34,7 +34,7 @@
         </form>
     </main>
 
-    <script type="module" src="auth.js?v=2.0"></script>
+    <script type="module" src="auth.js?v=2.2"></script>
     <script type="module">
         import { auth, db } from "./firebase-init.js";
         import { updatePassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
