@@ -6,22 +6,12 @@
     <title>Piezas – Sistema de Orquestas</title>
     <link rel="stylesheet" href="estilos.css">
     <style>
-        :root {
-            --color-primario: #1a237e;
-            --color-secundario: #4a148c;
-            --color-blanco: #ffffff;
-            --color-fondo: #f0f2f5;
-            --border-radius: 16px;
-            --shadow-soft: 0 10px 20px rgba(0,0,0,0.08);
-        }
-
         .back-link {
             display: inline-block;
             margin: 1.5rem 0;
             color: var(--color-primario);
             font-weight: 600;
             text-decoration: none;
-            font-size: 1rem;
         }
         .back-link:hover { text-decoration: underline; }
 
@@ -31,22 +21,15 @@
             gap: 25px;
             padding: 20px 0;
         }
-
-        @media (max-width: 900px) {
-            .grid-agrupaciones { grid-template-columns: repeat(2, 1fr); }
-        }
-        @media (max-width: 600px) {
-            .grid-agrupaciones { grid-template-columns: 1fr; }
-        }
+        @media (max-width: 900px) { .grid-agrupaciones { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 600px) { .grid-agrupaciones { grid-template-columns: 1fr; } }
 
         .card-agrupacion {
             position: relative;
             border-radius: var(--border-radius);
             transition: transform 0.3s ease;
         }
-        .card-agrupacion:hover {
-            transform: translateY(-5px);
-        }
+        .card-agrupacion:hover { transform: translateY(-5px); }
 
         .btn-agrupacion {
             width: 100%;
@@ -61,38 +44,30 @@
             cursor: pointer;
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             text-align: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            box-shadow: var(--shadow-card);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             gap: 10px;
         }
-        .btn-agrupacion::before {
-            content: "🎵";
-            font-size: 2rem;
-            display: block;
-        }
+        .btn-agrupacion::before { content: "🎵"; font-size: 2rem; display: block; }
         .btn-agrupacion:hover {
             background: var(--color-primario);
             color: white;
             border-color: var(--color-primario);
-            box-shadow: 0 20px 35px rgba(26, 35, 126, 0.2);
+            box-shadow: var(--shadow-hover);
         }
-        .btn-agrupacion:hover::before {
-            content: "🎶";
-        }
+        .btn-agrupacion:hover::before { content: "🎶"; }
 
         .btn-eliminar-agrupacion {
             position: absolute;
-            top: -12px;
-            right: -12px;
-            background: #d32f2f;
+            top: -12px; right: -12px;
+            background: var(--color-acento);
             color: white;
             border: none;
             border-radius: 50%;
-            width: 32px;
-            height: 32px;
+            width: 32px; height: 32px;
             font-weight: bold;
             font-size: 1.2rem;
             cursor: pointer;
@@ -116,25 +91,12 @@
             font-weight: 800;
             color: var(--color-primario);
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: var(--transition-normal);
             font-size: 1.2rem;
             gap: 10px;
             backdrop-filter: blur(4px);
         }
-        .btn-agregar-agrupacion:hover {
-            background: var(--color-primario);
-            color: white;
-            border-style: solid;
-        }
-
-        .modal-input {
-            width: 100%;
-            padding: 0.6rem;
-            margin: 0.5rem 0;
-            border: 1.5px solid #e0e4f0;
-            border-radius: 8px;
-            font-size: 0.95rem;
-        }
+        .btn-agregar-agrupacion:hover { background: var(--color-primario); color: white; border-style: solid; }
     </style>
 </head>
 <body>
@@ -146,12 +108,12 @@
     <main class="contenido-web container">
         <a class="back-link" href="panel.html">&larr; Volver al Panel</a>
         <h2 style="color: var(--color-primario); font-weight: 800;">Agrupaciones</h2>
-
         <div class="grid-agrupaciones" id="grid-agrupaciones"></div>
     </main>
 
     <div class="modal-overlay" id="modal-agrupacion">
         <div class="modal-content">
+            <button class="modal-close-btn" id="agrup-close-btn">&times;</button>
             <h2>Nueva Agrupación</h2>
             <input type="text" id="input-nombre-agrupacion" class="modal-input" placeholder="Nombre de la agrupación" />
             <button id="btn-guardar-agrupacion" class="btn btn-submit">Guardar</button>
@@ -159,16 +121,11 @@
         </div>
     </div>
 
-    <script type="module" src="auth.js?v=2.1"></script>
-    <script type="module" src="ui-manager.js?v=2.1"></script>
-    <script>
+    <script type="module" src="auth.js?v=2.2"></script>
+    <script type="module" src="ui-manager.js?v=2.2"></script>
+    <script type="module">
         function initPiezas() {
-            if (!window.Auth || !window.UI) {
-                setTimeout(initPiezas, 100);
-                return;
-            }
-
-            if (!Auth.getSession()) {
+            if (!window.Auth?.getSession()) {
                 window.location.href = "index.html";
                 return;
             }
@@ -180,9 +137,7 @@
                 { id: "3", nombre: "Módulo de Práctica" }
             ];
 
-            function guardarAgrupaciones() {
-                localStorage.setItem(STORAGE_AGRUPACIONES, JSON.stringify(agrupaciones));
-            }
+            function guardarAgrupaciones() { localStorage.setItem(STORAGE_AGRUPACIONES, JSON.stringify(agrupaciones)); }
 
             function renderizarAgrupaciones() {
                 const grid = document.getElementById("grid-agrupaciones");
@@ -226,7 +181,7 @@
                 grid.appendChild(btnAgregar);
 
                 const session = Auth.getSession();
-                if (session && (session.role === "owner" || session.role === "admin")) {
+                if (Auth.checkPermission("manage_users")) {
                     grid.classList.add("is-admin");
                 } else {
                     grid.classList.remove("is-admin");
@@ -245,14 +200,16 @@
             document.getElementById("btn-cerrar-modal").addEventListener("click", () => {
                 document.getElementById("modal-agrupacion").style.display = "none";
             });
-
-            window.addEventListener("DOMContentLoaded", () => {
-                UI.render();
-                renderizarAgrupaciones();
+            document.getElementById("agrup-close-btn").addEventListener("click", () => {
+                document.getElementById("modal-agrupacion").style.display = "none";
             });
+
+            UI.render();
+            renderizarAgrupaciones();
         }
 
-        initPiezas();
+        window.addEventListener("auth-ready", initPiezas);
+        if (window.Auth?.getSession()) initPiezas();
     </script>
 </body>
 </html>
