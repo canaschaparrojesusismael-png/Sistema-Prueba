@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>Iniciar Sesión - Sistema de Orquestas</title>
-    <link rel="stylesheet" href="style.css?v=2.0">
+    <link rel="stylesheet" href="style.css?v=2.1">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -38,8 +38,13 @@
         </section>
     </main>
 
-    <script type="module" src="auth.js?v=2.0"></script>
+    <script type="module" src="auth.js?v=2.1"></script>
     <script>
+        // Redirigir inmediatamente si ya hay sesión
+        if (sessionStorage.getItem("sistemaOrquestas_session") || localStorage.getItem("sistemaOrquestas_session")) {
+            window.location.href = "index.html";
+        }
+
         document.getElementById("form-login").addEventListener("submit", async (e) => {
             e.preventDefault();
             const username = document.getElementById("usuario").value.trim();
@@ -55,16 +60,21 @@
             btn.textContent = "Validando...";
             btn.disabled = true;
 
-            const resultado = await window.Auth.login(username, password, remember);
+            try {
+                const resultado = await window.Auth.login(username, password, remember);
 
-            if (resultado.success) {
-                if (resultado.requiresPasswordChange) {
-                    window.location.href = "cambiar-clave.html";
+                if (resultado.success) {
+                    if (resultado.requiresPasswordChange) {
+                        window.location.href = "cambiar-clave.html";
+                    } else {
+                        window.location.href = "index.html";
+                    }
                 } else {
-                    window.location.href = "index.html";
+                    alert("Error al iniciar sesión: " + (resultado.error || "Error desconocido"));
                 }
-            } else {
-                alert("Error al iniciar sesión: " + resultado.error);
+            } catch (err) {
+                alert("Error inesperado: " + err.message);
+            } finally {
                 btn.textContent = "Iniciar Sesión";
                 btn.disabled = false;
             }
