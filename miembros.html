@@ -18,7 +18,6 @@
         .rol-card:hover { border-color:var(--color-primario); transform:translateY(-4px); box-shadow:var(--shadow-hover); }
         .rol-card .icono { font-size:2.5rem; }
         
-        /* Grid para las tarjetas pequeñas de Estados y Núcleos */
         .selecciones-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:15px; margin-top:20px; }
         .seleccion-card {
             background:var(--color-blanco); border:1px solid #e0e4f0; border-radius:var(--border-radius);
@@ -54,6 +53,15 @@
         }
         .is-admin .btn-editar { display:flex; align-items:center; justify-content:center; }
         .btn-editar:hover { background:var(--color-primario-oscuro); transform:scale(1.1); }
+
+        .btn-reset {
+            position:absolute; top:-10px; right:52px; background:#f59e0b;
+            color:white; border:none; border-radius:50%; width:28px; height:28px; cursor:pointer;
+            font-weight:bold; font-size:0.9rem; box-shadow:0 2px 8px rgba(0,0,0,0.2); z-index:5;
+            display:none;
+        }
+        .is-admin .btn-reset { display:flex; align-items:center; justify-content:center; }
+        .btn-reset:hover { background:#d97706; transform:scale(1.1); }
         
         .spinner { display:flex; justify-content:center; padding:2rem; }
         .spinner::after {
@@ -124,12 +132,26 @@
         </div>
     </div>
 
-    <script type="module" src="auth.js?v=3.3"></script>
-    <script type="module" src="ui-manager.js?v=3.3"></script>
+    <!-- Modal de CONTRASEÑA RESETEADA -->
+    <div class="modal-overlay" id="modal-password" style="display:none;">
+        <div class="modal-content" style="text-align:center;">
+            <h2 style="color:var(--color-primario);">Contraseña generada</h2>
+            <p style="margin:1rem 0;">La nueva contraseña temporal es:</p>
+            <div id="password-display" style="font-size:2rem; font-weight:bold; background:#f0f0f0; padding:0.5rem; border-radius:8px; letter-spacing:2px; user-select:all; margin:1rem 0;"></div>
+            <button id="btn-copiar-password" class="btn btn-submit" style="margin-right:0.5rem;">📋 Copiar al portapapeles</button>
+            <button id="btn-cerrar-password" class="btn btn-cerrar">Entendido</button>
+        </div>
+    </div>
+
+    <script type="module" src="auth.js?v=3.5"></script>
+    <script type="module" src="ui-manager.js?v=3.5"></script>
     <script type="module">
         import { db, auth } from "./firebase-init.js";
-        import { collection, query, where, getDocs, deleteDoc, doc, updateDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+        import { 
+            collection, query, where, getDocs, deleteDoc, doc, updateDoc 
+        } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
         import { fetchSignInMethodsForEmail } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
+        import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-functions.js";
 
         const ESTADOS_VENEZUELA = [
             "Amazonas", "Anzoátegui", "Apure", "Aragua", "Barinas", "Bolívar", "Carabobo", "Cojedes", 
@@ -138,19 +160,11 @@
             "Yaracuy", "Zulia"
         ];
 
-        // 1. DICCIONARIO DE JERARQUÍAS MATEMÁTICAS
-        // Mayor número = Mayor jerarquía
         const JERARQUIA = {
-            owner_supremo: 70,
-            director_nacional: 60,
-            director_regional: 50,
-            director_nucleo: 40,
-            admin: 30,
-            profesor: 20,
-            estudiante: 10
+            owner_supremo: 70, director_nacional: 60, director_regional: 50,
+            director_nucleo: 40, admin: 30, profesor: 20, estudiante: 10
         };
 
-        // 2. ARRAY DE ROLES (ORDEN DESCENDENTE PARA LA UI - REQUERIMIENTO CUMPLIDO)
         const CATEGORIAS = [
             { clave: "owner_supremo", icono: "👑", label: "Owner Supremo" },
             { clave: "director_nacional", icono: "🇻🇪", label: "Directores Nacionales" },
@@ -161,11 +175,9 @@
             { clave: "estudiante", icono: "👦", label: "Estudiantes" }
         ];
 
-        // VARIABLES DE ESTADO Y NAVEGACIÓN
         let historyStack = ["main"]; 
         let currentContext = { rol: null, estado: null, nucleo: null };
 
-        // FUNCIONES AUXILIARES UI
         function cerrarModal(id) { document.getElementById(id).style.display = "none"; }
         function showSpinner() { document.getElementById("miembros-vista").innerHTML = '<div class="spinner"></div>'; }
         
@@ -193,21 +205,20 @@
             return snap.docs.map(d => d.data().nombre).sort();
         }
 
+        function mostrarPasswordModal(password) {
+            document.getElementById("password-display").textContent = password;
+            document.getElementById("modal-password").style.display = "flex";
+        }
+
         function toggleCamposSegunRango(rango, prefixId) {
             const rowEstado = document.getElementById(`row-${prefixId}-estado`);
             const rowNucleo = document.getElementById(`row-${prefixId}-nucleo`);
             const valJerarquia = JERARQUIA[rango];
-
-            // Owner y Nacional no llevan ni estado ni núcleo en su perfil
             if (valJerarquia >= 60) {
                 rowEstado.style.display = "none"; rowNucleo.style.display = "none";
-            } 
-            // Regional lleva Estado pero NO núcleo
-            else if (valJerarquia === 50) {
+            } else if (valJerarquia === 50) {
                 rowEstado.style.display = "flex"; rowNucleo.style.display = "none";
-            } 
-            // Del núcleo para abajo llevan ambos
-            else {
+            } else {
                 rowEstado.style.display = "flex"; rowNucleo.style.display = "flex";
             }
         }
@@ -217,31 +228,22 @@
             const container = document.getElementById("miembros-container");
             const session = window.Auth.getSession();
             const miNivel = JERARQUIA[session.role] || 0;
-            
-            // Evaluamos permisos globales base (puedes ajustar si tu auth.js lo maneja distinto)
-            if (miNivel >= 30) container.classList.add("is-admin"); // De admin pa arriba editan su nivel permitido
+            if (miNivel >= 30) container.classList.add("is-admin");
 
-            // ======== LÓGICA DE VISIBILIDAD DE CASILLAS ========
+            const functions = getFunctions();
+            const resetPasswordCallable = httpsCallable(functions, "resetUserPassword");
+
             function puedeVerCasilla(rolCasilla) {
                 const nivelCasilla = JERARQUIA[rolCasilla];
-                if (miNivel === 70) return true; // El Dios ve todo
-                if (nivelCasilla === 70) return false; // Nadie ve a Dios
-
-                // Según requerimiento:
-                // Nacional (60) ve todo abajo.
-                // Regional (50) ve abajo + Nacional.
-                // Nucleo (40) ve abajo + Regional.
-                // Admin/Prof/Est (<=30) ven su núcleo hasta el Director de Núcleo (40).
-                
-                if (miNivel >= nivelCasilla) return true; // Siempre veo hacia abajo
-                if (miNivel === 50 && nivelCasilla === 60) return true; // Regional ve Nacional
-                if (miNivel === 40 && nivelCasilla === 50) return true; // Dir Nucleo ve Regional
-                if (miNivel <= 30 && nivelCasilla <= 40) return true;   // Base ve hasta Dir Nucleo
-                
+                if (miNivel === 70) return true;
+                if (nivelCasilla === 70) return false;
+                if (miNivel >= nivelCasilla) return true;
+                if (miNivel === 50 && nivelCasilla === 60) return true;
+                if (miNivel === 40 && nivelCasilla === 50) return true;
+                if (miNivel <= 30 && nivelCasilla <= 40) return true;
                 return false;
             }
 
-            // ======== MOTOR DE NAVEGACIÓN (DRILL-DOWN) ========
             function navigateTo(vista) {
                 historyStack.push(vista);
                 renderizarPantalla();
@@ -264,7 +266,6 @@
 
                 vc.innerHTML = "";
                 
-                // Controlar botones Back y Panel
                 if (vistaActual === "main") {
                     btnAtras.style.display = "none";
                     btnPanel.style.display = "inline-block";
@@ -276,46 +277,24 @@
                     btnPanel.style.display = "none";
                 }
 
-                // ------------------------------------
-                // PANTALLA 1: GRILLA PRINCIPAL DE ROLES
-                // ------------------------------------
                 if (vistaActual === "main") {
                     const grid = document.createElement("div"); grid.className = "roles-grid";
                     CATEGORIAS.forEach(cat => {
                         if (!puedeVerCasilla(cat.clave)) return;
-                        
                         const card = document.createElement("div"); card.className = "rol-card";
                         card.innerHTML = `<span class="icono">${cat.icono}</span><h3>${cat.label}</h3>`;
-                        
                         card.addEventListener("click", () => {
                             currentContext.rol = cat.clave;
                             const destinoNivel = JERARQUIA[cat.clave];
-
-                            // FLUJO INTELIGENTE SEGÚN REQUERIMIENTOS:
-                            
-                            // 1. Roles globales no tienen Estado ni Núcleo
-                            if (destinoNivel >= 60) {
-                                navigateTo("miembros");
-                            }
-                            // 2. Si yo soy Global (Owner/Nacional), debo elegir Estado para los de abajo
-                            else if (miNivel >= 60) {
-                                navigateTo("estados");
-                            }
-                            // 3. Si yo soy Regional, mi estado ya está fijado
+                            if (destinoNivel >= 60) navigateTo("miembros");
+                            else if (miNivel >= 60) navigateTo("estados");
                             else if (miNivel === 50) {
-                                currentContext.estado = session.estado; // Fijo el mío
-                                if (destinoNivel === 50) {
-                                    navigateTo("miembros"); // Viendo mis colegas regionales
-                                } else {
-                                    navigateTo("nucleos"); // Buscando gente de los núcleos de mi estado
-                                }
-                            }
-                            // 4. Si yo soy de Núcleo para abajo, asumo mi contexto completo
-                            else {
-                                currentContext.estado = session.estado;
-                                // NOTA DE CÓDIGO: Si manejas array de núcleos, aquí iría una vista "mis_nucleos".
-                                // Por DB actual lo paso directo:
-                                currentContext.nucleo = session.nucleo || session.nucleus; 
+                                currentContext.estado = session.state;
+                                if (destinoNivel === 50) navigateTo("miembros");
+                                else navigateTo("nucleos");
+                            } else {
+                                currentContext.estado = session.state;
+                                currentContext.nucleo = session.nucleus || session.nucleo;
                                 navigateTo("miembros");
                             }
                         });
@@ -323,10 +302,6 @@
                     });
                     vc.appendChild(grid);
                 }
-                
-                // ------------------------------------
-                // PANTALLA 2: SELECCIÓN DE ESTADO
-                // ------------------------------------
                 else if (vistaActual === "estados") {
                     titulo.textContent = `Seleccione el Estado (${getRoleLabel(currentContext.rol)})`;
                     const gridE = document.createElement("div"); gridE.className = "selecciones-grid";
@@ -335,7 +310,6 @@
                         card.textContent = est;
                         card.addEventListener("click", () => {
                             currentContext.estado = est;
-                            // Si busco a un Director Regional, me salto los núcleos
                             if (JERARQUIA[currentContext.rol] === 50) navigateTo("miembros");
                             else navigateTo("nucleos");
                         });
@@ -343,21 +317,15 @@
                     });
                     vc.appendChild(gridE);
                 }
-
-                // ------------------------------------
-                // PANTALLA 3: SELECCIÓN DE NÚCLEO
-                // ------------------------------------
                 else if (vistaActual === "nucleos") {
                     titulo.textContent = `Núcleos de ${currentContext.estado}`;
                     showSpinner();
                     const nucleosArray = await cargarNucleosPorEstado(currentContext.estado);
-                    vc.innerHTML = ""; // Limpiar spinner
-
+                    vc.innerHTML = "";
                     if (nucleosArray.length === 0) {
                         vc.innerHTML = `<p style="text-align:center; padding:2rem;">No hay núcleos registrados en ${currentContext.estado}.</p>`;
                         return;
                     }
-
                     const gridN = document.createElement("div"); gridN.className = "selecciones-grid";
                     nucleosArray.forEach(nuc => {
                         const card = document.createElement("div"); card.className = "seleccion-card";
@@ -370,25 +338,16 @@
                     });
                     vc.appendChild(gridN);
                 }
-
-                // ------------------------------------
-                // PANTALLA 4: GRILLA DE USUARIOS FINALES
-                // ------------------------------------
                 else if (vistaActual === "miembros") {
                     titulo.textContent = getRoleLabel(currentContext.rol);
-                    
-                    // Armar breadcrumbs (ruta)
                     let ruta = `<span>Rol:</span> ${getRoleLabel(currentContext.rol)}`;
                     if (currentContext.estado && JERARQUIA[currentContext.rol] <= 50) ruta += ` &rarr; <span>Estado:</span> ${currentContext.estado}`;
                     if (currentContext.nucleo && JERARQUIA[currentContext.rol] <= 40) ruta += ` &rarr; <span>Núcleo:</span> ${currentContext.nucleo}`;
                     bc.innerHTML = ruta;
 
-                    // Header con botón de Nuevo si se tiene permiso
                     const topControls = document.createElement("div"); topControls.className = "top-controls";
-                    
-                    // ¿Tengo permiso para modificar esta casilla?
                     const nivelDestino = JERARQUIA[currentContext.rol];
-                    const puedoModificar = miNivel > nivelDestino || (miNivel === 70); // Modifico solo a los de ABAJO, o si soy Owner a todos
+                    const puedoModificar = miNivel > nivelDestino || (miNivel === 70);
 
                     if (puedoModificar) {
                         const btnAdd = document.createElement("button"); btnAdd.className = "btn btn-submit";
@@ -398,17 +357,13 @@
                             document.getElementById("persona-nombre").value = "";
                             document.getElementById("persona-email").value = "";
                             document.getElementById("persona-agrupacion").value = "";
-                            
                             llenarSelect("persona-estado", ESTADOS_VENEZUELA, currentContext.estado);
                             toggleCamposSegunRango(currentContext.rol, 'persona');
-
                             if (currentContext.estado) {
-                                // Pre-cargar núcleos si ya sabemos el estado
                                 cargarNucleosPorEstado(currentContext.estado).then(nucs => {
                                     llenarSelect("persona-nucleo", nucs, currentContext.nucleo);
                                 });
                             }
-                            
                             document.getElementById("modal-persona").style.display = "flex";
                         });
                         topControls.appendChild(btnAdd);
@@ -418,21 +373,13 @@
                     const gridM = document.createElement("div"); gridM.className = "miembros-grid";
                     const spinner = document.createElement("div"); spinner.className = "spinner"; vc.appendChild(spinner);
 
-                    // ================= CONSULTA FIRESTORE SEGURA =================
                     let q = query(collection(db, "usuarios"), where("rango", "==", currentContext.rol));
-                    
-                    // Filtros dinámicos según el tipo de rol buscado
-                    if (nivelDestino <= 50 && currentContext.estado) {
-                        q = query(q, where("estado", "==", currentContext.estado));
-                    }
-                    if (nivelDestino <= 40 && currentContext.nucleo) {
-                        q = query(q, where("nucleo", "==", currentContext.nucleo));
-                    }
+                    if (nivelDestino <= 50 && currentContext.estado) q = query(q, where("estado", "==", currentContext.estado));
+                    if (nivelDestino <= 40 && currentContext.nucleo) q = query(q, where("nucleo", "==", currentContext.nucleo));
 
                     try {
                         const snap = await getDocs(q);
                         spinner.remove();
-                        
                         if (snap.empty) {
                             gridM.innerHTML = `<p style="grid-column: 1/-1; text-align:center;">No se encontraron registros para esta selección.</p>`;
                         } else {
@@ -442,15 +389,13 @@
                                 card.innerHTML = `
                                     <div class="avatar">${p.nombre?.charAt(0)||"?"}</div>
                                     <strong>${p.nombre||"Sin nombre"}</strong>
-                                    <p class="email-miembro" style="font-size:0.85rem; color:var(--color-texto-claro);">${p.email||""}</p>
-                                    <p class="agrupacion-miembro" style="font-size:0.85rem; font-weight:600; margin-top:0.5rem;">🎵 ${p.agrupacion||"N/A"}</p>
+                                    <p style="font-size:0.85rem; color:var(--color-texto-claro);">${p.email||""}</p>
+                                    <p style="font-size:0.85rem; font-weight:600; margin-top:0.5rem;">🎵 ${p.agrupacion||"N/A"}</p>
                                     <hr style="margin:10px 0; border:0; border-top:1px solid #e0e4f0; width:100%;">
                                 `;
-
                                 if (JERARQUIA[p.rango] <= 40) card.innerHTML += `<p style="font-size:0.8rem; color:var(--color-primario);">📍 ${p.nucleo || 'Núcleo vacío'}</p>`;
                                 if (JERARQUIA[p.rango] <= 50) card.innerHTML += `<p style="font-size:0.75rem; color:var(--color-texto-claro);">${p.estado || 'Estado vacío'}</p>`;
 
-                                // Botones Admin
                                 if (puedoModificar) {
                                     const btnEdit = document.createElement("button"); btnEdit.className = "btn-editar"; btnEdit.innerHTML = "✎";
                                     btnEdit.addEventListener("click", async (e) => { 
@@ -460,10 +405,8 @@
                                         document.getElementById("editar-nombre").value = p.nombre || "";
                                         document.getElementById("editar-email").value = p.email || "";
                                         document.getElementById("editar-agrupacion").value = p.agrupacion || "";
-                                        
                                         toggleCamposSegunRango(p.rango, 'editar');
                                         llenarSelect("editar-estado", ESTADOS_VENEZUELA, p.estado);
-                                        
                                         if (p.estado) {
                                             const nucs = await cargarNucleosPorEstado(p.estado);
                                             llenarSelect("editar-nucleo", nucs, p.nucleo);
@@ -478,10 +421,38 @@
                                         if(confirm(`¿Eliminar al usuario ${p.nombre}?`)) {
                                             await deleteDoc(doc(db, "usuarios", p.id));
                                             window._showToast("Usuario eliminado", "success");
-                                            renderizarPantalla(); // recargar
+                                            renderizarPantalla();
                                         }
                                     });
                                     card.appendChild(btnDel);
+
+                                    // Botón RESET (solo owner_supremo) – CON FEEDBACK VISUAL
+                                    if (session.role === "owner_supremo") {
+                                        const btnReset = document.createElement("button");
+                                        btnReset.className = "btn-reset";
+                                        btnReset.innerHTML = "🔑";
+                                        btnReset.title = "Resetear contraseña";
+                                        btnReset.addEventListener("click", async (e) => {
+                                            e.stopPropagation();
+                                            if (!confirm(`¿Generar una nueva contraseña para ${p.nombre}?`)) return;
+                                            btnReset.disabled = true;
+                                            btnReset.innerHTML = "⌛";
+                                            const nuevaClave = window.Auth.generarClaveSegura();
+                                            try {
+                                                const result = await resetPasswordCallable({ targetUid: p.id, newPassword: nuevaClave });
+                                                if (result.data.success) {
+                                                    mostrarPasswordModal(nuevaClave);
+                                                    window._showToast("Contraseña actualizada. Se obligará a cambiarla en el próximo inicio.", "success");
+                                                }
+                                            } catch (err) {
+                                                window._showToast("Error al resetear: " + err.message, "error");
+                                            } finally {
+                                                btnReset.disabled = false;
+                                                btnReset.innerHTML = "🔑";
+                                            }
+                                        });
+                                        card.appendChild(btnReset);
+                                    }
                                 }
                                 gridM.appendChild(card);
                             });
@@ -494,9 +465,6 @@
                 }
             }
 
-            // ================= LISTENERS DE EVENTOS DE MODALES =================
-
-            // Al cambiar estado, recargar núcleos
             document.getElementById("persona-estado").addEventListener("change", async (e) => {
                 const nucs = await cargarNucleosPorEstado(e.target.value);
                 llenarSelect("persona-nucleo", nucs);
@@ -506,7 +474,6 @@
                 llenarSelect("editar-nucleo", nucs);
             });
 
-            // Guardar Nuevo Usuario
             document.getElementById("btn-guardar-persona").addEventListener("click", async () => {
                 const email = document.getElementById("persona-email").value.trim();
                 const nombre = document.getElementById("persona-nombre").value.trim();
@@ -514,16 +481,12 @@
                 const agrup = document.getElementById("persona-agrupacion").value.trim();
                 let estado = document.getElementById("persona-estado").value;
                 let nucleo = document.getElementById("persona-nucleo").value;
-                
                 if (JERARQUIA[rango] >= 60) { estado = ""; nucleo = ""; }
                 if (JERARQUIA[rango] === 50) { nucleo = ""; }
-
                 if (!email || !nombre) { window._showToast("Nombre y email son obligatorios", "error"); return; }
-                
                 try {
                     const metodos = await fetchSignInMethodsForEmail(auth, email);
                     if (metodos.length > 0) { window._showToast("El correo ya existe.", "error"); return; }
-                    
                     const res = await Auth.registerUser(email, nombre, rango, agrup, estado, nucleo);
                     if (res.success) {
                         window._showToast(`Creado. Contraseña: ${res.clave}`, "success");
@@ -533,7 +496,6 @@
                 } catch (err) { window._showToast(err.message, "error"); }
             });
 
-            // Guardar Edición
             document.getElementById("btn-guardar-edicion").addEventListener("click", async () => {
                 const id = document.getElementById("editar-id").value;
                 const rango = document.getElementById("editar-rango").value;
@@ -541,12 +503,9 @@
                 const agrupacion = document.getElementById("editar-agrupacion").value.trim();
                 let estado = document.getElementById("editar-estado").value;
                 let nucleo = document.getElementById("editar-nucleo").value;
-                
                 if (JERARQUIA[rango] >= 60) { estado = ""; nucleo = ""; }
                 if (JERARQUIA[rango] === 50) { nucleo = ""; }
-
                 if (!nombre) { window._showToast("El nombre es obligatorio", "error"); return; }
-                
                 try {
                     await updateDoc(doc(db, "usuarios", id), { nombre, agrupacion, estado, nucleo });
                     window._showToast("Usuario actualizado", "success");
@@ -555,17 +514,31 @@
                 } catch (err) { window._showToast(err.message, "error"); }
             });
 
-            // Botones de cierre de modal
             document.getElementById("btn-cerrar-modal-persona").addEventListener("click", () => cerrarModal("modal-persona"));
             document.getElementById("persona-close-btn").addEventListener("click", () => cerrarModal("modal-persona"));
             document.getElementById("btn-cerrar-modal-editar").addEventListener("click", () => cerrarModal("modal-editar"));
             document.getElementById("editar-close-btn").addEventListener("click", () => cerrarModal("modal-editar"));
+            document.getElementById("btn-cerrar-password").addEventListener("click", () => cerrarModal("modal-password"));
 
-            // Arrancar UI
+            document.getElementById("btn-copiar-password").addEventListener("click", async () => {
+                const texto = document.getElementById("password-display").textContent;
+                try {
+                    await navigator.clipboard.writeText(texto);
+                    window._showToast("Contraseña copiada", "success");
+                } catch {
+                    const input = document.createElement("input");
+                    input.value = texto;
+                    document.body.appendChild(input);
+                    input.select();
+                    document.execCommand("copy");
+                    document.body.removeChild(input);
+                    window._showToast("Contraseña copiada", "success");
+                }
+            });
+
             window.addEventListener("auth-ready", () => { UI.render(); renderizarPantalla(); });
             if (window.Auth?.getSession()) { UI.render(); renderizarPantalla(); }
         }
-        
         initMiembros();
     </script>
 </body>
