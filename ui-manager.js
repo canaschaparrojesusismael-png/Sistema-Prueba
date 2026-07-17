@@ -26,10 +26,8 @@ window.UI = {
       this._renderStatusBar(session);
       if (window.Auth.checkPermission("manage_users")) this._initLivePanel();
 
-      // --- AVISO SUAVE SI REQUIERE CAMBIO DE CONTRASEÑA ---
-      if (session.requiresPasswordChange) {
-        window._showToast("⚠️ Te recomendamos cambiar tu contraseña. Ve a Configuración.", "warning");
-      }
+      // --- AVISO DE CONTRASEÑA ELIMINADO ---
+      // Ya no se muestra ningún toast relacionado con requiresPasswordChange
     }
   },
 
