@@ -6,13 +6,6 @@
     <title>Repertorio – Sistema de Orquestas</title>
     <link rel="stylesheet" href="estilos.css">
     <style>
-        :root {
-            --color-primario: #1a237e;
-            --color-secundario: #4a148c;
-            --color-blanco: #ffffff;
-            --border-radius: 16px;
-            --shadow-soft: 0 10px 20px rgba(0,0,0,0.08);
-        }
         .back-link { display: inline-block; margin: 1.5rem 0; color: var(--color-primario); font-weight: 600; text-decoration: none; }
         .back-link:hover { text-decoration: underline; }
 
@@ -20,15 +13,15 @@
         .tab-instrumento {
             padding: 12px 25px; background: rgba(255,255,255,0.8); border: 2px solid var(--color-primario);
             border-radius: 30px; font-weight: 700; color: var(--color-primario); cursor: pointer;
-            transition: all 0.3s ease; font-size: 0.95rem;
+            transition: var(--transition-normal); font-size: 0.95rem;
         }
-        .tab-instrumento.active { background: var(--color-primario); color: white; box-shadow: 0 4px 12px rgba(26,35,126,0.3); }
+        .tab-instrumento.active { background: var(--color-primario); color: white; box-shadow: 0 4px 12px rgba(65,56,169,0.3); }
         .tab-instrumento:hover { background: var(--color-primario); color: white; transform: translateY(-2px); }
 
         .btn-add-instrumento {
             padding: 12px 25px; background: white; border: 2px dashed var(--color-primario);
             border-radius: 30px; font-weight: 700; color: var(--color-primario); cursor: pointer;
-            transition: all 0.3s ease; font-size: 0.95rem; display: none;
+            transition: var(--transition-normal); font-size: 0.95rem; display: none;
         }
         .is-admin .btn-add-instrumento { display: inline-block; }
         .btn-add-instrumento:hover { background: var(--color-primario); color: white; border-style: solid; }
@@ -37,16 +30,16 @@
         .btn-subir-pdf {
             display: none; padding: 12px 25px; background: var(--color-primario); color: white;
             border: none; border-radius: 30px; font-weight: 700; cursor: pointer;
-            transition: all 0.3s ease; font-size: 0.95rem;
+            transition: var(--transition-normal); font-size: 0.95rem;
         }
         .is-admin .btn-subir-pdf { display: inline-block; }
-        .btn-subir-pdf:hover { background: #283593; transform: scale(1.02); }
+        .btn-subir-pdf:hover { background: var(--color-primario-oscuro); transform: scale(1.02); }
 
         .grid-partituras { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; margin-top: 10px; }
         .card-partitura {
             background: white; border: 2px solid #e0e4f0; border-radius: var(--border-radius);
-            padding: 1.8rem; text-align: center; box-shadow: var(--shadow-soft);
-            transition: all 0.3s ease; position: relative;
+            padding: 1.8rem; text-align: center; box-shadow: var(--shadow-card);
+            transition: var(--transition-normal); position: relative;
         }
         .card-partitura:hover { border-color: var(--color-primario); transform: translateY(-3px); }
         .card-partitura strong { display: block; font-size: 1.1rem; margin-bottom: 10px; color: var(--color-primario); }
@@ -54,12 +47,12 @@
         .btn-descarga {
             display: inline-block; margin-top: 12px; padding: 8px 20px;
             background: var(--color-primario); color: white; border-radius: 25px;
-            text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: background 0.3s;
+            text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: var(--transition-fast);
         }
-        .btn-descarga:hover { background: #283593; }
+        .btn-descarga:hover { background: var(--color-primario-oscuro); }
 
         .btn-eliminar-partitura {
-            background: #d32f2f; color: white; border: none; border-radius: 50%;
+            background: var(--color-acento); color: white; border: none; border-radius: 50%;
             width: 28px; height: 28px; cursor: pointer; font-size: 1rem;
             position: absolute; top: -10px; right: -10px; display: none;
             box-shadow: 0 2px 6px rgba(0,0,0,0.2);
@@ -86,9 +79,9 @@
             <button class="btn-subir-pdf" id="btn-subir-pdf">Subir PDF / Link Drive</button>
         </div>
 
-        <!-- Modal para añadir instrumento -->
         <div class="modal-overlay" id="modal-instrumento">
             <div class="modal-content">
+                <button class="modal-close-btn" id="instr-close-btn">&times;</button>
                 <h2>Nuevo Instrumento</h2>
                 <input type="text" id="input-nombre-instrumento" class="modal-input" placeholder="Nombre del instrumento" />
                 <button id="btn-guardar-instrumento" class="btn btn-submit">Guardar</button>
@@ -96,9 +89,9 @@
             </div>
         </div>
 
-        <!-- Modal para subir partitura -->
         <div class="modal-overlay" id="modal-subir-partitura">
             <div class="modal-content">
+                <button class="modal-close-btn" id="part-close-btn">&times;</button>
                 <h2>Subir Partitura</h2>
                 <p style="font-size:0.8rem; color:#666;">Selecciona un archivo PDF o pega un enlace de Google Drive.</p>
                 <label for="input-pdf" class="btn btn-submit" style="margin-bottom:10px;">Seleccionar archivo PDF</label>
@@ -113,16 +106,11 @@
         <div class="grid-partituras" id="grid-partituras"></div>
     </main>
 
-    <script type="module" src="auth.js?v=2.1"></script>
-    <script type="module" src="ui-manager.js?v=2.1"></script>
-    <script>
+    <script type="module" src="auth.js?v=2.2"></script>
+    <script type="module" src="ui-manager.js?v=2.2"></script>
+    <script type="module">
         function initRepertorio() {
-            if (!window.Auth || !window.UI) {
-                setTimeout(initRepertorio, 100);
-                return;
-            }
-
-            if (!Auth.getSession()) {
+            if (!window.Auth?.getSession()) {
                 window.location.href = "index.html";
                 return;
             }
@@ -132,8 +120,6 @@
             document.getElementById("nombre-agrupacion").textContent = agrupacionNombre;
 
             let fileToUpload = null;
-
-            // IndexedDB – variable renombrada para no colisionar con Firestore
             const DB_NAME = "SistemaOrquestas_Rep";
             const DB_VERSION = 2;
             let localDB;
@@ -141,22 +127,11 @@
             const request = indexedDB.open(DB_NAME, DB_VERSION);
             request.onupgradeneeded = (event) => {
                 const database = event.target.result;
-                if (!database.objectStoreNames.contains("files")) {
-                    database.createObjectStore("files", { keyPath: "id" });
-                }
-                if (!database.objectStoreNames.contains("repertorio")) {
-                    database.createObjectStore("repertorio", { keyPath: "agrupacion" });
-                }
+                if (!database.objectStoreNames.contains("files")) database.createObjectStore("files", { keyPath: "id" });
+                if (!database.objectStoreNames.contains("repertorio")) database.createObjectStore("repertorio", { keyPath: "agrupacion" });
             };
-            request.onsuccess = (event) => {
-                localDB = event.target.result;
-                cargarRepertorio();
-            };
-            request.onerror = () => {
-                console.error("Error al abrir IndexedDB");
-                alert("No se pudo acceder al almacenamiento local. Los archivos no se guardarán.");
-                cargarRepertorioFallback();
-            };
+            request.onsuccess = (event) => { localDB = event.target.result; cargarRepertorio(); };
+            request.onerror = () => { cargarRepertorioFallback(); };
 
             let repertorio = { instrumentos: [], partituras: [] };
             let instrumentoSeleccionado = "";
@@ -218,11 +193,7 @@
                 store.delete(id);
             }
 
-            function renderizarTodo() {
-                renderizarTabs();
-                renderizarPartituras();
-                aplicarClaseAdmin();
-            }
+            function renderizarTodo() { renderizarTabs(); renderizarPartituras(); aplicarClaseAdmin(); }
 
             function renderizarTabs() {
                 const container = document.getElementById("tabs-container");
@@ -257,10 +228,8 @@
                     const btnDescarga = document.createElement("a");
                     btnDescarga.className = "btn-descarga";
                     btnDescarga.textContent = esDrive ? "Ver en Drive" : (tieneArchivo ? "Descargar" : "Sin archivo");
-                    if (esDrive) {
-                        btnDescarga.href = part.fileId;
-                        btnDescarga.target = "_blank";
-                    } else if (tieneArchivo) {
+                    if (esDrive) { btnDescarga.href = part.fileId; btnDescarga.target = "_blank"; }
+                    else if (tieneArchivo) {
                         btnDescarga.href = "#";
                         btnDescarga.addEventListener("click", (e) => {
                             e.preventDefault();
@@ -268,13 +237,9 @@
                                 if (blob) {
                                     const url = URL.createObjectURL(blob);
                                     const a = document.createElement("a");
-                                    a.href = url;
-                                    a.download = part.nombre;
-                                    a.click();
+                                    a.href = url; a.download = part.nombre; a.click();
                                     URL.revokeObjectURL(url);
-                                } else {
-                                    alert("Archivo no encontrado.");
-                                }
+                                } else { alert("Archivo no encontrado."); }
                             });
                         });
                     }
@@ -288,8 +253,7 @@
                         if (confirm(`¿Eliminar "${part.nombre}"?`)) {
                             if (part.fileId && !part.fileId.startsWith("http")) eliminarArchivo(part.fileId);
                             repertorio.partituras = repertorio.partituras.filter(p => p.id !== part.id);
-                            guardarRepertorio();
-                            renderizarPartituras();
+                            guardarRepertorio(); renderizarPartituras();
                         }
                     });
                     card.appendChild(btnDel);
@@ -298,13 +262,9 @@
             }
 
             function aplicarClaseAdmin() {
-                const session = Auth.getSession();
                 const main = document.getElementById("repertorio-container");
-                if (session && (session.role === "owner" || session.role === "admin")) {
-                    main.classList.add("is-admin");
-                } else {
-                    main.classList.remove("is-admin");
-                }
+                if (Auth.checkPermission("manage_users")) main.classList.add("is-admin");
+                else main.classList.remove("is-admin");
             }
 
             document.getElementById("btn-subir-pdf").addEventListener("click", () => {
@@ -326,36 +286,29 @@
                 } else if (fileToUpload) {
                     const id = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
                     guardarArchivo(id, fileToUpload, (success) => {
-                        if (success) {
-                            finalizarGuardado(id);
-                            fileToUpload = null;
-                        } else {
-                            alert("Error al guardar el archivo. Intenta con un enlace de Drive.");
-                        }
+                        if (success) { finalizarGuardado(id); fileToUpload = null; }
+                        else { alert("Error al guardar el archivo. Intenta con un enlace de Drive."); }
                     });
-                } else {
-                    alert("Debes seleccionar un archivo PDF o pegar un enlace de Google Drive.");
-                }
+                } else { alert("Debes seleccionar un archivo PDF o pegar un enlace de Google Drive."); }
             });
 
             function finalizarGuardado(fileId) {
-                const nombre = fileId.startsWith("http") 
-                    ? "Partitura de Drive" 
-                    : (fileToUpload ? fileToUpload.name : "Partitura");
+                const nombre = fileId.startsWith("http") ? "Partitura de Drive" : (fileToUpload ? fileToUpload.name : "Partitura");
                 const nuevaPartitura = {
                     id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-                    instrumento: instrumentoSeleccionado,
-                    nombre: nombre,
-                    fileId: fileId
+                    instrumento: instrumentoSeleccionado, nombre: nombre, fileId: fileId
                 };
                 repertorio.partituras.push(nuevaPartitura);
-                guardarRepertorio();
-                renderizarPartituras();
+                guardarRepertorio(); renderizarPartituras();
                 document.getElementById("modal-subir-partitura").style.display = "none";
                 fileToUpload = null;
             }
 
             document.getElementById("btn-cerrar-modal-part").addEventListener("click", () => {
+                document.getElementById("modal-subir-partitura").style.display = "none";
+                fileToUpload = null;
+            });
+            document.getElementById("part-close-btn").addEventListener("click", () => {
                 document.getElementById("modal-subir-partitura").style.display = "none";
                 fileToUpload = null;
             });
@@ -366,22 +319,23 @@
                 if (repertorio.instrumentos.includes(nombre)) return alert("El instrumento ya existe.");
                 repertorio.instrumentos.push(nombre);
                 instrumentoSeleccionado = nombre;
-                guardarRepertorio();
-                renderizarTodo();
+                guardarRepertorio(); renderizarTodo();
                 document.getElementById("modal-instrumento").style.display = "none";
             });
 
             document.getElementById("btn-cerrar-modal-instr").addEventListener("click", () => {
                 document.getElementById("modal-instrumento").style.display = "none";
             });
-
-            window.addEventListener("DOMContentLoaded", () => {
-                UI.render();
-                if (localDB) cargarRepertorio();
+            document.getElementById("instr-close-btn").addEventListener("click", () => {
+                document.getElementById("modal-instrumento").style.display = "none";
             });
+
+            UI.render();
+            if (localDB) cargarRepertorio();
         }
 
-        initRepertorio();
+        window.addEventListener("auth-ready", initRepertorio);
+        if (window.Auth?.getSession()) initRepertorio();
     </script>
 </body>
 </html>
