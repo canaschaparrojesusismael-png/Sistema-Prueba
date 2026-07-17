@@ -25,6 +25,11 @@ window.UI = {
       this._renderConfigGear(target);
       this._renderStatusBar(session);
       if (window.Auth.checkPermission("manage_users")) this._initLivePanel();
+
+      // --- AVISO SUAVE SI REQUIERE CAMBIO DE CONTRASEÑA ---
+      if (session.requiresPasswordChange) {
+        window._showToast("⚠️ Te recomendamos cambiar tu contraseña. Ve a Configuración.", "warning");
+      }
     }
   },
 
@@ -60,11 +65,10 @@ window.UI = {
   },
   _removeStatusBar() { const b = document.getElementById("status-bar"); if (b) b.remove(); },
 
-  // ========== MODAL DE CONFIGURACIÓN (CON PERMISOS Y SIN FUGAS) ==========
   _renderConfigGear(container) {
     if (!container) return;
     const session = window.Auth.getSession();
-    if (!session || !window.Auth.checkPermission("access_panel")) return; // Solo si tiene acceso al panel
+    if (!session || !window.Auth.checkPermission("access_panel")) return;
 
     if (document.getElementById("config-gear-btn")) return;
     const gearBtn = document.createElement("button"); gearBtn.id = "config-gear-btn"; gearBtn.className = "btn-nav btn-config";
@@ -78,24 +82,14 @@ window.UI = {
         <button class="modal-close-btn" id="config-close-btn">&times;</button>
         <h2>Configuración</h2>
         <div class="config-content">
-          <div class="config-section">
-            <h3>Estadísticas</h3>
-            <div id="config-stats">Cargando...</div>
-          </div>
-          <div class="config-section">
-            <h3>Preferencias</h3>
-            <label><input type="checkbox" id="dark-mode-toggle-config"> Modo oscuro</label>
-          </div>
+          <div class="config-section"><h3>Estadísticas</h3><div id="config-stats">Cargando...</div></div>
+          <div class="config-section"><h3>Preferencias</h3><label><input type="checkbox" id="dark-mode-toggle-config"> Modo oscuro</label></div>
         </div>
       </div>
     `;
     document.body.appendChild(overlay);
 
-    const closeConfig = () => {
-      overlay.style.display = "none";
-      if (this._configUnsub) { this._configUnsub(); this._configUnsub = null; }
-    };
-
+    const closeConfig = () => { overlay.style.display = "none"; if (this._configUnsub) { this._configUnsub(); this._configUnsub = null; } };
     gearBtn.addEventListener("click", (e) => { e.stopPropagation(); overlay.style.display = "flex"; this._loadConfigStats(); });
     document.getElementById("config-close-btn").addEventListener("click", closeConfig);
     overlay.addEventListener("click", (e) => { if (e.target === overlay) closeConfig(); });
