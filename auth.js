@@ -64,7 +64,6 @@ function generarClave() {
   return clave;
 }
 
-/** Genera una contraseña SEGURA de 12 caracteres (para reseteo) */
 function generarClaveSegura() {
   const mayus = "ABCDEFGHJKLMNPQRSTUVWXYZ";
   const minus = "abcdefghjkmnpqrstuvwxyz";
@@ -136,6 +135,7 @@ window.Auth = {
     return false;
   },
 
+  // ---------- AUTENTICACIÓN (ya sin bloqueo por cambio de contraseña) ----------
   async login(username, password, remember = false) {
     try {
       let email = username.trim();
@@ -148,10 +148,11 @@ window.Auth = {
       const snap = await getDoc(doc(db, "usuarios", user.uid));
       if (!snap.exists()) { await signOut(auth); return { success: false, error: "Usuario no registrado." }; }
       const data = snap.data();
-      if (data.requiresPasswordChange) {
-        sessionStorage.setItem("pendingPasswordChange", user.uid);
-        return { success: true, requiresPasswordChange: true, uid: user.uid };
-      }
+
+      // --- ELIMINADO: redirección automática a cambiar-clave.html ---
+      // Ahora el usuario puede iniciar sesión normalmente aunque requiresPasswordChange sea true.
+      // El administrador forzará el cambio de contraseña mediante el botón 🔑 en el panel de miembros.
+
       const sessionId = generarUUID();
       sessionStorage.setItem("currentSessionId", sessionId);
       if (remember) localStorage.setItem("currentSessionId", sessionId);
@@ -176,7 +177,7 @@ window.Auth = {
     } catch (err) { return { success: false, error: err.message }; }
   },
 
-  async registerUser(username, nombre, rango, agrupacion, estado, nucleo, subRole = "") {
+  async registerUser(username, nombre, rango, agrupacion, estado, nucleo, edad = 0) {
     const { secApp, secAuth } = getSecondaryAuthInstance();
     try {
       const clave = generarClave();
@@ -188,8 +189,9 @@ window.Auth = {
       const userCred = await createUserWithEmailAndPassword(secAuth, email, clave);
       const uid = userCred.user.uid;
       await setDoc(doc(db, "usuarios", uid), {
-        username, nombre, rango, subRole, agrupacion, estado, nucleo, email,
-        isOnline: false, currentSessionId: "", requiresPasswordChange: true, edad: 0, fechaCreacion: new Date().toISOString()
+        username, nombre, rango, agrupacion, estado, nucleo, email,
+        isOnline: false, currentSessionId: "", requiresPasswordChange: false, // Ya no se fuerza el cambio
+        edad: edad || 0, fechaCreacion: new Date().toISOString()
       });
       await signOut(secAuth); await deleteApp(secApp);
       return { success: true, clave, uid };
@@ -237,6 +239,7 @@ window.Auth = {
   onAuthChange(cb) { return onAuthStateChanged(auth, cb); }
 };
 
+// Al recargar, disparar evento si hay sesión
 (() => {
   const session = window.Auth.getSession();
   const currentSessionId = sessionStorage.getItem("currentSessionId") || localStorage.getItem("currentSessionId");
