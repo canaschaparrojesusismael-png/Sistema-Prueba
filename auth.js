@@ -135,7 +135,7 @@ window.Auth = {
     return false;
   },
 
-  // ---------- AUTENTICACIÓN (ya sin bloqueo por cambio de contraseña) ----------
+  // ---------- AUTENTICACIÓN ----------
   async login(username, password, remember = false) {
     try {
       let email = username.trim();
@@ -149,9 +149,7 @@ window.Auth = {
       if (!snap.exists()) { await signOut(auth); return { success: false, error: "Usuario no registrado." }; }
       const data = snap.data();
 
-      // --- ELIMINADO: redirección automática a cambiar-clave.html ---
-      // Ahora el usuario puede iniciar sesión normalmente aunque requiresPasswordChange sea true.
-      // El administrador forzará el cambio de contraseña mediante el botón 🔑 en el panel de miembros.
+      // NO redirigimos: el administrador controla el cambio de contraseña con el botón 🔑
 
       const sessionId = generarUUID();
       sessionStorage.setItem("currentSessionId", sessionId);
@@ -168,6 +166,7 @@ window.Auth = {
         age: data.edad || 0, group: data.agrupacion || "",
         state: data.estado || "", nucleus: data.nucleo || "",
         permissions: ROLES[data.rango]?.permissions || ["view_profile"],
+        requiresPasswordChange: data.requiresPasswordChange || false,
         loginTime: Date.now()
       };
       sessionStorage.setItem("sistemaOrquestas_session", JSON.stringify(sessionData));
@@ -190,7 +189,7 @@ window.Auth = {
       const uid = userCred.user.uid;
       await setDoc(doc(db, "usuarios", uid), {
         username, nombre, rango, agrupacion, estado, nucleo, email,
-        isOnline: false, currentSessionId: "", requiresPasswordChange: false, // Ya no se fuerza el cambio
+        isOnline: false, currentSessionId: "", requiresPasswordChange: false,
         edad: edad || 0, fechaCreacion: new Date().toISOString()
       });
       await signOut(secAuth); await deleteApp(secApp);
@@ -239,7 +238,6 @@ window.Auth = {
   onAuthChange(cb) { return onAuthStateChanged(auth, cb); }
 };
 
-// Al recargar, disparar evento si hay sesión
 (() => {
   const session = window.Auth.getSession();
   const currentSessionId = sessionStorage.getItem("currentSessionId") || localStorage.getItem("currentSessionId");
