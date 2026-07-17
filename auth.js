@@ -23,47 +23,32 @@ const ROLES = {
   owner_supremo: {
     label: "Owner Supremo",
     level: 0,
-    permissions: [
-      "view_profile", "access_panel", "edit_carousel",
-      "manage_users", "manage_all_nucleos", "delete_any", "debug_mode"
-    ]
+    permissions: ["view_profile","access_panel","edit_carousel","manage_users","manage_all_nucleos","delete_any","debug_mode"]
   },
   director_nacional: {
     label: "Director Nacional",
     level: 1,
-    permissions: [
-      "view_profile", "access_panel", "edit_carousel",
-      "manage_users", "view_all_nucleos"
-    ]
+    permissions: ["view_profile","access_panel","edit_carousel","manage_users","view_all_nucleos"]
   },
   director_regional: {
     label: "Director Regional",
     level: 2,
-    permissions: [
-      "view_profile", "access_panel", "edit_carousel",
-      "manage_users", "view_region"
-    ]
+    permissions: ["view_profile","access_panel","edit_carousel","manage_users","view_region"]
   },
   director_nucleo: {
     label: "Director de Núcleo",
     level: 3,
-    permissions: [
-      "view_profile", "access_panel", "edit_carousel",
-      "manage_users", "manage_nucleo"
-    ]
+    permissions: ["view_profile","access_panel","edit_carousel","manage_users","manage_nucleo"]
   },
   admin: {
     label: "Administrador",
     level: 4,
-    permissions: [
-      "view_profile", "access_panel", "edit_carousel",
-      "manage_users"
-    ]
+    permissions: ["view_profile","access_panel","edit_carousel","manage_users"]
   },
   profesor: {
     label: "Profesor",
     level: 5,
-    permissions: ["view_profile", "access_panel", "edit_carousel"]
+    permissions: ["view_profile","access_panel","edit_carousel"]
   },
   estudiante: {
     label: "Estudiante",
@@ -92,115 +77,125 @@ function getSecondaryAuthInstance() {
   return { secApp, secAuth };
 }
 
+// Sistema simple de toast (notificaciones) global
+window._showToast = function (mensaje, tipo = "info") {
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${tipo}`;
+  toast.textContent = mensaje;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3500);
+};
+
 window.Auth = {
   auth,
   db,
   ROLES,
 
+  // ---------- FUNCIONES RBAC ----------
+  /** Verifica si el usuario actual puede VER a un usuario con cierto rol */
+  canView(targetRole) {
+    const session = this.getSession();
+    if (!session) return false;
+    const myLevel = ROLES[session.role]?.level ?? 99;
+    const targetLevel = ROLES[targetRole]?.level ?? 99;
+    if (targetRole === "owner_supremo" && session.role !== "owner_supremo") return false;
+    return myLevel <= targetLevel;
+  },
+
+  /** Verifica si el usuario actual puede EDITAR a un usuario con cierto rol */
+  canEdit(targetRole) {
+    const session = this.getSession();
+    if (!session) return false;
+    const myLevel = ROLES[session.role]?.level ?? 99;
+    const targetLevel = ROLES[targetRole]?.level ?? 99;
+    if (targetRole === "owner_supremo" && session.role !== "owner_supremo") return false;
+    return myLevel < targetLevel;
+  },
+
+  /** Verifica si el usuario actual puede gestionar el núcleo objetivo */
+  canManageNucleo(targetNucleo) {
+    const session = this.getSession();
+    if (!session) return false;
+    if (["owner_supremo","director_nacional"].includes(session.role)) return true;
+    if (session.role === "director_regional") {
+      return session.state === targetNucleo?.estado;
+    }
+    if (["director_nucleo","admin"].includes(session.role)) {
+      return session.nucleus === targetNucleo;
+    }
+    return false;
+  },
+
+  // ---------- AUTENTICACIÓN ----------
   async login(username, password, remember = false) {
     try {
-      const email = (username + DOMINIO).trim();
-      console.log("DEBUG: Intentando autenticar correo:", email);
-
+      let email = username.trim();
+      if (!email.includes("@")) {
+        // DOMINIO vacío: el usuario debe escribir el correo completo
+        window._showToast("Debes ingresar un correo electrónico válido", "error");
+        return { success: false, error: "Correo inválido" };
+      }
       const userCred = await signInWithEmailAndPassword(auth, email, password);
       const user = userCred.user;
       const snap = await getDoc(doc(db, "usuarios", user.uid));
-      if (!snap.exists()) {
-        await signOut(auth);
-        return { success: false, error: "Usuario no registrado." };
-      }
+      if (!snap.exists()) { await signOut(auth); return { success: false, error: "Usuario no registrado." }; }
       const data = snap.data();
-
       if (data.requiresPasswordChange) {
         sessionStorage.setItem("pendingPasswordChange", user.uid);
         return { success: true, requiresPasswordChange: true, uid: user.uid };
       }
-
       const sessionId = generarUUID();
       sessionStorage.setItem("currentSessionId", sessionId);
       if (remember) localStorage.setItem("currentSessionId", sessionId);
-
-      await updateDoc(doc(db, "usuarios", user.uid), {
-        isOnline: true,
-        currentSessionId: sessionId,
-        lastLogin: new Date().toISOString()
-      });
-
+      await updateDoc(doc(db, "usuarios", user.uid), { isOnline: true, currentSessionId: sessionId, lastLogin: new Date().toISOString() });
       this.monitorSession(user.uid, sessionId);
-
       const sessionData = {
         id: user.uid, uid: user.uid, email: user.email,
-        username: data.username || username,
-        nombre: data.nombre,
-        role: data.rango,
-        roleLevel: ROLES[data.rango]?.level || 99,
+        username: data.username || username, nombre: data.nombre,
+        role: data.rango, roleLevel: ROLES[data.rango]?.level ?? 99,
         subRole: data.subRole || "",
         firstName: data.nombre?.split(" ")[0] || "",
         lastName: data.nombre?.split(" ").slice(1).join(" ") || "",
-        age: data.edad || 0,
-        group: data.agrupacion || "",
-        state: data.estado || "",
-        nucleus: data.nucleo || "",
+        age: data.edad || 0, group: data.agrupacion || "",
+        state: data.estado || "", nucleus: data.nucleo || "",
         permissions: ROLES[data.rango]?.permissions || ["view_profile"],
         loginTime: Date.now()
       };
       sessionStorage.setItem("sistemaOrquestas_session", JSON.stringify(sessionData));
       if (remember) localStorage.setItem("sistemaOrquestas_session", JSON.stringify(sessionData));
-
-      // Disparar evento de sesión lista
       window.dispatchEvent(new CustomEvent('auth-ready', { detail: sessionData }));
-
       return { success: true, user: sessionData };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
+    } catch (err) { return { success: false, error: err.message }; }
   },
 
   async registerUser(username, nombre, rango, agrupacion, estado, nucleo, subRole = "") {
     const { secApp, secAuth } = getSecondaryAuthInstance();
     try {
       const clave = generarClave();
-      const email = (username + DOMINIO).trim();
+      let email = username.trim();
+      if (!email.includes("@")) {
+        window._showToast("El email debe ser válido", "error");
+        return { success: false, error: "Email inválido" };
+      }
       const userCred = await createUserWithEmailAndPassword(secAuth, email, clave);
       const uid = userCred.user.uid;
-
       await setDoc(doc(db, "usuarios", uid), {
-        username,
-        nombre,
-        rango,
-        subRole,
-        agrupacion,
-        estado,
-        nucleo,
-        email,
-        isOnline: false,
-        currentSessionId: "",
-        requiresPasswordChange: true,
-        edad: 0,
-        fechaCreacion: new Date().toISOString()
+        username, nombre, rango, subRole, agrupacion, estado, nucleo, email,
+        isOnline: false, currentSessionId: "", requiresPasswordChange: true, edad: 0, fechaCreacion: new Date().toISOString()
       });
-
-      await signOut(secAuth);
-      await deleteApp(secApp);
+      await signOut(secAuth); await deleteApp(secApp);
       return { success: true, clave, uid };
-    } catch (err) {
-      try { await deleteApp(secApp); } catch (e) {}
-      return { success: false, error: err.message };
-    }
+    } catch (err) { try { await deleteApp(secApp); } catch (e) {} return { success: false, error: err.message }; }
   },
 
   async changePassword(newPassword) {
     if (!auth.currentUser) return { success: false, error: "Sin sesión." };
     try {
       await updatePassword(auth.currentUser, newPassword);
-      await updateDoc(doc(db, "usuarios", auth.currentUser.uid), {
-        requiresPasswordChange: false
-      });
+      await updateDoc(doc(db, "usuarios", auth.currentUser.uid), { requiresPasswordChange: false });
       sessionStorage.removeItem("pendingPasswordChange");
       return { success: true };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
+    } catch (err) { return { success: false, error: err.message }; }
   },
 
   monitorSession(uid, currentSessionId) {
@@ -208,7 +203,7 @@ window.Auth = {
       if (!snap.exists()) return;
       const d = snap.data();
       if (d.currentSessionId && d.currentSessionId !== currentSessionId) {
-        alert("Se ha iniciado sesión en otro dispositivo. Esta sesión se cerrará.");
+        window._showToast("Sesión iniciada en otro dispositivo. Cerrando...", "error");
         this.logout();
       }
     });
@@ -216,55 +211,28 @@ window.Auth = {
   },
 
   async logout() {
-    try {
-      if (auth.currentUser) {
-        await updateDoc(doc(db, "usuarios", auth.currentUser.uid), {
-          isOnline: false,
-          currentSessionId: ""
-        });
-        await signOut(auth);
-      }
-    } catch (e) {}
-    if (window._sessionUnsub) {
-      window._sessionUnsub();
-      window._sessionUnsub = null;
-    }
-    localStorage.removeItem("sistemaOrquestas_session");
-    sessionStorage.removeItem("sistemaOrquestas_session");
-    localStorage.removeItem("currentSessionId");
-    sessionStorage.removeItem("currentSessionId");
+    try { if (auth.currentUser) { await updateDoc(doc(db, "usuarios", auth.currentUser.uid), { isOnline: false, currentSessionId: "" }); await signOut(auth); } } catch (e) {}
+    if (window._sessionUnsub) { window._sessionUnsub(); window._sessionUnsub = null; }
+    localStorage.removeItem("sistemaOrquestas_session"); sessionStorage.removeItem("sistemaOrquestas_session");
+    localStorage.removeItem("currentSessionId"); sessionStorage.removeItem("currentSessionId");
     window.location.href = "index.html";
   },
 
   getSession() {
-    const raw = sessionStorage.getItem("sistemaOrquestas_session") ||
-                localStorage.getItem("sistemaOrquestas_session");
+    const raw = sessionStorage.getItem("sistemaOrquestas_session") || localStorage.getItem("sistemaOrquestas_session");
     if (!raw) return null;
     try { return JSON.parse(raw); } catch (e) { return null; }
   },
 
-  checkPermission(perm) {
-    const s = this.getSession();
-    return s ? s.permissions.includes(perm) : false;
-  },
-
-  getRole() {
-    const s = this.getSession();
-    return s ? s.role : null;
-  },
-
-  onAuthChange(cb) {
-    return onAuthStateChanged(auth, cb);
-  }
+  checkPermission(perm) { const s = this.getSession(); return s ? s.permissions.includes(perm) : false; },
+  getRole() { const s = this.getSession(); return s ? s.role : null; },
+  onAuthChange(cb) { return onAuthStateChanged(auth, cb); }
 };
 
-// Al recargar la página, si hay sesión, disparamos el evento para que los módulos sepan que ya hay datos
+// Al recargar, disparar evento si hay sesión
 (() => {
   const session = window.Auth.getSession();
   const currentSessionId = sessionStorage.getItem("currentSessionId") || localStorage.getItem("currentSessionId");
-  if (session && currentSessionId) {
-    window.Auth.monitorSession(session.uid, currentSessionId);
-  }
-  // Siempre disparamos el evento, incluso si no hay sesión, para que las páginas sepan que la verificación terminó
+  if (session && currentSessionId) window.Auth.monitorSession(session.uid, currentSessionId);
   window.dispatchEvent(new CustomEvent('auth-ready', { detail: session }));
 })();
