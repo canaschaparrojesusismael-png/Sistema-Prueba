@@ -18,6 +18,60 @@ import { initializeApp as initSecondaryApp, deleteApp } from "https://www.gstati
 
 const DOMINIO = "";
 
+// ==================== JERARQUÍA DE ROLES ====================
+const ROLES = {
+  owner_supremo: {
+    label: "Owner Supremo",
+    level: 0,
+    permissions: [
+      "view_profile", "access_panel", "edit_carousel",
+      "manage_users", "manage_all_nucleos", "delete_any", "debug_mode"
+    ]
+  },
+  director_nacional: {
+    label: "Director Nacional",
+    level: 1,
+    permissions: [
+      "view_profile", "access_panel", "edit_carousel",
+      "manage_users", "view_all_nucleos"
+    ]
+  },
+  director_regional: {
+    label: "Director Regional",
+    level: 2,
+    permissions: [
+      "view_profile", "access_panel", "edit_carousel",
+      "manage_users", "view_region"
+    ]
+  },
+  director_nucleo: {
+    label: "Director de Núcleo",
+    level: 3,
+    permissions: [
+      "view_profile", "access_panel", "edit_carousel",
+      "manage_users", "manage_nucleo"
+    ]
+  },
+  admin: {
+    label: "Administrador",
+    level: 4,
+    permissions: [
+      "view_profile", "access_panel", "edit_carousel",
+      "manage_users"
+    ]
+  },
+  profesor: {
+    label: "Profesor",
+    level: 5,
+    permissions: ["view_profile", "access_panel", "edit_carousel"]
+  },
+  estudiante: {
+    label: "Estudiante",
+    level: 6,
+    permissions: ["view_profile"]
+  }
+};
+
 function generarClave() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
   let clave = "";
@@ -41,11 +95,11 @@ function getSecondaryAuthInstance() {
 window.Auth = {
   auth,
   db,
+  ROLES,
 
   async login(username, password, remember = false) {
     try {
       const email = (username + DOMINIO).trim();
-      
       console.log("DEBUG: Intentando autenticar correo:", email);
 
       const userCred = await signInWithEmailAndPassword(auth, email, password);
@@ -79,21 +133,22 @@ window.Auth = {
         username: data.username || username,
         nombre: data.nombre,
         role: data.rango,
+        roleLevel: ROLES[data.rango]?.level || 99,
+        subRole: data.subRole || "",
         firstName: data.nombre?.split(" ")[0] || "",
         lastName: data.nombre?.split(" ").slice(1).join(" ") || "",
         age: data.edad || 0,
         group: data.agrupacion || "",
         state: data.estado || "",
         nucleus: data.nucleo || "",
-        permissions: (data.rango === "owner" || data.rango === "admin")
-          ? ["view_profile", "access_panel", "edit_carousel", "manage_users"]
-          : data.rango === "profesor"
-            ? ["view_profile", "access_panel"]
-            : ["view_profile"],
+        permissions: ROLES[data.rango]?.permissions || ["view_profile"],
         loginTime: Date.now()
       };
       sessionStorage.setItem("sistemaOrquestas_session", JSON.stringify(sessionData));
       if (remember) localStorage.setItem("sistemaOrquestas_session", JSON.stringify(sessionData));
+
+      // Disparar evento de sesión lista
+      window.dispatchEvent(new CustomEvent('auth-ready', { detail: sessionData }));
 
       return { success: true, user: sessionData };
     } catch (err) {
@@ -101,7 +156,7 @@ window.Auth = {
     }
   },
 
-  async registerUser(username, nombre, rango, agrupacion) {
+  async registerUser(username, nombre, rango, agrupacion, estado, nucleo, subRole = "") {
     const { secApp, secAuth } = getSecondaryAuthInstance();
     try {
       const clave = generarClave();
@@ -113,13 +168,14 @@ window.Auth = {
         username,
         nombre,
         rango,
+        subRole,
         agrupacion,
+        estado,
+        nucleo,
         email,
         isOnline: false,
         currentSessionId: "",
         requiresPasswordChange: true,
-        estado: "",
-        nucleo: "",
         edad: 0,
         fechaCreacion: new Date().toISOString()
       });
@@ -187,7 +243,7 @@ window.Auth = {
     try { return JSON.parse(raw); } catch (e) { return null; }
   },
 
-  hasPermission(perm) {
+  checkPermission(perm) {
     const s = this.getSession();
     return s ? s.permissions.includes(perm) : false;
   },
@@ -202,10 +258,13 @@ window.Auth = {
   }
 };
 
+// Al recargar la página, si hay sesión, disparamos el evento para que los módulos sepan que ya hay datos
 (() => {
   const session = window.Auth.getSession();
   const currentSessionId = sessionStorage.getItem("currentSessionId") || localStorage.getItem("currentSessionId");
   if (session && currentSessionId) {
     window.Auth.monitorSession(session.uid, currentSessionId);
   }
+  // Siempre disparamos el evento, incluso si no hay sesión, para que las páginas sepan que la verificación terminó
+  window.dispatchEvent(new CustomEvent('auth-ready', { detail: session }));
 })();
