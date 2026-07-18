@@ -1,47 +1,125 @@
-import { auth, db } from "./firebase-init.js";
+import { db } from "./firebase-init.js";
+import { collection, onSnapshot, getDocs, doc, writeBatch } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
 
 (function () {
   "use strict";
-  const CAROUSEL_STORAGE = "sistemaOrquestas_carousel";
 
-  function loadCarouselData() {
-    const stored = localStorage.getItem(CAROUSEL_STORAGE);
-    if (stored) { try { return JSON.parse(stored); } catch (e) {} }
-    return [
-      { src: "images.jpg", alt: "Imagen 1", text: "Texto descriptivo 1" },
-      { src: "images.jpg", alt: "Imagen 2", text: "Texto descriptivo 2" }
-    ];
-  }
+  // ==================== REFERENCIA A FIRESTORE ====================
+  const carruselCol = collection(db, "carrusel");
 
-  let carouselData = loadCarouselData();
-  let currentIndex = 0, autoInterval = null;
+  // ==================== ESTADO LOCAL DEL CARRUSEL ====================
+  let carouselData = [];            // datos reactivos desde Firestore
+  let currentIndex = 0;
+  let autoInterval = null;
 
-  function updateCarouselDisplay() {
+  // ==================== RENDERIZADO HTML DEL CARRUSEL ====================
+  function renderizarCarrusel(imagenes) {
+    carouselData = imagenes;
     const imgEl = document.getElementById("carousel-image");
     const tituloEl = document.getElementById("carousel-title");
     const descEl = document.getElementById("carousel-desc");
-    if (carouselData.length > 0) {
-      const item = carouselData[currentIndex];
-      if (imgEl) { imgEl.src = item.src; imgEl.alt = item.alt; }
-      if (tituloEl) tituloEl.textContent = item.alt;
-      if (descEl) descEl.textContent = item.text;
+
+    if (carouselData.length === 0) {
+      if (imgEl) imgEl.src = "";
+      if (tituloEl) tituloEl.textContent = "Sin imágenes";
+      if (descEl) descEl.textContent = "El carrusel está vacío.";
+      return;
+    }
+
+    if (currentIndex >= carouselData.length) currentIndex = 0;
+    const item = carouselData[currentIndex];
+    if (imgEl) { imgEl.src = item.url || ""; imgEl.alt = item.alt || ""; }
+    if (tituloEl) tituloEl.textContent = item.alt || "Sin título";
+    if (descEl) descEl.textContent = item.text || "";
+  }
+
+  function siguienteSlide() {
+    if (carouselData.length === 0) return;
+    currentIndex = (currentIndex + 1) % carouselData.length;
+    renderizarCarrusel(carouselData);
+  }
+  function anteriorSlide() {
+    if (carouselData.length === 0) return;
+    currentIndex = (currentIndex - 1 + carouselData.length) % carouselData.length;
+    renderizarCarrusel(carouselData);
+  }
+
+  function iniciarAutoRotacion() {
+    detenerAutoRotacion();
+    autoInterval = setInterval(siguienteSlide, 4000);
+  }
+  function detenerAutoRotacion() {
+    if (autoInterval) {
+      clearInterval(autoInterval);
+      autoInterval = null;
     }
   }
 
-  function nextSlide() { if (!carouselData.length) return; currentIndex = (currentIndex + 1) % carouselData.length; updateCarouselDisplay(); }
-  function prevSlide() { if (!carouselData.length) return; currentIndex = (currentIndex - 1 + carouselData.length) % carouselData.length; updateCarouselDisplay(); }
-  function startAutoRotation() { stopAutoRotation(); autoInterval = setInterval(nextSlide, 4000); }
-  function stopAutoRotation() { if (autoInterval) { clearInterval(autoInterval); autoInterval = null; } }
-  function guardarCarouselData(data) {
-    carouselData = data;
-    localStorage.setItem(CAROUSEL_STORAGE, JSON.stringify(data));
-    if (currentIndex >= carouselData.length) currentIndex = 0;
-    updateCarouselDisplay();
+  // ==================== MIGRACIÓN LOCALSTORAGE → FIRESTORE (una sola vez) ====================
+  async function migrarLocalStorageSiExiste() {
+    const antiguo = localStorage.getItem("sistemaOrquestas_carousel");
+    if (!antiguo) return;
+    let datos;
+    try { datos = JSON.parse(antiguo); } catch (e) { return; }
+    if (!Array.isArray(datos) || datos.length === 0) return;
+
+    // Solo migramos si no hay datos en Firestore
+    const snapshot = await getDocs(carruselCol);
+    if (!snapshot.empty) {
+      localStorage.removeItem("sistemaOrquestas_carousel"); // ya migrado
+      return;
+    }
+
+    const batch = writeBatch(db);
+    datos.forEach((item, i) => {
+      const nuevoDocRef = doc(carruselCol); // ID automático
+      batch.set(nuevoDocRef, {
+        url: item.src || "",
+        alt: item.alt || "",
+        text: item.text || "",
+        orden: i
+      });
+    });
+    await batch.commit();
+    localStorage.removeItem("sistemaOrquestas_carousel");
   }
 
-  // --- CROP ---
+  // ==================== GUARDAR CAMBIOS DEL MODAL (usando writeBatch) ====================
+  async function guardarEnFirestore(nuevosDatos) {
+    try {
+      // 1. Obtener todos los documentos actuales
+      const snapshot = await getDocs(carruselCol);
+      const batch = writeBatch(db);
+
+      // 2. Marcar todos los documentos existentes para borrar
+      snapshot.docs.forEach(d => batch.delete(doc(db, "carrusel", d.id)));
+
+      // 3. Insertar los nuevos con orden secuencial
+      nuevosDatos.forEach((item, index) => {
+        const nuevoDocRef = doc(carruselCol);
+        batch.set(nuevoDocRef, {
+          url: item.url || item.src || "",
+          alt: item.alt || "",
+          text: item.text || "",
+          orden: index
+        });
+      });
+
+      // 4. Commit atómico
+      await batch.commit();
+      console.log("Carrusel sincronizado con la nube.");
+    } catch (error) {
+      console.error("Error al guardar carrusel:", error);
+    }
+  }
+
+  // ==================== MODAL DE EDICIÓN DEL CARRUSEL ====================
+  // (crop, drag & drop, formulario) – mantiene la misma lógica, 
+  // solo cambia la función de guardado al final.
   let cropCallback = null;
+
   function abrirCropModal(file, callback) {
+    // ... (código completo del crop, sin cambios)
     cropCallback = callback;
     const modal = document.getElementById("crop-modal");
     const img = document.getElementById("crop-source");
@@ -128,7 +206,6 @@ import { auth, db } from "./firebase-init.js";
     });
   }
 
-  // --- DRAG & DROP ---
   function initDragDrop() {
     const dropZone = document.getElementById("drop-zone");
     const fileInput = document.querySelector("#carousel-items .img-file");
@@ -145,7 +222,6 @@ import { auth, db } from "./firebase-init.js";
     dropZone.addEventListener("click", () => { if (fileInput) fileInput.click(); });
   }
 
-  // --- MODAL CARRUSEL ---
   let modalReady = false;
   function initCarouselModal() {
     if (modalReady) return;
@@ -165,6 +241,7 @@ import { auth, db } from "./firebase-init.js";
     document.body.appendChild(modal);
     crearCropModal();
     initDragDrop();
+
     let workingData = [...carouselData];
 
     function renderItems() {
@@ -174,9 +251,9 @@ import { auth, db } from "./firebase-init.js";
         const div = document.createElement("div");
         div.className = "carousel-item-editor";
         div.innerHTML = `
-          <div class="editor-row"><label>URL:</label><input type="text" class="img-url" value="${item.src}" data-index="${idx}" /><span>o archivo</span><input type="file" class="img-file" accept="image/*" data-index="${idx}" /></div>
-          <div class="editor-row"><label>Título:</label><input type="text" class="img-alt" value="${item.alt}" /></div>
-          <div class="editor-row"><label>Texto:</label><input type="text" class="img-text" value="${item.text}" /></div>
+          <div class="editor-row"><label>URL:</label><input type="text" class="img-url" value="${item.url || item.src || ""}" data-index="${idx}" /><span>o archivo</span><input type="file" class="img-file" accept="image/*" data-index="${idx}" /></div>
+          <div class="editor-row"><label>Título:</label><input type="text" class="img-alt" value="${item.alt || ""}" /></div>
+          <div class="editor-row"><label>Texto:</label><input type="text" class="img-text" value="${item.text || ""}" /></div>
           <button class="btn btn-cerrar eliminar-item" data-index="${idx}">Eliminar</button>`;
         container.appendChild(div);
       });
@@ -186,9 +263,9 @@ import { auth, db } from "./firebase-init.js";
         if (!file) return;
         abrirCropModal(file, (dataUrl) => {
           if (dataUrl) {
-            const urlInput = document.querySelector(`.img-url[data-index="${idx}"]`) || document.querySelectorAll(".img-url")[idx];
+            const urlInput = container.querySelector(`.img-url[data-index="${idx}"]`) || container.querySelectorAll(".img-url")[idx];
             if (urlInput) urlInput.value = dataUrl;
-            if (workingData[idx]) workingData[idx].src = dataUrl;
+            if (workingData[idx]) workingData[idx].url = dataUrl;
           }
           e.target.value = "";
         });
@@ -202,24 +279,57 @@ import { auth, db } from "./firebase-init.js";
 
     function sincronizarFormulario() {
       workingData = [...document.querySelectorAll(".carousel-item-editor")].map(fila => ({
-        src: fila.querySelector(".img-url")?.value || "",
+        url: fila.querySelector(".img-url")?.value || "",
         alt: fila.querySelector(".img-alt")?.value || "",
         text: fila.querySelector(".img-text")?.value || ""
       }));
     }
 
-    document.getElementById("add-image-btn").onclick = () => { sincronizarFormulario(); workingData.push({ src: "", alt: "", text: "" }); renderItems(); };
-    document.getElementById("save-carousel-btn").onclick = () => { sincronizarFormulario(); guardarCarouselData(workingData); modal.style.display = "none"; };
+    document.getElementById("add-image-btn").onclick = () => { sincronizarFormulario(); workingData.push({ url: "", alt: "", text: "" }); renderItems(); };
+    document.getElementById("save-carousel-btn").onclick = async () => {
+      sincronizarFormulario();
+      await guardarEnFirestore(workingData); // ¡Guarda en Firestore!
+      modal.style.display = "none";
+    };
     document.getElementById("close-modal").onclick = () => { workingData = [...carouselData]; modal.style.display = "none"; };
     document.getElementById("carousel-close-btn").onclick = () => { workingData = [...carouselData]; modal.style.display = "none"; };
-    window.showCarouselModal = () => { workingData = [...carouselData]; renderItems(); modal.style.display = "flex"; };
+
+    window.showCarouselModal = () => { workingData = carouselData.map(item => ({...item})); renderItems(); modal.style.display = "flex"; };
   }
 
-  // 🚀 Inicialización directa (sin DOMContentLoaded)
-  updateCarouselDisplay();
-  startAutoRotation();
-  document.getElementById("prev-slide")?.addEventListener("click", () => { prevSlide(); stopAutoRotation(); startAutoRotation(); });
-  document.getElementById("next-slide")?.addEventListener("click", () => { nextSlide(); stopAutoRotation(); startAutoRotation(); });
-  if (window.Auth?.checkPermission("edit_carousel")) initCarouselModal();
-  window.UI?.render();
+  // ==================== INICIALIZACIÓN ====================
+  function iniciarTodo() {
+    // 1. Migrar datos antiguos si existen
+    migrarLocalStorageSiExiste().then(() => {
+      // 2. Escucha en tiempo real de Firestore
+      const unsubscribe = onSnapshot(carruselCol, (snapshot) => {
+        const imagenes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        imagenes.sort((a, b) => a.orden - b.orden); // orden lógico
+        renderizarCarrusel(imagenes);
+      }, (error) => console.error("Error al escuchar carrusel:", error));
+
+      // Limpiar al descargar la página
+      window.addEventListener("beforeunload", () => unsubscribe());
+    });
+
+    // 3. Controles de flechas
+    document.getElementById("prev-slide")?.addEventListener("click", () => { anteriorSlide(); detenerAutoRotacion(); iniciarAutoRotacion(); });
+    document.getElementById("next-slide")?.addEventListener("click", () => { siguienteSlide(); detenerAutoRotacion(); iniciarAutoRotacion(); });
+
+    // 4. Auto rotación
+    iniciarAutoRotacion();
+
+    // 5. Botón de edición (solo admin)
+    if (window.Auth?.checkPermission("edit_carousel")) initCarouselModal();
+
+    // 6. Renderizar UI
+    window.UI?.render();
+  }
+
+  // Arranque inmediato (sin DOMContentLoaded porque es módulo ES)
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", iniciarTodo);
+  } else {
+    iniciarTodo();
+  }
 })();
