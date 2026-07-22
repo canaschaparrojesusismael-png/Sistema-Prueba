@@ -1,50 +1,114 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
-  <title>Sistema – Premium UI</title>
-  <link rel="stylesheet" href="estilos.css?v=2.2" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Panel de Control – Sistema de Orquestas</title>
+    <link rel="stylesheet" href="estilos.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 </head>
 <body>
-  <header class="barra-superior">
-    <img id="Gobierno" src="datos.png" alt="Gobierno de Venezuela" />
-    <nav id="user-nav" class="user-nav"></nav>
-  </header>
-  <main class="contenido-web">
-    <div class="container">
-      <div class="bloque-logo-sistema">
-        <img id="orquestas" src="Estandarte.png" alt="Logo Sistema de Orquestas" />
-      </div>
-      <div id="login-area" class="login-area">
-        <a href="login.html" class="btn btn-login">Iniciar Sesión</a>
-      </div>
-      <div class="modulo-carrusel" id="carousel-container">
-        <button class="carousel-arrow carousel-arrow-left" id="prev-slide">&#10094;</button>
-        <div class="carrusel-caja">
-          <img src="images.jpg" alt="Imagen del Carrusel" class="imagen-carrusel" id="carousel-image" />
-        </div>
-        <button class="carousel-arrow carousel-arrow-right" id="next-slide">&#10095;</button>
-        <div class="carrusel-texto">
-          <h2 id="carousel-title">Sistema Nacional de Orquestas</h2>
-          <p id="carousel-desc">Texto explicativo del carrusel…</p>
-        </div>
-      </div>
-      <section class="citas-grid">
-        <blockquote>“Música para iluminar, música para salvar...”</blockquote>
-        <blockquote>“La orquesta es el único espacio donde la solidaridad y el trabajo en equipo se convierten en arte.”</blockquote>
-        <blockquote>“La disciplina de la música nos enseña que la excelencia no es un acto, sino un hábito.”</blockquote>
-      </section>
+    <div class="app-container">
+        <!-- Barra lateral -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fa-solid fa-music"></i> Sistema CMA</h2>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="index.html" class="active"><i class="fa-solid fa-chart-pie"></i> Panel</a></li>
+                <li><a href="miembros.html"><i class="fa-solid fa-users"></i> Miembros</a></li>
+                <li><a href="piezas.html"><i class="fa-solid fa-file-audio"></i> Agrupaciones</a></li>
+                <li><a href="repertorio.html"><i class="fa-solid fa-book-open"></i> Repertorio</a></li>
+                <li><a href="formacion.html"><i class="fa-solid fa-graduation-cap"></i> Formación</a></li>
+                <li><a href="panel.html"><i class="fa-solid fa-calendar"></i> Eventos</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <button id="btn-logout" class="btn-logout"><i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión</button>
+            </div>
+        </aside>
+
+        <!-- Contenido principal -->
+        <main class="main-content">
+            <header class="topbar">
+                <div class="topbar-title">
+                    <h1>Dashboard</h1>
+                </div>
+                <div class="user-nav" id="user-nav-area">
+                    <span id="user-email-display">Cargando…</span>
+                </div>
+            </header>
+
+            <div class="dashboard-container">
+                <!-- Carrusel (global, solo lectura) -->
+                <section class="carrusel-widget" id="carousel-widget">
+                    <button class="carousel-arrow carousel-arrow-left" id="prev-slide">&#10094;</button>
+                    <div class="carrusel-caja">
+                        <img src="images.jpg" alt="Carrusel" class="imagen-carrusel" id="carousel-image" />
+                    </div>
+                    <button class="carousel-arrow carousel-arrow-right" id="next-slide">&#10095;</button>
+                    <div class="carrusel-texto">
+                        <h2 id="carousel-title">Sistema Nacional de Orquestas</h2>
+                        <p id="carousel-desc">Texto del carrusel…</p>
+                    </div>
+                    <button class="carousel-edit-btn" id="edit-carousel-btn" style="display:none;">&#9881;</button>
+                </section>
+
+                <!-- Métricas -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-icon bg-blue"><i class="fa-solid fa-users"></i></div>
+                        <div class="metric-info">
+                            <h3>Total Miembros</h3>
+                            <p id="metric-miembros">0</p>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon bg-green"><i class="fa-solid fa-book"></i></div>
+                        <div class="metric-info">
+                            <h3>Partituras</h3>
+                            <p id="metric-partituras">0</p>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon bg-purple"><i class="fa-solid fa-layer-group"></i></div>
+                        <div class="metric-info">
+                            <h3>Agrupaciones</h3>
+                            <p id="metric-agrupaciones">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabla de actividad reciente -->
+                <div class="card-section">
+                    <div class="section-header">
+                        <h2><i class="fa-solid fa-list-check"></i> Actividad Reciente</h2>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre / Registro</th>
+                                    <th>Categoría / Rol</th>
+                                    <th>Núcleo / Estado</th>
+                                    <th>Fecha</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-resumen-body">
+                                <tr><td colspan="4" class="text-center">Cargando…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
-  </main>
-  <footer class="pie-pagina">
-    <div class="footer-contenido"><p>© 2026 Fundación Musical Simón Bolívar</p></div>
-  </footer>
-  <script type="module" src="auth.js?v=2.2"></script>
-  <script type="module" src="ui-manager.js?v=2.2"></script>
-  <script type="module" src="main.js?v=2.2"></script>
+
+    <!-- Modal de gestión del carrusel (se inyecta dinámicamente) -->
+    <!-- Modal de recorte (crop) se inyecta dinámicamente -->
+
+    <script type="module" src="firebase-init.js"></script>
+    <script type="module" src="auth.js"></script>
+    <script type="module" src="ui-manager.js"></script>
+    <script type="module" src="main.js"></script>
 </body>
 </html>
