@@ -3,63 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Repertorio – Sistema de Orquestas</title>
+    <title>Detalle Agrupación – Sistema de Orquestas</title>
     <link rel="stylesheet" href="estilos.css">
     <style>
         .back-link { display: inline-block; margin: 1.5rem 0; color: var(--color-primario); font-weight: 600; text-decoration: none; }
         .back-link:hover { text-decoration: underline; }
 
-        .tabs-container { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 30px; padding: 10px 0; border-bottom: 3px solid #e0e4f0; }
-        .tab-instrumento {
-            padding: 12px 25px; background: rgba(255,255,255,0.8); border: 2px solid var(--color-primario);
-            border-radius: 30px; font-weight: 700; color: var(--color-primario); cursor: pointer;
-            transition: var(--transition-normal); font-size: 0.95rem;
+        .pieza-card {
+            background: var(--color-blanco);
+            border: 1px solid #e0e4f0;
+            border-radius: var(--border-radius);
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: var(--shadow-card);
+            transition: var(--transition-normal);
         }
-        .tab-instrumento.active { background: var(--color-primario); color: white; box-shadow: 0 4px 12px rgba(65,56,169,0.3); }
-        .tab-instrumento:hover { background: var(--color-primario); color: white; transform: translateY(-2px); }
+        .pieza-card:hover { box-shadow: var(--shadow-hover); }
 
-        .btn-add-instrumento {
-            padding: 12px 25px; background: white; border: 2px dashed var(--color-primario);
-            border-radius: 30px; font-weight: 700; color: var(--color-primario); cursor: pointer;
-            transition: var(--transition-normal); font-size: 0.95rem; display: none;
+        .instrumentos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-top: 15px; }
+        .btn-instrumento {
+            padding: 12px; background: #f0eeff; border: 2px solid var(--color-primario);
+            border-radius: 12px; font-weight: 600; color: var(--color-primario); cursor: pointer;
+            transition: var(--transition-normal); text-align: center;
         }
-        .is-admin .btn-add-instrumento { display: inline-block; }
-        .btn-add-instrumento:hover { background: var(--color-primario); color: white; border-style: solid; }
+        .btn-instrumento:hover { background: var(--color-primario); color: white; transform: scale(1.03); }
 
-        .partituras-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .btn-subir-pdf {
-            display: none; padding: 12px 25px; background: var(--color-primario); color: white;
-            border: none; border-radius: 30px; font-weight: 700; cursor: pointer;
-            transition: var(--transition-normal); font-size: 0.95rem;
+        .is-admin .btn-admin-accion { display: inline-block; }
+        .btn-admin-accion {
+            display: none; padding: 6px 12px; background: var(--color-acento); color: white;
+            border: none; border-radius: 15px; cursor: pointer; font-weight: 600; font-size: 0.8rem;
         }
-        .is-admin .btn-subir-pdf { display: inline-block; }
-        .btn-subir-pdf:hover { background: var(--color-primario-oscuro); transform: scale(1.02); }
 
-        .grid-partituras { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; margin-top: 10px; }
-        .card-partitura {
-            background: white; border: 2px solid #e0e4f0; border-radius: var(--border-radius);
-            padding: 1.8rem; text-align: center; box-shadow: var(--shadow-card);
-            transition: var(--transition-normal); position: relative;
-        }
-        .card-partitura:hover { border-color: var(--color-primario); transform: translateY(-3px); }
-        .card-partitura strong { display: block; font-size: 1.1rem; margin-bottom: 10px; color: var(--color-primario); }
-
-        .btn-descarga {
-            display: inline-block; margin-top: 12px; padding: 8px 20px;
-            background: var(--color-primario); color: white; border-radius: 25px;
-            text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: var(--transition-fast);
-        }
-        .btn-descarga:hover { background: var(--color-primario-oscuro); }
-
-        .btn-eliminar-partitura {
-            background: var(--color-acento); color: white; border: none; border-radius: 50%;
-            width: 28px; height: 28px; cursor: pointer; font-size: 1rem;
-            position: absolute; top: -10px; right: -10px; display: none;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-        }
-        .is-admin .btn-eliminar-partitura { display: block; }
-
-        .modal-input { width: 100%; padding: 0.6rem; margin: 0.5rem 0; border: 1.5px solid #e0e4f0; border-radius: 8px; font-size: 0.95rem; }
+        .form-control { width: 100%; padding: 0.5rem; margin-top: 0.3rem; border: 1px solid #ccc; border-radius: 8px; }
     </style>
 </head>
 <body>
@@ -68,274 +43,163 @@
         <nav id="user-nav" class="user-nav"></nav>
     </header>
 
-    <main class="contenido-web container" id="repertorio-container">
+    <main class="contenido-web container" id="agrupacion-container">
         <a class="back-link" href="piezas.html">&larr; Volver a Agrupaciones</a>
-        <h2 style="color: var(--color-primario); font-weight: 800;">Repertorio: <span id="nombre-agrupacion"></span></h2>
-
-        <div class="tabs-container" id="tabs-container"></div>
-
-        <div class="partituras-header">
-            <h3 style="color: var(--color-primario);">Partituras para: <span id="instrumento-actual"></span></h3>
-            <button class="btn-subir-pdf" id="btn-subir-pdf">Subir PDF / Link Drive</button>
-        </div>
-
-        <div class="modal-overlay" id="modal-instrumento">
-            <div class="modal-content">
-                <button class="modal-close-btn" id="instr-close-btn">&times;</button>
-                <h2>Nuevo Instrumento</h2>
-                <input type="text" id="input-nombre-instrumento" class="modal-input" placeholder="Nombre del instrumento" />
-                <button id="btn-guardar-instrumento" class="btn btn-submit">Guardar</button>
-                <button id="btn-cerrar-modal-instr" class="btn btn-cerrar">Cancelar</button>
-            </div>
-        </div>
-
-        <div class="modal-overlay" id="modal-subir-partitura">
-            <div class="modal-content">
-                <button class="modal-close-btn" id="part-close-btn">&times;</button>
-                <h2>Subir Partitura</h2>
-                <p style="font-size:0.8rem; color:#666;">Selecciona un archivo PDF o pega un enlace de Google Drive.</p>
-                <label for="input-pdf" class="btn btn-submit" style="margin-bottom:10px;">Seleccionar archivo PDF</label>
-                <input type="file" id="input-pdf" accept="application/pdf" style="display:none;" />
-                <p style="text-align:center; margin:10px 0;">o</p>
-                <input type="text" id="input-link-drive" class="modal-input" placeholder="Pega el enlace de Google Drive aquí" />
-                <button id="btn-guardar-partitura" class="btn btn-submit" style="margin-top:15px;">Guardar Partitura</button>
-                <button id="btn-cerrar-modal-part" class="btn btn-cerrar">Cancelar</button>
-            </div>
-        </div>
-
-        <div class="grid-partituras" id="grid-partituras"></div>
+        <h2 id="agrupacion-titulo" style="color: var(--color-primario); font-weight: 800;">Cargando...</h2>
+        <div id="piezas-container"></div>
     </main>
+
+    <!-- Modal para subir partitura -->
+    <div class="modal-overlay" id="modal-partitura">
+        <div class="modal-content">
+            <button class="modal-close-btn" id="partitura-close-btn">&times;</button>
+            <h2>Subir Partitura</h2>
+            <input type="hidden" id="partitura-pieza-id" />
+            <div class="editor-row">
+                <label>Instrumento:</label>
+                <input type="text" id="partitura-instrumento" class="modal-input" placeholder="Ej. Violín 1" />
+            </div>
+            <div class="editor-row">
+                <label>Archivo PDF:</label>
+                <input type="file" id="partitura-archivo" accept=".pdf" class="modal-input" />
+            </div>
+            <button id="btn-subir-partitura" class="btn btn-submit">Subir</button>
+            <button id="btn-cerrar-modal-partitura" class="btn btn-cerrar">Cancelar</button>
+        </div>
+    </div>
 
     <script type="module" src="auth.js?v=2.2"></script>
     <script type="module" src="ui-manager.js?v=2.2"></script>
     <script type="module">
-        function initRepertorio() {
-            if (!window.Auth?.getSession()) {
-                window.location.href = "index.html";
+        import { db, storage } from "./firebase-init.js";
+        import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, orderBy } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+        import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-storage.js";
+
+        // ==================== OBTENER PARÁMETRO DE LA URL ====================
+        const urlParams = new URLSearchParams(window.location.search);
+        const agrupacionId = urlParams.get("agrup") || urlParams.get("id"); // Acepta "agrup" o "id"
+        if (!agrupacionId) {
+            document.getElementById("agrupacion-titulo").textContent = "Error: falta el identificador de la agrupación.";
+        } else {
+            document.getElementById("agrupacion-titulo").textContent = decodeURIComponent(agrupacionId);
+        }
+
+        // ==================== COLECCIONES ====================
+        const piezasCol = collection(db, "piezas");
+        const partiturasCol = collection(db, "partituras");
+
+        // ==================== RENDERIZADO DE PIEZAS ====================
+        const piezasContainer = document.getElementById("piezas-container");
+
+        function renderizarPiezas(piezas) {
+            piezasContainer.innerHTML = "";
+            if (piezas.length === 0) {
+                piezasContainer.innerHTML = `<p>No hay piezas registradas para esta agrupación.</p>`;
                 return;
             }
 
-            const params = new URLSearchParams(window.location.search);
-            const agrupacionNombre = params.get("agrup") || "Sin nombre";
-            document.getElementById("nombre-agrupacion").textContent = agrupacionNombre;
+            piezas.forEach(pieza => {
+                const card = document.createElement("section");
+                card.className = "pieza-card";
+                card.innerHTML = `<h3 style="color: var(--color-primario);">${pieza.titulo}</h3>`;
 
-            let fileToUpload = null;
-            const DB_NAME = "SistemaOrquestas_Rep";
-            const DB_VERSION = 2;
-            let localDB;
+                const grid = document.createElement("div");
+                grid.className = "instrumentos-grid";
 
-            const request = indexedDB.open(DB_NAME, DB_VERSION);
-            request.onupgradeneeded = (event) => {
-                const database = event.target.result;
-                if (!database.objectStoreNames.contains("files")) database.createObjectStore("files", { keyPath: "id" });
-                if (!database.objectStoreNames.contains("repertorio")) database.createObjectStore("repertorio", { keyPath: "agrupacion" });
-            };
-            request.onsuccess = (event) => { localDB = event.target.result; cargarRepertorio(); };
-            request.onerror = () => { cargarRepertorioFallback(); };
-
-            let repertorio = { instrumentos: [], partituras: [] };
-            let instrumentoSeleccionado = "";
-
-            function cargarRepertorio() {
-                if (!localDB) return;
-                const tx = localDB.transaction("repertorio", "readonly");
-                const store = tx.objectStore("repertorio");
-                const getReq = store.get(agrupacionNombre);
-                getReq.onsuccess = () => {
-                    if (getReq.result) {
-                        repertorio = getReq.result.data;
-                    } else {
-                        repertorio = { instrumentos: ["Trombón", "Violín 1", "Percusión"], partituras: [] };
-                        guardarRepertorio();
-                    }
-                    if (repertorio.instrumentos.length > 0) instrumentoSeleccionado = repertorio.instrumentos[0];
-                    renderizarTodo();
-                };
-                getReq.onerror = () => cargarRepertorioFallback();
-            }
-
-            function cargarRepertorioFallback() {
-                repertorio = { instrumentos: ["Trombón", "Violín 1", "Percusión"], partituras: [] };
-                instrumentoSeleccionado = repertorio.instrumentos[0];
-                guardarRepertorio();
-                renderizarTodo();
-            }
-
-            function guardarRepertorio() {
-                if (!localDB) return;
-                const tx = localDB.transaction("repertorio", "readwrite");
-                const store = tx.objectStore("repertorio");
-                store.put({ agrupacion: agrupacionNombre, data: repertorio });
-            }
-
-            function guardarArchivo(id, blob, callback) {
-                if (!localDB) { callback(false); return; }
-                const tx = localDB.transaction("files", "readwrite");
-                const store = tx.objectStore("files");
-                const req = store.put({ id, data: blob });
-                req.onsuccess = () => callback(true);
-                req.onerror = () => callback(false);
-            }
-
-            function obtenerArchivo(id, callback) {
-                if (!localDB) { callback(null); return; }
-                const tx = localDB.transaction("files", "readonly");
-                const store = tx.objectStore("files");
-                const req = store.get(id);
-                req.onsuccess = () => callback(req.result ? req.result.data : null);
-                req.onerror = () => callback(null);
-            }
-
-            function eliminarArchivo(id) {
-                if (!localDB) return;
-                const tx = localDB.transaction("files", "readwrite");
-                const store = tx.objectStore("files");
-                store.delete(id);
-            }
-
-            function renderizarTodo() { renderizarTabs(); renderizarPartituras(); aplicarClaseAdmin(); }
-
-            function renderizarTabs() {
-                const container = document.getElementById("tabs-container");
-                container.innerHTML = "";
-                repertorio.instrumentos.forEach(instr => {
-                    const tab = document.createElement("button");
-                    tab.className = "tab-instrumento" + (instr === instrumentoSeleccionado ? " active" : "");
-                    tab.textContent = instr;
-                    tab.addEventListener("click", () => { instrumentoSeleccionado = instr; renderizarTodo(); });
-                    container.appendChild(tab);
+                pieza.instrumentos.forEach(inst => {
+                    const btn = document.createElement("button");
+                    btn.className = "btn-instrumento";
+                    btn.textContent = inst;
+                    btn.addEventListener("click", () => abrirModalPartitura(pieza.id, inst));
+                    grid.appendChild(btn);
                 });
-                const btnAdd = document.createElement("button");
-                btnAdd.className = "btn-add-instrumento";
-                btnAdd.innerHTML = "&#9881; Añadir";
-                btnAdd.addEventListener("click", () => {
-                    document.getElementById("input-nombre-instrumento").value = "";
-                    document.getElementById("modal-instrumento").style.display = "flex";
-                });
-                container.appendChild(btnAdd);
-            }
 
-            function renderizarPartituras() {
-                document.getElementById("instrumento-actual").textContent = instrumentoSeleccionado;
-                const grid = document.getElementById("grid-partituras");
-                grid.innerHTML = "";
-                const partituras = repertorio.partituras.filter(p => p.instrumento === instrumentoSeleccionado);
-                partituras.forEach(part => {
-                    const card = document.createElement("div");
-                    card.className = "card-partitura";
-                    const esDrive = part.fileId && part.fileId.startsWith("http");
-                    const tieneArchivo = part.fileId && !esDrive;
-                    const btnDescarga = document.createElement("a");
-                    btnDescarga.className = "btn-descarga";
-                    btnDescarga.textContent = esDrive ? "Ver en Drive" : (tieneArchivo ? "Descargar" : "Sin archivo");
-                    if (esDrive) { btnDescarga.href = part.fileId; btnDescarga.target = "_blank"; }
-                    else if (tieneArchivo) {
-                        btnDescarga.href = "#";
-                        btnDescarga.addEventListener("click", (e) => {
-                            e.preventDefault();
-                            obtenerArchivo(part.fileId, (blob) => {
-                                if (blob) {
-                                    const url = URL.createObjectURL(blob);
-                                    const a = document.createElement("a");
-                                    a.href = url; a.download = part.nombre; a.click();
-                                    URL.revokeObjectURL(url);
-                                } else { alert("Archivo no encontrado."); }
-                            });
-                        });
-                    }
-                    card.innerHTML = `<strong>${part.nombre}</strong>`;
-                    card.appendChild(btnDescarga);
-                    const btnDel = document.createElement("button");
-                    btnDel.className = "btn-eliminar-partitura";
-                    btnDel.innerHTML = "✖";
-                    btnDel.addEventListener("click", (e) => {
+                card.appendChild(grid);
+
+                // Botón para subir partitura (visible para roles autorizados)
+                const session = window.Auth?.getSession();
+                if (session && (window.Auth?.checkPermission("manage_users") || session.role === "profesor")) {
+                    const btnAdmin = document.createElement("button");
+                    btnAdmin.className = "btn-admin-accion";
+                    btnAdmin.textContent = "Subir PDF";
+                    btnAdmin.addEventListener("click", (e) => {
                         e.stopPropagation();
-                        if (confirm(`¿Eliminar "${part.nombre}"?`)) {
-                            if (part.fileId && !part.fileId.startsWith("http")) eliminarArchivo(part.fileId);
-                            repertorio.partituras = repertorio.partituras.filter(p => p.id !== part.id);
-                            guardarRepertorio(); renderizarPartituras();
-                        }
+                        abrirModalPartitura(pieza.id, null); // sin instrumento predefinido
                     });
-                    card.appendChild(btnDel);
-                    grid.appendChild(card);
-                });
-            }
+                    card.appendChild(btnAdmin);
+                }
 
-            function aplicarClaseAdmin() {
-                const main = document.getElementById("repertorio-container");
-                if (Auth.checkPermission("manage_users")) main.classList.add("is-admin");
-                else main.classList.remove("is-admin");
-            }
-
-            document.getElementById("btn-subir-pdf").addEventListener("click", () => {
-                document.getElementById("modal-subir-partitura").style.display = "flex";
-                document.getElementById("input-pdf").value = "";
-                document.getElementById("input-link-drive").value = "";
-                fileToUpload = null;
+                piezasContainer.appendChild(card);
             });
-
-            document.getElementById("input-pdf").addEventListener("change", function(e) {
-                const file = e.target.files[0];
-                if (file) fileToUpload = file;
-            });
-
-            document.getElementById("btn-guardar-partitura").addEventListener("click", () => {
-                const linkDrive = document.getElementById("input-link-drive").value.trim();
-                if (linkDrive && (linkDrive.startsWith("http://") || linkDrive.startsWith("https://"))) {
-                    finalizarGuardado(linkDrive);
-                } else if (fileToUpload) {
-                    const id = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-                    guardarArchivo(id, fileToUpload, (success) => {
-                        if (success) { finalizarGuardado(id); fileToUpload = null; }
-                        else { alert("Error al guardar el archivo. Intenta con un enlace de Drive."); }
-                    });
-                } else { alert("Debes seleccionar un archivo PDF o pegar un enlace de Google Drive."); }
-            });
-
-            function finalizarGuardado(fileId) {
-                const nombre = fileId.startsWith("http") ? "Partitura de Drive" : (fileToUpload ? fileToUpload.name : "Partitura");
-                const nuevaPartitura = {
-                    id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-                    instrumento: instrumentoSeleccionado, nombre: nombre, fileId: fileId
-                };
-                repertorio.partituras.push(nuevaPartitura);
-                guardarRepertorio(); renderizarPartituras();
-                document.getElementById("modal-subir-partitura").style.display = "none";
-                fileToUpload = null;
-            }
-
-            document.getElementById("btn-cerrar-modal-part").addEventListener("click", () => {
-                document.getElementById("modal-subir-partitura").style.display = "none";
-                fileToUpload = null;
-            });
-            document.getElementById("part-close-btn").addEventListener("click", () => {
-                document.getElementById("modal-subir-partitura").style.display = "none";
-                fileToUpload = null;
-            });
-
-            document.getElementById("btn-guardar-instrumento").addEventListener("click", () => {
-                const nombre = document.getElementById("input-nombre-instrumento").value.trim();
-                if (!nombre) return alert("Nombre obligatorio.");
-                if (repertorio.instrumentos.includes(nombre)) return alert("El instrumento ya existe.");
-                repertorio.instrumentos.push(nombre);
-                instrumentoSeleccionado = nombre;
-                guardarRepertorio(); renderizarTodo();
-                document.getElementById("modal-instrumento").style.display = "none";
-            });
-
-            document.getElementById("btn-cerrar-modal-instr").addEventListener("click", () => {
-                document.getElementById("modal-instrumento").style.display = "none";
-            });
-            document.getElementById("instr-close-btn").addEventListener("click", () => {
-                document.getElementById("modal-instrumento").style.display = "none";
-            });
-
-            UI.render();
-            if (localDB) cargarRepertorio();
         }
 
-        window.addEventListener("auth-ready", initRepertorio);
-        if (window.Auth?.getSession()) initRepertorio();
+        // Escuchar piezas de esta agrupación
+        const qPiezas = query(piezasCol, where("agrupacionId", "==", agrupacionId), orderBy("titulo"));
+        onSnapshot(qPiezas, (snapshot) => {
+            const piezas = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            renderizarPiezas(piezas);
+        });
+
+        // ==================== MODAL DE SUBIDA DE PARTITURA ====================
+        function abrirModalPartitura(piezaId, instrumento) {
+            document.getElementById("partitura-pieza-id").value = piezaId;
+            document.getElementById("partitura-instrumento").value = instrumento || "";
+            document.getElementById("partitura-archivo").value = "";
+            document.getElementById("modal-partitura").style.display = "flex";
+        }
+
+        document.getElementById("btn-cerrar-modal-partitura").addEventListener("click", () => {
+            document.getElementById("modal-partitura").style.display = "none";
+        });
+        document.getElementById("partitura-close-btn").addEventListener("click", () => {
+            document.getElementById("modal-partitura").style.display = "none";
+        });
+
+        document.getElementById("btn-subir-partitura").addEventListener("click", async () => {
+            const piezaId = document.getElementById("partitura-pieza-id").value;
+            const instrumento = document.getElementById("partitura-instrumento").value.trim();
+            const archivoInput = document.getElementById("partitura-archivo");
+            const archivo = archivoInput.files[0];
+
+            if (!instrumento || !archivo) {
+                alert("Debe indicar el instrumento y seleccionar un archivo PDF.");
+                return;
+            }
+
+            const btn = document.getElementById("btn-subir-partitura");
+            btn.disabled = true;
+            btn.textContent = "Subiendo...";
+
+            try {
+                // Subir a Storage
+                const storageRef = ref(storage, `partituras/${agrupacionId}/${Date.now()}_${archivo.name}`);
+                await uploadBytes(storageRef, archivo);
+                const url = await getDownloadURL(storageRef);
+
+                // Guardar referencia en Firestore
+                const session = window.Auth?.getSession();
+                await addDoc(partiturasCol, {
+                    piezaId,
+                    instrumento,
+                    url,
+                    nombre: archivo.name,
+                    agrupacionId,
+                    subidoPor: session?.uid || "desconocido",
+                    fecha: new Date()
+                });
+
+                alert("Partitura subida correctamente.");
+                document.getElementById("modal-partitura").style.display = "none";
+            } catch (error) {
+                alert("Error al subir: " + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Subir";
+            }
+        });
+
+        // ==================== INICIALIZACIÓN ====================
+        UI.render();
     </script>
 </body>
 </html>
