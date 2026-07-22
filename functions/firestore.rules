@@ -2,8 +2,48 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Función auxiliar para obtener datos del token (Custom Claims)
-    function getRango() { return request.auth.token.rango; }
+    // Función auxiliar para leer el rango del solicitante desde su documento
+    function getRango() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rango;
+    }
+
+    // ---------- USUARIOS ----------
+    match /usuarios/{userId} {
+      // Cada usuario puede leer su propio documento (necesario para el login)
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      // Los roles superiores pueden leer todos los documentos de su ámbito
+      allow read: if request.auth != null &&
+        ( getRango() == 'owner_supremo' ||
+          getRango() == 'director_nacional' ||
+          (getRango() == 'director_regional' && resource.data.estado == getRango().estado) ||
+          (getRango() == 'director_nucleo' && resource.data.nucleo == getRango().nucleo) ||
+          (getRango() == 'admin' && resource.data.nucleo == getRango().nucleo)
+        );
+
+      // Creación: solo roles superiores, y el campo rango del nuevo usuario debe ser inferior al del solicitante
+      allow create: if request.auth != null &&
+        request.resource.data.rango in ['estudiante', 'profesor', 'admin', 'director_nucleo', 'director_regional', 'director_nacional', 'owner_supremo'] &&
+        ( (getRango() == 'owner_supremo') ||
+          (getRango() == 'director_nacional' && request.resource.data.rango != 'owner_supremo') ||
+          (getRango() == 'director_regional' && request.resource.data.estado == getRango().estado && request.resource.data.rango in ['estudiante', 'profesor', 'admin', 'director_nucleo']) ||
+          (getRango() == 'director_nucleo' && request.resource.data.nucleo == getRango().nucleo && request.resource.data.rango in ['estudiante', 'profesor', 'admin'])
+        );
+
+      // Actualización: solo roles superiores, y no se permite cambiar el propio rango ni el de alguien superior
+      allow update: if request.auth != null &&
+        ( (getRango() == 'owner_supremo') ||
+          (getRango() == 'director_nacional' && resource.data.rango != 'owner_supremo') ||
+          (getRango() == 'director_regional' && resource.data.estado == getRango().estado && resource.data.rango in ['estudiante', 'profesor', 'admin', 'director_nucleo']) ||
+          (getRango() == 'director_nucleo' && resource.data.nucleo == getRango().nucleo && resource.data.rango in ['estudiante', 'profesor', 'admin'])
+        ) &&
+        // El campo rango solo puede ser modificado por owner_supremo
+        (request.resource.data.rango == resource.data.rango || getRango() == 'owner_supremo');
+
+      // Eliminación: solo owner_supremo y director_nacional (baja lógica con cuentaActiva)
+      allow delete: if request.auth != null &&
+        (getRango() == 'owner_supremo' || getRango() == 'director_nacional');
+    }
 
     // ---------- CARRUSEL (global) ----------
     match /carrusel/{docId} {
@@ -16,25 +56,49 @@ service cloud.firestore {
       allow read: if request.auth != null &&
         ( getRango() == 'owner_supremo' ||
           getRango() == 'director_nacional' ||
-          (getRango() == 'director_regional' && resource.data.estado == request.auth.token.estado) ||
-          (resource.data.nucleo == request.auth.token.nucleo)
+          (getRango() == 'director_regional' && resource.data.estado == getRango().estado) ||
+          (resource.data.nucleo == getRango().nucleo)
         );
       allow create: if request.auth != null &&
         ( getRango() == 'owner_supremo' ||
           getRango() == 'director_nacional' ||
-          (getRango() == 'director_regional' && request.resource.data.estado == request.auth.token.estado) ||
-          (getRango() == 'director_nucleo' && request.resource.data.nucleo == request.auth.token.nucleo) ||
-          (getRango() == 'admin' && request.resource.data.nucleo == request.auth.token.nucleo)
+          (getRango() == 'director_regional' && request.resource.data.estado == getRango().estado) ||
+          (getRango() == 'director_nucleo' && request.resource.data.nucleo == getRango().nucleo) ||
+          (getRango() == 'admin' && request.resource.data.nucleo == getRango().nucleo)
         );
       allow update, delete: if request.auth != null &&
         ( getRango() == 'owner_supremo' ||
           getRango() == 'director_nacional' ||
-          (getRango() == 'director_regional' && resource.data.estado == request.auth.token.estado) ||
-          (getRango() == 'director_nucleo' && resource.data.nucleo == request.auth.token.nucleo) ||
-          (getRango() == 'admin' && resource.data.nucleo == request.auth.token.nucleo)
+          (getRango() == 'director_regional' && resource.data.estado == getRango().estado) ||
+          (getRango() == 'director_nucleo' && resource.data.nucleo == getRango().nucleo) ||
+          (getRango() == 'admin' && resource.data.nucleo == getRango().nucleo)
         );
     }
 
-    // Añadir aquí reglas para otras colecciones (partituras, eventos, etc.) siguiendo el mismo patrón
+    // ---------- PARTITURAS (por núcleo) ----------
+    match /partituras/{docId} {
+      allow read: if request.auth != null &&
+        ( getRango() == 'owner_supremo' ||
+          getRango() == 'director_nacional' ||
+          (getRango() == 'director_regional' && resource.data.estado == getRango().estado) ||
+          (resource.data.nucleo == getRango().nucleo)
+        );
+      allow create: if request.auth != null &&
+        ( getRango() == 'owner_supremo' ||
+          getRango() == 'director_nacional' ||
+          (getRango() == 'director_regional' && request.resource.data.estado == getRango().estado) ||
+          (getRango() == 'director_nucleo' && request.resource.data.nucleo == getRango().nucleo) ||
+          (getRango() == 'admin' && request.resource.data.nucleo == getRango().nucleo) ||
+          (getRango() == 'profesor' && request.resource.data.nucleo == getRango().nucleo)  // profesores pueden subir partituras
+        );
+      allow update, delete: if request.auth != null &&
+        ( getRango() == 'owner_supremo' ||
+          getRango() == 'director_nacional' ||
+          (getRango() == 'director_regional' && resource.data.estado == getRango().estado) ||
+          (getRango() == 'director_nucleo' && resource.data.nucleo == getRango().nucleo) ||
+          (getRango() == 'admin' && resource.data.nucleo == getRango().nucleo) ||
+          (getRango() == 'profesor' && resource.data.nucleo == getRango().nucleo)
+        );
+    }
   }
 }
