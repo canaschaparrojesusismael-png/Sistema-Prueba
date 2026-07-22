@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<script>
+  if (!sessionStorage.getItem("sistemaOrquestas_session") && !localStorage.getItem("sistemaOrquestas_session")) {
+    window.location.href = "login.html";
+  }
+</script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel de Control - Sistema CMA</title>
@@ -49,6 +55,25 @@
                 <div class="carrusel-texto">
                     <h2 id="carousel-title">Sistema Nacional de Orquestas</h2>
                     <p id="carousel-desc">Texto explicativo del carrusel…</p>
+                </div>
+            </div>
+
+            <!-- Citas / testimonios -->
+            <div class="citas-grid">
+                <div class="cita-card">
+                    <i class="fa-solid fa-quote-left"></i>
+                    <p>"La música transformó mi manera de ver el mundo y de relacionarme con los demás."</p>
+                    <div class="cita-autor">— Cita 1</div>
+                </div>
+                <div class="cita-card">
+                    <i class="fa-solid fa-quote-left"></i>
+                    <p>"Gracias al Sistema pude formarme como músico y hoy enseño a nuevas generaciones."</p>
+                    <div class="cita-autor">— Cita 2</div>
+                </div>
+                <div class="cita-card">
+                    <i class="fa-solid fa-quote-left"></i>
+                    <p>"Un espacio de oportunidades donde la disciplina y el arte van de la mano."</p>
+                    <div class="cita-autor">— Cita 3</div>
                 </div>
             </div>
 
@@ -101,10 +126,15 @@
                     </div>
                 </div>
             </div>
+
+            <footer class="site-footer">
+                <p>&copy; <span id="footer-year"></span> Sistema Nacional de Orquestas — CMA. Todos los derechos reservados.</p>
+            </footer>
         </main>
     </div>
 
     <!-- Los modales de crop y gestión se crean dinámicamente en main.js -->
+    <script>document.getElementById("footer-year").textContent = new Date().getFullYear();</script>
     <script type="module" src="firebase-init.js"></script>
     <script type="module" src="auth.js"></script>
     <script type="module" src="main.js"></script>

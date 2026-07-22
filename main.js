@@ -72,106 +72,338 @@ const UPLOAD_PRESET = "orquestas_unsigned";
     await batch.commit();
   }
 
-  // Modal crop (con estado de carga)
-  let cropCallback = null;
-  function abrirCrop(file, cb) {
-    cropCallback = cb;
-    const modal = document.getElementById("crop-modal"), img = document.getElementById("crop-source"),
-          canvas = document.getElementById("crop-canvas"), ctx = canvas.getContext("2d"),
-          confirmBtn = document.getElementById("crop-confirm"), origText = confirmBtn.textContent;
-    const reader = new FileReader();
-    reader.onload = e => {
-      img.src = e.target.result;
-      img.onload = () => {
-        const area = document.getElementById("crop-area"),
-              nW = img.naturalWidth, nH = img.naturalHeight,
-              dW = img.width, dH = img.height;
-        let cW = Math.min(dW, dH * 16/9), cH = cW * 9/16, cX = (dW - cW)/2, cY = (dH - cH)/2;
-        const upd = () => { area.style.left = cX+"px"; area.style.top = cY+"px"; area.style.width = cW+"px"; area.style.height = cH+"px"; };
-        upd();
-        let dragging = false, sx, sy, sl, st, sw, sh;
-        const handle = area.querySelector(".resize-handle");
-        const down = (ev) => { ev.preventDefault(); dragging = true; sx = ev.clientX; sy = ev.clientY; sl = cX; st = cY; sw = cW; sh = cH; document.addEventListener("pointermove", move); document.addEventListener("pointerup", up); };
-        const move = (ev) => { if (!dragging) return; const dx = ev.clientX - sx, dy = ev.clientY - sy; if (ev.target === handle) { let nW = sw + dx; if (nW < 50) nW = 50; if (cX + nW > dW) nW = dW - cX; if (cY + nW*9/16 > dH) nW = (dH - cY) * 16/9; cW = nW; cH = cW * 9/16; } else { cX = Math.max(0, Math.min(sl + dx, dW - cW)); cY = Math.max(0, Math.min(st + dy, dH - cH)); } upd(); };
-        const up = () => { dragging = false; document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", up); };
-        area.addEventListener("pointerdown", down); handle.addEventListener("pointerdown", down);
-        confirmBtn.onclick = async () => {
-          confirmBtn.disabled = true; confirmBtn.textContent = "⏳ Subiendo...";
-          try {
-            const blob = await new Promise(res => canvas.toBlob(res, "image/jpeg", 0.7));
-            if (!blob) throw new Error("No se pudo generar");
-            const url = await subirACloudinary(blob, "carrusel");
-            modal.style.display = "none"; cropCallback(url);
-          } catch (err) { console.error(err); cropCallback(null); }
-          finally { confirmBtn.disabled = false; confirmBtn.textContent = origText; }
-        };
-        document.getElementById("crop-cancel").onclick = () => { modal.style.display = "none"; cropCallback(null); };
-        document.getElementById("crop-close-btn").onclick = () => { modal.style.display = "none"; cropCallback(null); };
-        modal.style.display = "flex";
-      };
-    };
-    reader.readAsDataURL(file);
-  }
+  // ==================== EDITOR DE IMAGEN (Recortar / Rotar / Saturar) ====================
+  let editorCallback = null;
 
-  // Crear modales
   function crearCropModal() {
     if (document.getElementById("crop-modal")) return;
-    const div = document.createElement("div"); div.id = "crop-modal"; div.className = "modal-overlay crop-modal";
-    div.innerHTML = `<div class="modal-content crop-content"><button class="modal-close-btn" id="crop-close-btn">&times;</button><h2>Recortar imagen</h2><div class="crop-container"><img id="crop-source"/><div id="crop-area" class="crop-area"><div class="resize-handle"></div></div></div><canvas id="crop-canvas" style="display:none;"></canvas><div class="crop-buttons"><button id="crop-confirm" class="btn btn-submit">Recortar</button><button id="crop-cancel" class="btn btn-cerrar">Cancelar</button></div></div>`;
+    const div = document.createElement("div");
+    div.id = "crop-modal";
+    div.className = "modal-overlay crop-modal";
+    div.innerHTML = `
+      <div class="modal-content crop-content">
+        <button class="modal-close-btn" id="crop-close-btn">&times;</button>
+        <h2>Editor de Imagen</h2>
+        <div class="editor-tools">
+          <button type="button" class="tool-btn active" data-tool="recortar"><i class="fa-solid fa-crop"></i> Recortar</button>
+          <button type="button" class="tool-btn" data-tool="rotar"><i class="fa-solid fa-rotate"></i> Rotar</button>
+          <button type="button" class="tool-btn" data-tool="saturar"><i class="fa-solid fa-droplet"></i> Saturar</button>
+        </div>
+        <div class="crop-container">
+          <img id="crop-source"/>
+          <div id="crop-area" class="crop-area"><div class="resize-handle"></div></div>
+        </div>
+        <div class="tool-panel" id="panel-rotar" style="display:none;">
+          <button type="button" id="rotar-btn" class="btn btn-submit"><i class="fa-solid fa-rotate-right"></i> Rotar 90°</button>
+        </div>
+        <div class="tool-panel" id="panel-saturar" style="display:none;">
+          <label for="sat-range">Saturación: <span id="sat-value">100</span>%</label>
+          <input type="range" id="sat-range" min="0" max="200" value="100"/>
+        </div>
+        <canvas id="crop-canvas" style="display:none;"></canvas>
+        <div class="crop-buttons">
+          <button id="crop-confirm" class="btn btn-submit">Aplicar y usar</button>
+          <button id="crop-cancel" class="btn btn-cerrar">Cancelar</button>
+        </div>
+      </div>`;
     document.body.appendChild(div);
+
+    // Cambiar de herramienta (solo cambia qué panel se ve; todo se aplica junto al confirmar)
+    div.querySelectorAll(".tool-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        div.querySelectorAll(".tool-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        div.querySelectorAll(".tool-panel").forEach(p => p.style.display = "none");
+        const panel = document.getElementById(`panel-${btn.dataset.tool}`);
+        if (panel) panel.style.display = "block";
+      });
+    });
+
+    // Saturación: previsualización en vivo con filtro CSS
+    const satRange = document.getElementById("sat-range");
+    const satValue = document.getElementById("sat-value");
+    satRange.addEventListener("input", () => {
+      satValue.textContent = satRange.value;
+      document.getElementById("crop-source").style.filter = `saturate(${satRange.value}%)`;
+    });
+
+    // Rotar: rota los píxeles reales de la imagen (no solo la vista) y reinicia el recorte
+    document.getElementById("rotar-btn").addEventListener("click", () => {
+      const img = document.getElementById("crop-source");
+      const tmp = document.createElement("canvas");
+      const w = img.naturalWidth, h = img.naturalHeight;
+      tmp.width = h; tmp.height = w;
+      const ctx = tmp.getContext("2d");
+      ctx.translate(h / 2, w / 2);
+      ctx.rotate(90 * Math.PI / 180);
+      ctx.drawImage(img, -w / 2, -h / 2);
+      img.src = tmp.toDataURL("image/jpeg", 0.92); // dispara onload y reinicia el área de recorte
+    });
   }
 
-  function initDragDrop() {
-    const drop = document.getElementById("drop-zone"), fileInp = document.querySelector("#carousel-items .img-file");
-    if (!drop) return;
-    ["dragenter","dragover","dragleave","drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); }));
-    ["dragenter","dragover"].forEach(ev => drop.addEventListener(ev, () => drop.classList.add("active")));
-    ["dragleave","drop"].forEach(ev => drop.addEventListener(ev, () => drop.classList.remove("active")));
-    drop.addEventListener("drop", e => { const files = e.dataTransfer.files; if (files.length) abrirCrop(files[0], url => { if (url) { const inp = document.querySelector("#carousel-items .img-url"); if (inp) inp.value = url; } }); });
-    drop.addEventListener("click", () => { if (fileInp) fileInp.click(); });
+  function inicializarAreaDeRecorte() {
+    const img = document.getElementById("crop-source");
+    let area = document.getElementById("crop-area");
+    const dW = img.width, dH = img.height;
+    let cW = Math.min(dW, dH * 16 / 9), cH = cW * 9 / 16, cX = (dW - cW) / 2, cY = (dH - cH) / 2;
+    const upd = () => { area.style.left = cX + "px"; area.style.top = cY + "px"; area.style.width = cW + "px"; area.style.height = cH + "px"; };
+
+    // Clonamos el área para eliminar listeners de una rotación/carga anterior
+    const nuevaArea = area.cloneNode(true);
+    area.parentNode.replaceChild(nuevaArea, area);
+    area = nuevaArea;
+    const handle = area.querySelector(".resize-handle");
+    upd();
+
+    let dragging = false, sx, sy, sl, st, sw;
+    const down = (ev) => { ev.preventDefault(); dragging = true; sx = ev.clientX; sy = ev.clientY; sl = cX; st = cY; sw = cW; document.addEventListener("pointermove", move); document.addEventListener("pointerup", up); };
+    const move = (ev) => {
+      if (!dragging) return;
+      const dx = ev.clientX - sx, dy = ev.clientY - sy;
+      if (ev.target === handle) {
+        let nW = sw + dx;
+        if (nW < 50) nW = 50;
+        if (cX + nW > dW) nW = dW - cX;
+        if (cY + nW * 9 / 16 > dH) nW = (dH - cY) * 16 / 9;
+        cW = nW; cH = cW * 9 / 16;
+      } else {
+        cX = Math.max(0, Math.min(sl + dx, dW - cW));
+        cY = Math.max(0, Math.min(st + dy, dH - cH));
+      }
+      upd();
+    };
+    const up = () => { dragging = false; document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", up); };
+    area.addEventListener("pointerdown", down);
+    handle.addEventListener("pointerdown", down);
+
+    // Guardamos los valores actuales para leerlos al confirmar
+    area._getCropBox = () => ({ cX, cY, cW, cH, dW, dH });
   }
 
+  function abrirEditorImagen(file, cb) {
+    editorCallback = cb;
+    const modal = document.getElementById("crop-modal");
+    const img = document.getElementById("crop-source");
+    const confirmBtn = document.getElementById("crop-confirm");
+    const origText = confirmBtn.textContent;
+
+    // Reset de herramientas y estado visual
+    modal.querySelectorAll(".tool-btn").forEach((b, i) => b.classList.toggle("active", i === 0));
+    modal.querySelectorAll(".tool-panel").forEach(p => p.style.display = "none");
+    const satRange = document.getElementById("sat-range");
+    satRange.value = 100;
+    document.getElementById("sat-value").textContent = "100";
+    img.style.filter = "saturate(100%)";
+
+    img.onload = () => { inicializarAreaDeRecorte(); };
+
+    const reader = new FileReader();
+    reader.onload = e => { img.src = e.target.result; };
+    reader.readAsDataURL(file);
+
+    confirmBtn.onclick = async () => {
+      confirmBtn.disabled = true; confirmBtn.textContent = "⏳ Subiendo...";
+      try {
+        const area = document.getElementById("crop-area");
+        const box = area._getCropBox ? area._getCropBox() : null;
+        const canvas = document.getElementById("crop-canvas");
+        const ctx = canvas.getContext("2d");
+        const escala = img.naturalWidth / img.width;
+        const finalW = 960, finalH = 540; // 16:9
+        canvas.width = finalW; canvas.height = finalH;
+        ctx.filter = `saturate(${satRange.value}%)`;
+        if (box) {
+          ctx.drawImage(img, box.cX * escala, box.cY * escala, box.cW * escala, box.cH * escala, 0, 0, finalW, finalH);
+        } else {
+          ctx.drawImage(img, 0, 0, finalW, finalH);
+        }
+        const blob = await new Promise(res => canvas.toBlob(res, "image/jpeg", 0.85));
+        if (!blob) throw new Error("No se pudo generar la imagen");
+        const url = await subirACloudinary(blob, "carrusel");
+        modal.style.display = "none";
+        editorCallback(url);
+      } catch (err) {
+        console.error(err);
+        window._showToast?.("No se pudo procesar la imagen", "error");
+        editorCallback(null);
+      } finally {
+        confirmBtn.disabled = false; confirmBtn.textContent = origText;
+      }
+    };
+    document.getElementById("crop-cancel").onclick = () => { modal.style.display = "none"; editorCallback(null); };
+    document.getElementById("crop-close-btn").onclick = () => { modal.style.display = "none"; editorCallback(null); };
+
+    modal.style.display = "flex";
+  }
+
+  // ==================== MENÚ "GESTIÓN DEL CARRUSEL" (galería con miniaturas) ====================
   let modalReady = false;
+  let working = [];
+  let seleccionActual = 0;
+
   function initCarouselModal() {
     if (modalReady) return; modalReady = true;
-    const modal = document.createElement("div"); modal.className = "modal-overlay";
-    modal.innerHTML = `<div class="modal-content premium-modal"><button class="modal-close-btn" id="carousel-close-btn">&times;</button><h2>Gestión del Carrusel</h2><div class="drop-zone" id="drop-zone"><p>🎵 Arrastra una imagen aquí</p><p style="font-size:0.8rem;color:#888;">o haz clic para seleccionar</p></div><div id="carousel-items"></div><button id="add-image-btn" class="btn btn-submit">Agregar Imagen</button><button id="save-carousel-btn" class="btn btn-submit" style="background:var(--color-primario);">Guardar Cambios</button><button id="close-modal" class="btn btn-cerrar">Cerrar</button></div>`;
+
+    const modal = document.createElement("div");
+    modal.className = "modal-overlay";
+    modal.innerHTML = `
+      <div class="modal-content premium-modal carousel-manager">
+        <button class="modal-close-btn" id="carousel-close-btn">&times;</button>
+        <h2><i class="fa-solid fa-images"></i> Gestión del Carrusel</h2>
+
+        <div id="carousel-empty-state" class="drop-zone">
+          <p>🎵 Ingrese una imagen para comenzar</p>
+          <p style="font-size:0.8rem;color:#888;">Arrastra un archivo o haz clic aquí</p>
+        </div>
+
+        <div id="carousel-editor-body" style="display:none;">
+          <div class="preview-grande">
+            <img id="preview-img" src="" alt="Vista previa"/>
+          </div>
+          <div class="editor-row">
+            <label>Título:</label>
+            <input type="text" id="preview-titulo" class="form-control" placeholder="Título de la imagen"/>
+          </div>
+          <div class="editor-row">
+            <label>Texto:</label>
+            <input type="text" id="preview-texto" class="form-control" placeholder="Texto descriptivo"/>
+          </div>
+          <div class="editor-row acciones-item">
+            <button type="button" id="btn-editar-img" class="btn btn-submit"><i class="fa-solid fa-pen"></i> Editar</button>
+            <button type="button" id="btn-eliminar-img" class="btn btn-cerrar"><i class="fa-solid fa-trash"></i> Eliminar</button>
+          </div>
+        </div>
+
+        <input type="file" id="carousel-file-input" accept="image/*" style="display:none;"/>
+        <div class="thumb-strip" id="thumb-strip"></div>
+
+        <div class="crop-buttons">
+          <button id="save-carousel-btn" class="btn btn-submit">Guardar Cambios</button>
+          <button id="close-modal" class="btn btn-cerrar">Cerrar</button>
+        </div>
+      </div>`;
     document.body.appendChild(modal);
-    crearCropModal(); initDragDrop();
-    let working = [...carouselData];
-    function renderItems() {
-      const cont = document.getElementById("carousel-items"); cont.innerHTML = "";
+    crearCropModal();
+
+    const fileInput = document.getElementById("carousel-file-input");
+    fileInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) abrirEditorImagen(file, url => { if (url) window._agregarImagenAlCarrusel(url); });
+      e.target.value = "";
+    });
+
+    function renderThumbs() {
+      const strip = document.getElementById("thumb-strip");
+      strip.innerHTML = "";
       working.forEach((item, idx) => {
-        const div = document.createElement("div"); div.className = "carousel-item-editor";
-        div.innerHTML = `<div class="editor-row"><label>URL:</label><input type="text" class="img-url form-control" value="${item.url||""}" data-index="${idx}"/><span>o archivo</span><input type="file" class="img-file form-control" accept="image/*" data-index="${idx}"/></div><div class="editor-row"><label>Título:</label><input type="text" class="img-alt form-control" value="${item.alt||""}"/></div><div class="editor-row"><label>Texto:</label><input type="text" class="img-text form-control" value="${item.text||""}"/></div><button class="btn btn-cerrar eliminar-item" data-index="${idx}">Eliminar</button>`;
-        cont.appendChild(div);
+        const t = document.createElement("div");
+        t.className = "thumb" + (idx === seleccionActual ? " selected" : "");
+        t.innerHTML = item.url ? `<img src="${item.url}" alt=""/>` : `<div class="thumb-vacio"><i class="fa-solid fa-image"></i></div>`;
+        t.addEventListener("click", () => { seleccionActual = idx; renderTodo(); });
+        strip.appendChild(t);
       });
-      cont.querySelectorAll(".img-file").forEach(inp => inp.addEventListener("change", function(e) {
-        const idx = +this.dataset.index, file = e.target.files[0];
-        if (!file) return;
-        abrirCrop(file, url => { if (url) { const urlInp = cont.querySelector(`.img-url[data-index="${idx}"]`) || cont.querySelectorAll(".img-url")[idx]; if (urlInp) urlInp.value = url; if (working[idx]) working[idx].url = url; } e.target.value = ""; });
-      }));
-      cont.querySelectorAll(".eliminar-item").forEach(btn => btn.addEventListener("click", () => { sync(); working.splice(+btn.dataset.index, 1); renderItems(); }));
+      const addBtn = document.createElement("div");
+      addBtn.className = "thumb thumb-add";
+      addBtn.innerHTML = `<i class="fa-solid fa-plus"></i>`;
+      addBtn.addEventListener("click", () => fileInput.click());
+      strip.appendChild(addBtn);
     }
-    function sync() { working = [...document.querySelectorAll(".carousel-item-editor")].map(f => ({ url: f.querySelector(".img-url")?.value||"", alt: f.querySelector(".img-alt")?.value||"", text: f.querySelector(".img-text")?.value||"" })); }
-    document.getElementById("add-image-btn").onclick = () => { sync(); working.push({ url:"", alt:"", text:"" }); renderItems(); };
-    document.getElementById("save-carousel-btn").onclick = async () => { sync(); await guardarFirestore(working); modal.style.display = "none"; };
-    document.getElementById("close-modal").onclick = () => { working = [...carouselData]; modal.style.display = "none"; };
-    document.getElementById("carousel-close-btn").onclick = () => { working = [...carouselData]; modal.style.display = "none"; };
-    window.showCarouselModal = () => { working = carouselData.map(item=>({...item})); renderItems(); modal.style.display = "flex"; };
+
+    function sync() {
+      if (!working[seleccionActual]) return;
+      working[seleccionActual].alt = document.getElementById("preview-titulo").value;
+      working[seleccionActual].text = document.getElementById("preview-texto").value;
+    }
+
+    function renderTodo() {
+      const empty = document.getElementById("carousel-empty-state");
+      const body = document.getElementById("carousel-editor-body");
+      if (!working.length) {
+        empty.style.display = "block";
+        body.style.display = "none";
+      } else {
+        empty.style.display = "none";
+        body.style.display = "block";
+        if (seleccionActual >= working.length) seleccionActual = working.length - 1;
+        const item = working[seleccionActual];
+        document.getElementById("preview-img").src = item.url || "";
+        document.getElementById("preview-titulo").value = item.alt || "";
+        document.getElementById("preview-texto").value = item.text || "";
+      }
+      renderThumbs();
+    }
+
+    ["dragenter", "dragover", "dragleave", "drop"].forEach(ev =>
+      document.getElementById("carousel-empty-state").addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); })
+    );
+    document.getElementById("carousel-empty-state").addEventListener("dragenter", () => document.getElementById("carousel-empty-state").classList.add("active"));
+    document.getElementById("carousel-empty-state").addEventListener("dragleave", () => document.getElementById("carousel-empty-state").classList.remove("active"));
+    document.getElementById("carousel-empty-state").addEventListener("drop", e => {
+      document.getElementById("carousel-empty-state").classList.remove("active");
+      const files = e.dataTransfer.files;
+      if (files.length) abrirEditorImagen(files[0], url => { if (url) window._agregarImagenAlCarrusel(url); });
+    });
+    document.getElementById("carousel-empty-state").addEventListener("click", () => fileInput.click());
+
+    document.getElementById("preview-titulo").addEventListener("input", sync);
+    document.getElementById("preview-texto").addEventListener("input", sync);
+
+    document.getElementById("btn-editar-img").addEventListener("click", () => {
+      const item = working[seleccionActual];
+      if (!item || !item.url) return;
+      fetch(item.url).then(r => r.blob()).then(blob => {
+        const file = new File([blob], "imagen.jpg", { type: blob.type || "image/jpeg" });
+        abrirEditorImagen(file, url => { if (url) { working[seleccionActual].url = url; renderTodo(); } });
+      });
+    });
+
+    document.getElementById("btn-eliminar-img").addEventListener("click", () => {
+      working.splice(seleccionActual, 1);
+      seleccionActual = Math.max(0, seleccionActual - 1);
+      renderTodo();
+    });
+
+    window._agregarImagenAlCarrusel = (url) => {
+      sync();
+      working.push({ url, alt: "", text: "" });
+      seleccionActual = working.length - 1;
+      renderTodo();
+    };
+
+    document.getElementById("save-carousel-btn").onclick = async () => {
+      sync();
+      await guardarFirestore(working);
+      modal.style.display = "none";
+    };
+    document.getElementById("close-modal").onclick = () => { working = carouselData.map(i => ({ ...i })); modal.style.display = "none"; };
+    document.getElementById("carousel-close-btn").onclick = () => { working = carouselData.map(i => ({ ...i })); modal.style.display = "none"; };
+
+    window.showCarouselModal = () => {
+      working = carouselData.map(item => ({ ...item }));
+      seleccionActual = 0;
+      renderTodo();
+      modal.style.display = "flex";
+    };
   }
 
   // Inicialización del carrusel
   (async function iniciarCarrusel() {
     await migrarSiExiste();
     onSnapshot(carruselCol, snap => {
-      const imagenes = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.orden - b.orden);
+      const imagenes = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.orden - b.orden);
       renderizarCarrusel(imagenes);
     });
     document.getElementById("prev-slide")?.addEventListener("click", () => { anteriorSlide(); autoRotacionStop(); autoRotacionStart(); });
     document.getElementById("next-slide")?.addEventListener("click", () => { siguienteSlide(); autoRotacionStop(); autoRotacionStart(); });
     autoRotacionStart();
-    if (window.Auth?.checkPermission && window.Auth.checkPermission("edit_carousel")) initCarouselModal();
+    if (window.Auth?.checkPermission && window.Auth.checkPermission("edit_carousel")) {
+      initCarouselModal();
+      document.getElementById("carousel-container")?.insertAdjacentHTML(
+        "beforeend",
+        `<button class="carousel-edit-btn" id="btn-abrir-gestor-carrusel" title="Gestionar carrusel"><i class="fa-solid fa-pen"></i></button>`
+      );
+      document.getElementById("btn-abrir-gestor-carrusel")?.addEventListener("click", () => window.showCarouselModal());
+    }
     window.UI?.render(); // opcional
   })();
 })();
@@ -219,17 +451,14 @@ async function cargarMetricasYResumen() {
 window.addEventListener("auth-ready", (e) => {
   const session = e.detail;
   const display = document.getElementById("user-email-display");
-  if (session && display) {
-    display.textContent = session.email || "Usuario Conectado";
+  if (display) {
+    display.textContent = session ? (session.email || "Usuario Conectado") : "Invitado";
   }
-  // Cargar métricas cuando la sesión esté lista
   cargarMetricasYResumen();
 });
 
-// También cargamos métricas si la sesión ya estaba disponible antes del evento
 if (window.Auth?.getSession()) {
   cargarMetricasYResumen();
 }
 
-// Configurar botón de logout
 document.getElementById("btn-logout")?.addEventListener("click", () => window.Auth?.logout());
