@@ -2,42 +2,39 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Función que obtiene los datos del usuario que realiza la petición
-    function getRequester() {
-      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    // Función auxiliar para obtener datos del token (Custom Claims)
+    function getRango() { return request.auth.token.rango; }
+
+    // ---------- CARRUSEL (global) ----------
+    match /carrusel/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null && getRango() == 'owner_supremo';
     }
 
-    // Verifica si el solicitante es Owner Supremo
-    function esOwner() {
-      return getRequester().rango == 'owner_supremo';
+    // ---------- FLYERS (por núcleo) ----------
+    match /flyers/{docId} {
+      allow read: if request.auth != null &&
+        ( getRango() == 'owner_supremo' ||
+          getRango() == 'director_nacional' ||
+          (getRango() == 'director_regional' && resource.data.estado == request.auth.token.estado) ||
+          (resource.data.nucleo == request.auth.token.nucleo)
+        );
+      allow create: if request.auth != null &&
+        ( getRango() == 'owner_supremo' ||
+          getRango() == 'director_nacional' ||
+          (getRango() == 'director_regional' && request.resource.data.estado == request.auth.token.estado) ||
+          (getRango() == 'director_nucleo' && request.resource.data.nucleo == request.auth.token.nucleo) ||
+          (getRango() == 'admin' && request.resource.data.nucleo == request.auth.token.nucleo)
+        );
+      allow update, delete: if request.auth != null &&
+        ( getRango() == 'owner_supremo' ||
+          getRango() == 'director_nacional' ||
+          (getRango() == 'director_regional' && resource.data.estado == request.auth.token.estado) ||
+          (getRango() == 'director_nucleo' && resource.data.nucleo == request.auth.token.nucleo) ||
+          (getRango() == 'admin' && resource.data.nucleo == request.auth.token.nucleo)
+        );
     }
 
-    match /usuarios/{userId} {
-      // Lectura: cualquier usuario autenticado puede leer
-      allow read: if request.auth != null;
-
-      // Creación: solo roles con permisos de gestión
-      allow create: if request.auth != null && (
-        getRequester().rango == 'owner_supremo' ||
-        getRequester().rango == 'director_nacional' ||
-        (getRequester().rango == 'director_regional' && request.resource.data.estado == getRequester().estado) ||
-        (getRequester().rango == 'director_nucleo' && request.resource.data.nucleo == getRequester().nucleo)
-      );
-
-      // Actualización: el campo requiresPasswordChange solo puede cambiarlo el Owner Supremo
-      allow update: if request.auth != null && (
-        // Si el campo requiresPasswordChange cambió, solo el Owner puede hacerlo
-        (request.resource.data.requiresPasswordChange != resource.data.requiresPasswordChange && esOwner()) ||
-        // Para el resto de campos, el Owner y el Director Nacional pueden editar
-        (getRequester().rango == 'owner_supremo') ||
-        (getRequester().rango == 'director_nacional')
-      );
-
-      // Eliminación: solo Owner Supremo y Director Nacional
-      allow delete: if request.auth != null && (
-        getRequester().rango == 'owner_supremo' ||
-        getRequester().rango == 'director_nacional'
-      );
-    }
+    // Añadir aquí reglas para otras colecciones (partituras, eventos, etc.) siguiendo el mismo patrón
   }
 }
