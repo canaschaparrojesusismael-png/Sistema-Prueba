@@ -11,17 +11,47 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
 import { getAuth as getSecondaryAuthObj } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
 import { initializeApp as initSecondaryApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-functions.js";
 
 const DOMINIO = "";
 
+// ==================== JERARQUÍA DE ROLES ====================
 const ROLES = {
-  owner_supremo:    { label:"Owner Supremo", level:0, permissions:["view_profile","access_panel","edit_carousel","manage_users","manage_all_nucleos","delete_any","debug_mode"] },
-  director_nacional:{ label:"Director Nacional", level:1, permissions:["view_profile","access_panel","edit_carousel","manage_users","view_all_nucleos"] },
-  director_regional:{ label:"Director Regional", level:2, permissions:["view_profile","access_panel","edit_carousel","manage_users","view_region"] },
-  director_nucleo:  { label:"Director de Núcleo", level:3, permissions:["view_profile","access_panel","edit_carousel","manage_users","manage_nucleo"] },
-  admin:            { label:"Administrador", level:4, permissions:["view_profile","access_panel","edit_carousel","manage_users"] },
-  profesor:         { label:"Profesor", level:5, permissions:["view_profile","access_panel","edit_carousel"] },
-  estudiante:       { label:"Estudiante", level:6, permissions:["view_profile"] }
+  owner_supremo: {
+    label: "Owner Supremo",
+    level: 0,
+    permissions: ["view_profile","access_panel","edit_carousel","manage_users","manage_all_nucleos","delete_any","debug_mode"]
+  },
+  director_nacional: {
+    label: "Director Nacional",
+    level: 1,
+    permissions: ["view_profile","access_panel","edit_carousel","manage_users","view_all_nucleos"]
+  },
+  director_regional: {
+    label: "Director Regional",
+    level: 2,
+    permissions: ["view_profile","access_panel","edit_carousel","manage_users","view_region"]
+  },
+  director_nucleo: {
+    label: "Director de Núcleo",
+    level: 3,
+    permissions: ["view_profile","access_panel","edit_carousel","manage_users","manage_nucleo"]
+  },
+  admin: {
+    label: "Administrador",
+    level: 4,
+    permissions: ["view_profile","access_panel","edit_carousel","manage_users"]
+  },
+  profesor: {
+    label: "Profesor",
+    level: 5,
+    permissions: ["view_profile","access_panel","edit_carousel"]
+  },
+  estudiante: {
+    label: "Estudiante",
+    level: 6,
+    permissions: ["view_profile"]
+  }
 };
 
 function generarClaveSegura() {
@@ -63,12 +93,39 @@ window._showToast = function (mensaje, tipo = "info") {
 };
 
 window.Auth = {
-  auth, db, ROLES, generarClaveSegura,
+  auth,
+  db,
+  ROLES,
+  generarClaveSegura,
 
-  canView(targetRole) { /* ... igual que antes ... */ },
-  canEdit(targetRole) { /* ... igual que antes ... */ },
-  canManageNucleo(targetNucleo) { /* ... igual que antes ... */ },
+  canView(targetRole) {
+    const session = this.getSession();
+    if (!session) return false;
+    const myLevel = ROLES[session.role]?.level ?? 99;
+    const targetLevel = ROLES[targetRole]?.level ?? 99;
+    if (targetRole === "owner_supremo" && session.role !== "owner_supremo") return false;
+    return myLevel <= targetLevel;
+  },
 
+  canEdit(targetRole) {
+    const session = this.getSession();
+    if (!session) return false;
+    const myLevel = ROLES[session.role]?.level ?? 99;
+    const targetLevel = ROLES[targetRole]?.level ?? 99;
+    if (targetRole === "owner_supremo" && session.role !== "owner_supremo") return false;
+    return myLevel < targetLevel;
+  },
+
+  canManageNucleo(targetNucleo) {
+    const session = this.getSession();
+    if (!session) return false;
+    if (["owner_supremo","director_nacional"].includes(session.role)) return true;
+    if (session.role === "director_regional") return session.state === targetNucleo?.estado;
+    if (["director_nucleo","admin"].includes(session.role)) return session.nucleus === targetNucleo;
+    return false;
+  },
+
+  // ---------- AUTENTICACIÓN ----------
   async login(username, password, remember = false) {
     try {
       let email = username.trim();
@@ -118,29 +175,26 @@ window.Auth = {
   },
 
   async registerUser(username, nombre, rango, agrupacion, estado, nucleo, edad = 0) {
-    const { secApp, secAuth } = getSecondaryAuthInstance();
     try {
-      const clave = generarClaveSegura(); // 🔐 contraseña segura
-      let email = username.trim();
-      if (!email.includes("@")) {
-        window._showToast("El email debe ser válido", "error");
-        return { success: false, error: "Email inválido" };
-      }
-      const userCred = await createUserWithEmailAndPassword(secAuth, email, clave);
-      const uid = userCred.user.uid;
-      await setDoc(doc(db, "usuarios", uid), {
-        username, nombre, rango, agrupacion, estado, nucleo, email,
-        isOnline: false, currentSessionId: "",
-        requiresPasswordChange: true, // forzar cambio en primer login
-        cuentaActiva: true,
-        edad: edad || 0,
-        fechaCreacion: new Date().toISOString()
+      const clave = generarClaveSegura();
+      // Llamar a la Cloud Function para crear el usuario (servidor)
+      const crearUsuario = httpsCallable(getFunctions(), "crearUsuario");
+      const resultado = await crearUsuario({
+        email: username.trim(),
+        password: clave,
+        nombre,
+        rango,
+        agrupacion: agrupacion || "",
+        estado: estado || "",
+        nucleo: nucleo || "",
+        edad: edad || 0
       });
-      // La Cloud Function se encarga de sincronizar el claim rango automáticamente
-      await signOut(secAuth); await deleteApp(secApp);
-      return { success: true, clave, uid };
+      if (resultado.data.success) {
+        return { success: true, clave, uid: resultado.data.uid };
+      } else {
+        return { success: false, error: resultado.data.error || "Error desconocido" };
+      }
     } catch (err) {
-      try { await deleteApp(secApp); } catch (e) {}
       return { success: false, error: err.message };
     }
   },
@@ -191,7 +245,6 @@ window.Auth = {
   onAuthChange(cb) { return onAuthStateChanged(auth, cb); }
 };
 
-// Forzar la sincronización de claims al iniciar sesión (opcional)
 (() => {
   const session = window.Auth.getSession();
   const currentSessionId = sessionStorage.getItem("currentSessionId") || localStorage.getItem("currentSessionId");
