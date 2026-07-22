@@ -1,13 +1,14 @@
-import { db, storage } from "./firebase-init.js";
-import { 
-  collection, onSnapshot, getDocs, doc, writeBatch 
+import { db } from "./firebase-init.js";
+import {
+  collection, onSnapshot, getDocs, doc, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
-import { 
-  ref, uploadBytes, getDownloadURL 
-} from "https://www.gstatic.com/firebasejs/10.10.0/firebase-storage.js";
 
 (function () {
   "use strict";
+
+  // ==================== CONFIGURACIÓN DE CLOUDINARY ====================
+  const CLOUD_NAME = "TU_CLOUD_NAME";           // Reemplaza con tu cloud name
+  const UPLOAD_PRESET = "TU_UPLOAD_PRESET";     // Reemplaza con tu upload preset sin firmar
 
   // ==================== REFERENCIAS ====================
   const carruselCol = collection(db, "carrusel");
@@ -59,20 +60,31 @@ import {
     }
   }
 
-  // ==================== SUBIR A STORAGE (usando toBlob) ====================
+  // ==================== SUBIR A CLOUDINARY ====================
   /**
-   * Sube un Blob a Firebase Storage y devuelve la URL de descarga.
-   * @param {Blob} blob - Imagen en formato binario (JPEG/PNG)
-   * @param {string} carpeta - Carpeta en Storage
-   * @returns {Promise<string>} URL pública
+   * Sube un Blob (imagen o PDF) a Cloudinary usando unsigned upload.
+   * @param {Blob} blob - Archivo binario
+   * @param {string} carpeta - Carpeta en Cloudinary (ej. "carrusel")
+   * @returns {Promise<string>} URL segura (https)
    */
-  async function subirImagenACloudStorage(blob, carpeta = "carrusel") {
-    const extension = blob.type === "image/png" ? "png" : "jpeg";
-    const nombreArchivo = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${extension}`;
-    const storageRef = ref(storage, `${carpeta}/${nombreArchivo}`);
-    await uploadBytes(storageRef, blob);
-    const url = await getDownloadURL(storageRef);
-    return url;
+  async function subirArchivoACloudinary(blob, carpeta = "carrusel") {
+    const formData = new FormData();
+    formData.append("file", blob);
+    formData.append("upload_preset", UPLOAD_PRESET);
+    formData.append("folder", carpeta);
+
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, {
+      method: "POST",
+      body: formData
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || "Error al subir a Cloudinary");
+    }
+
+    const data = await response.json();
+    return data.secure_url;
   }
 
   // ==================== MIGRACIÓN DE LOCALSTORAGE ====================
@@ -94,10 +106,10 @@ import {
       const item = datos[i];
       let urlFinal = item.src || "";
       if (urlFinal.startsWith("data:")) {
-        // Convertir base64 a Blob para subir a Storage
+        // Convertir base64 a Blob y subir a Cloudinary
         const resp = await fetch(urlFinal);
         const blob = await resp.blob();
-        urlFinal = await subirImagenACloudStorage(blob, "carrusel");
+        urlFinal = await subirArchivoACloudinary(blob, "carrusel");
       }
       const nuevoDocRef = doc(carruselCol);
       batch.set(nuevoDocRef, {
@@ -133,7 +145,7 @@ import {
     }
   }
 
-  // ==================== CROP MODAL (con estado de carga) ====================
+  // ==================== CROP MODAL (con Cloudinary) ====================
   let cropCallback = null;
 
   function abrirCropModal(file, callback) {
@@ -198,29 +210,24 @@ import {
 
         // Botón Recortar
         confirmBtn.onclick = async () => {
-          // 1. Deshabilitar y mostrar "Subiendo..."
           confirmBtn.disabled = true;
           confirmBtn.textContent = "⏳ Subiendo...";
 
           try {
-            // 2. Obtener Blob directamente del canvas (sin base64)
             const blob = await new Promise((resolve) => {
               canvas.toBlob(resolve, "image/jpeg", 0.7);
             });
-
             if (!blob) throw new Error("No se pudo generar la imagen.");
 
-            // 3. Subir a Storage
-            const url = await subirImagenACloudStorage(blob, "carrusel");
+            // Subir a Cloudinary
+            const url = await subirArchivoACloudinary(blob, "carrusel");
 
-            // 4. Cerrar modal y devolver la URL
             modal.style.display = "none";
             cropCallback(url);
           } catch (error) {
             console.error(error);
             cropCallback(null);
           } finally {
-            // Restaurar botón
             confirmBtn.disabled = false;
             confirmBtn.textContent = originalText;
           }
@@ -241,7 +248,7 @@ import {
     reader.readAsDataURL(file);
   }
 
-  // ==================== MODALES (con clases CSS) ====================
+  // ==================== MODALES ====================
   function crearCropModal() {
     if (document.getElementById("crop-modal")) return;
     const div = document.createElement("div");
