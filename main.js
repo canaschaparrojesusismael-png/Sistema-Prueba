@@ -1,18 +1,23 @@
-import { db } from "./firebase-init.js";
-import { collection, onSnapshot, getDocs, doc, writeBatch } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+import { db, storage } from "./firebase-init.js";
+import { 
+  collection, onSnapshot, getDocs, doc, writeBatch 
+} from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+import { 
+  ref, uploadBytes, getDownloadURL 
+} from "https://www.gstatic.com/firebasejs/10.10.0/firebase-storage.js";
 
 (function () {
   "use strict";
 
-  // ==================== REFERENCIA A FIRESTORE ====================
+  // ==================== REFERENCIAS ====================
   const carruselCol = collection(db, "carrusel");
 
-  // ==================== ESTADO LOCAL DEL CARRUSEL ====================
-  let carouselData = [];            // datos reactivos desde Firestore
+  // ==================== ESTADO DEL CARRUSEL ====================
+  let carouselData = [];
   let currentIndex = 0;
   let autoInterval = null;
 
-  // ==================== RENDERIZADO HTML DEL CARRUSEL ====================
+  // ==================== RENDERIZADO ====================
   function renderizarCarrusel(imagenes) {
     carouselData = imagenes;
     const imgEl = document.getElementById("carousel-image");
@@ -43,7 +48,6 @@ import { collection, onSnapshot, getDocs, doc, writeBatch } from "https://www.gs
     currentIndex = (currentIndex - 1 + carouselData.length) % carouselData.length;
     renderizarCarrusel(carouselData);
   }
-
   function iniciarAutoRotacion() {
     detenerAutoRotacion();
     autoInterval = setInterval(siguienteSlide, 4000);
@@ -55,7 +59,23 @@ import { collection, onSnapshot, getDocs, doc, writeBatch } from "https://www.gs
     }
   }
 
-  // ==================== MIGRACIÓN LOCALSTORAGE → FIRESTORE (una sola vez) ====================
+  // ==================== SUBIR A STORAGE (usando toBlob) ====================
+  /**
+   * Sube un Blob a Firebase Storage y devuelve la URL de descarga.
+   * @param {Blob} blob - Imagen en formato binario (JPEG/PNG)
+   * @param {string} carpeta - Carpeta en Storage
+   * @returns {Promise<string>} URL pública
+   */
+  async function subirImagenACloudStorage(blob, carpeta = "carrusel") {
+    const extension = blob.type === "image/png" ? "png" : "jpeg";
+    const nombreArchivo = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${extension}`;
+    const storageRef = ref(storage, `${carpeta}/${nombreArchivo}`);
+    await uploadBytes(storageRef, blob);
+    const url = await getDownloadURL(storageRef);
+    return url;
+  }
+
+  // ==================== MIGRACIÓN DE LOCALSTORAGE ====================
   async function migrarLocalStorageSiExiste() {
     const antiguo = localStorage.getItem("sistemaOrquestas_carousel");
     if (!antiguo) return;
@@ -63,68 +83,68 @@ import { collection, onSnapshot, getDocs, doc, writeBatch } from "https://www.gs
     try { datos = JSON.parse(antiguo); } catch (e) { return; }
     if (!Array.isArray(datos) || datos.length === 0) return;
 
-    // Solo migramos si no hay datos en Firestore
     const snapshot = await getDocs(carruselCol);
     if (!snapshot.empty) {
-      localStorage.removeItem("sistemaOrquestas_carousel"); // ya migrado
+      localStorage.removeItem("sistemaOrquestas_carousel");
       return;
     }
 
     const batch = writeBatch(db);
-    datos.forEach((item, i) => {
-      const nuevoDocRef = doc(carruselCol); // ID automático
+    for (let i = 0; i < datos.length; i++) {
+      const item = datos[i];
+      let urlFinal = item.src || "";
+      if (urlFinal.startsWith("data:")) {
+        // Convertir base64 a Blob para subir a Storage
+        const resp = await fetch(urlFinal);
+        const blob = await resp.blob();
+        urlFinal = await subirImagenACloudStorage(blob, "carrusel");
+      }
+      const nuevoDocRef = doc(carruselCol);
       batch.set(nuevoDocRef, {
-        url: item.src || "",
+        url: urlFinal,
         alt: item.alt || "",
         text: item.text || "",
         orden: i
       });
-    });
+    }
     await batch.commit();
     localStorage.removeItem("sistemaOrquestas_carousel");
   }
 
-  // ==================== GUARDAR CAMBIOS DEL MODAL (usando writeBatch) ====================
+  // ==================== GUARDAR EN FIRESTORE ====================
   async function guardarEnFirestore(nuevosDatos) {
     try {
-      // 1. Obtener todos los documentos actuales
       const snapshot = await getDocs(carruselCol);
       const batch = writeBatch(db);
-
-      // 2. Marcar todos los documentos existentes para borrar
       snapshot.docs.forEach(d => batch.delete(doc(db, "carrusel", d.id)));
-
-      // 3. Insertar los nuevos con orden secuencial
       nuevosDatos.forEach((item, index) => {
         const nuevoDocRef = doc(carruselCol);
         batch.set(nuevoDocRef, {
-          url: item.url || item.src || "",
+          url: item.url,
           alt: item.alt || "",
           text: item.text || "",
           orden: index
         });
       });
-
-      // 4. Commit atómico
       await batch.commit();
-      console.log("Carrusel sincronizado con la nube.");
     } catch (error) {
       console.error("Error al guardar carrusel:", error);
+      throw error;
     }
   }
 
-  // ==================== MODAL DE EDICIÓN DEL CARRUSEL ====================
-  // (crop, drag & drop, formulario) – mantiene la misma lógica, 
-  // solo cambia la función de guardado al final.
+  // ==================== CROP MODAL (con estado de carga) ====================
   let cropCallback = null;
 
   function abrirCropModal(file, callback) {
-    // ... (código completo del crop, sin cambios)
     cropCallback = callback;
     const modal = document.getElementById("crop-modal");
     const img = document.getElementById("crop-source");
     const canvas = document.getElementById("crop-canvas");
     const ctx = canvas.getContext("2d");
+    const confirmBtn = document.getElementById("crop-confirm");
+    const originalText = confirmBtn.textContent;
+
     const reader = new FileReader();
     reader.onload = function (e) {
       img.src = e.target.result;
@@ -135,6 +155,7 @@ import { collection, onSnapshot, getDocs, doc, writeBatch } from "https://www.gs
         let cropW = Math.min(displayW, displayH * (16/9));
         let cropH = cropW * (9/16);
         let cropX = (displayW - cropW) / 2, cropY = (displayH - cropH) / 2;
+
         function update() {
           cropArea.style.left = cropX + "px";
           cropArea.style.top = cropY + "px";
@@ -142,8 +163,10 @@ import { collection, onSnapshot, getDocs, doc, writeBatch } from "https://www.gs
           cropArea.style.height = cropH + "px";
         }
         update();
+
         let dragging = false, startX, startY, sLeft, sTop, sW, sH;
         const handle = cropArea.querySelector(".resize-handle");
+
         function down(e) {
           e.preventDefault(); dragging = true;
           startX = e.clientX; startY = e.clientY;
@@ -157,7 +180,7 @@ import { collection, onSnapshot, getDocs, doc, writeBatch } from "https://www.gs
           if (e.target === handle) {
             let nW = sW + dx; if (nW < 50) nW = 50;
             if (cropX + nW > displayW) nW = displayW - cropX;
-            if (cropY + nW*(9/16) > displayH) { nW = (displayH - cropY) * (16/9); }
+            if (cropY + nW*(9/16) > displayH) nW = (displayH - cropY) * (16/9);
             cropW = nW; cropH = cropW * (9/16);
           } else {
             cropX = Math.max(0, Math.min(sLeft + dx, displayW - cropW));
@@ -165,24 +188,60 @@ import { collection, onSnapshot, getDocs, doc, writeBatch } from "https://www.gs
           }
           update();
         }
-        function up() { dragging = false; document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", up); }
+        function up() {
+          dragging = false;
+          document.removeEventListener("pointermove", move);
+          document.removeEventListener("pointerup", up);
+        }
         cropArea.addEventListener("pointerdown", down);
         handle.addEventListener("pointerdown", down);
-        document.getElementById("crop-confirm").onclick = () => {
-          const sx = cropX * (naturalW / displayW), sy = cropY * (naturalH / displayH);
-          const sw = cropW * (naturalW / displayW), sh = cropH * (naturalH / displayH);
-          canvas.width = sw; canvas.height = sh;
-          ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
-          modal.style.display = "none";
-          cropCallback(canvas.toDataURL("image/jpeg", 0.6));
+
+        // Botón Recortar
+        confirmBtn.onclick = async () => {
+          // 1. Deshabilitar y mostrar "Subiendo..."
+          confirmBtn.disabled = true;
+          confirmBtn.textContent = "⏳ Subiendo...";
+
+          try {
+            // 2. Obtener Blob directamente del canvas (sin base64)
+            const blob = await new Promise((resolve) => {
+              canvas.toBlob(resolve, "image/jpeg", 0.7);
+            });
+
+            if (!blob) throw new Error("No se pudo generar la imagen.");
+
+            // 3. Subir a Storage
+            const url = await subirImagenACloudStorage(blob, "carrusel");
+
+            // 4. Cerrar modal y devolver la URL
+            modal.style.display = "none";
+            cropCallback(url);
+          } catch (error) {
+            console.error(error);
+            cropCallback(null);
+          } finally {
+            // Restaurar botón
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = originalText;
+          }
         };
-        document.getElementById("crop-cancel").onclick = () => { modal.style.display = "none"; cropCallback(null); };
+
+        document.getElementById("crop-cancel").onclick = () => {
+          modal.style.display = "none";
+          cropCallback(null);
+        };
+        document.getElementById("crop-close-btn").onclick = () => {
+          modal.style.display = "none";
+          cropCallback(null);
+        };
+
         modal.style.display = "flex";
       };
     };
     reader.readAsDataURL(file);
   }
 
+  // ==================== MODALES (con clases CSS) ====================
   function crearCropModal() {
     if (document.getElementById("crop-modal")) return;
     const div = document.createElement("div");
@@ -200,32 +259,45 @@ import { collection, onSnapshot, getDocs, doc, writeBatch } from "https://www.gs
         </div>
       </div>`;
     document.body.appendChild(div);
-    document.getElementById("crop-close-btn").addEventListener("click", () => {
-      document.getElementById("crop-modal").style.display = "none";
-      if (cropCallback) cropCallback(null);
-    });
   }
 
   function initDragDrop() {
     const dropZone = document.getElementById("drop-zone");
     const fileInput = document.querySelector("#carousel-items .img-file");
     if (!dropZone) return;
-    ["dragenter","dragover","dragleave","drop"].forEach(e => dropZone.addEventListener(e, ev => { ev.preventDefault(); ev.stopPropagation(); }));
-    ["dragenter","dragover"].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.add("active")));
-    ["dragleave","drop"].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.remove("active")));
+
+    ["dragenter","dragover","dragleave","drop"].forEach(e =>
+      dropZone.addEventListener(e, ev => { ev.preventDefault(); ev.stopPropagation(); })
+    );
+    ["dragenter","dragover"].forEach(e =>
+      dropZone.addEventListener(e, () => dropZone.classList.add("active"))
+    );
+    ["dragleave","drop"].forEach(e =>
+      dropZone.addEventListener(e, () => dropZone.classList.remove("active"))
+    );
+
     dropZone.addEventListener("drop", (e) => {
       const files = e.dataTransfer.files;
-      if (files.length > 0) abrirCropModal(files[0], (dataUrl) => {
-        if (dataUrl) { const urlInput = document.querySelector("#carousel-items .img-url"); if (urlInput) urlInput.value = dataUrl; }
-      });
+      if (files.length > 0) {
+        abrirCropModal(files[0], (url) => {
+          if (url) {
+            const urlInput = document.querySelector("#carousel-items .img-url");
+            if (urlInput) urlInput.value = url;
+          }
+        });
+      }
     });
-    dropZone.addEventListener("click", () => { if (fileInput) fileInput.click(); });
+
+    dropZone.addEventListener("click", () => {
+      if (fileInput) fileInput.click();
+    });
   }
 
   let modalReady = false;
   function initCarouselModal() {
     if (modalReady) return;
     modalReady = true;
+
     const modal = document.createElement("div");
     modal.className = "modal-overlay";
     modal.innerHTML = `
@@ -251,25 +323,39 @@ import { collection, onSnapshot, getDocs, doc, writeBatch } from "https://www.gs
         const div = document.createElement("div");
         div.className = "carousel-item-editor";
         div.innerHTML = `
-          <div class="editor-row"><label>URL:</label><input type="text" class="img-url" value="${item.url || item.src || ""}" data-index="${idx}" /><span>o archivo</span><input type="file" class="img-file" accept="image/*" data-index="${idx}" /></div>
-          <div class="editor-row"><label>Título:</label><input type="text" class="img-alt" value="${item.alt || ""}" /></div>
-          <div class="editor-row"><label>Texto:</label><input type="text" class="img-text" value="${item.text || ""}" /></div>
+          <div class="editor-row">
+            <label>URL:</label>
+            <input type="text" class="img-url form-control" value="${item.url || ""}" data-index="${idx}" />
+            <span>o archivo</span>
+            <input type="file" class="img-file form-control" accept="image/*" data-index="${idx}" />
+          </div>
+          <div class="editor-row">
+            <label>Título:</label>
+            <input type="text" class="img-alt form-control" value="${item.alt || ""}" />
+          </div>
+          <div class="editor-row">
+            <label>Texto:</label>
+            <input type="text" class="img-text form-control" value="${item.text || ""}" />
+          </div>
           <button class="btn btn-cerrar eliminar-item" data-index="${idx}">Eliminar</button>`;
         container.appendChild(div);
       });
+
       container.querySelectorAll(".img-file").forEach(inp => inp.addEventListener("change", function (e) {
         const idx = +this.dataset.index;
         const file = e.target.files[0];
         if (!file) return;
-        abrirCropModal(file, (dataUrl) => {
-          if (dataUrl) {
-            const urlInput = container.querySelector(`.img-url[data-index="${idx}"]`) || container.querySelectorAll(".img-url")[idx];
-            if (urlInput) urlInput.value = dataUrl;
-            if (workingData[idx]) workingData[idx].url = dataUrl;
+        abrirCropModal(file, (url) => {
+          if (url) {
+            const urlInput = container.querySelector(`.img-url[data-index="${idx}"]`) ||
+                             container.querySelectorAll(".img-url")[idx];
+            if (urlInput) urlInput.value = url;
+            if (workingData[idx]) workingData[idx].url = url;
           }
           e.target.value = "";
         });
       }));
+
       container.querySelectorAll(".eliminar-item").forEach(btn => btn.addEventListener("click", () => {
         sincronizarFormulario();
         workingData.splice(+btn.dataset.index, 1);
@@ -285,48 +371,56 @@ import { collection, onSnapshot, getDocs, doc, writeBatch } from "https://www.gs
       }));
     }
 
-    document.getElementById("add-image-btn").onclick = () => { sincronizarFormulario(); workingData.push({ url: "", alt: "", text: "" }); renderItems(); };
+    document.getElementById("add-image-btn").onclick = () => {
+      sincronizarFormulario();
+      workingData.push({ url: "", alt: "", text: "" });
+      renderItems();
+    };
+
     document.getElementById("save-carousel-btn").onclick = async () => {
       sincronizarFormulario();
-      await guardarEnFirestore(workingData); // ¡Guarda en Firestore!
+      await guardarEnFirestore(workingData);
       modal.style.display = "none";
     };
-    document.getElementById("close-modal").onclick = () => { workingData = [...carouselData]; modal.style.display = "none"; };
-    document.getElementById("carousel-close-btn").onclick = () => { workingData = [...carouselData]; modal.style.display = "none"; };
 
-    window.showCarouselModal = () => { workingData = carouselData.map(item => ({...item})); renderItems(); modal.style.display = "flex"; };
+    document.getElementById("close-modal").onclick = () => {
+      workingData = [...carouselData];
+      modal.style.display = "none";
+    };
+    document.getElementById("carousel-close-btn").onclick = () => {
+      workingData = [...carouselData];
+      modal.style.display = "none";
+    };
+
+    window.showCarouselModal = () => {
+      workingData = carouselData.map(item => ({...item}));
+      renderItems();
+      modal.style.display = "flex";
+    };
   }
 
   // ==================== INICIALIZACIÓN ====================
-  function iniciarTodo() {
-    // 1. Migrar datos antiguos si existen
-    migrarLocalStorageSiExiste().then(() => {
-      // 2. Escucha en tiempo real de Firestore
-      const unsubscribe = onSnapshot(carruselCol, (snapshot) => {
-        const imagenes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        imagenes.sort((a, b) => a.orden - b.orden); // orden lógico
-        renderizarCarrusel(imagenes);
-      }, (error) => console.error("Error al escuchar carrusel:", error));
+  async function iniciarTodo() {
+    await migrarLocalStorageSiExiste();
 
-      // Limpiar al descargar la página
-      window.addEventListener("beforeunload", () => unsubscribe());
+    onSnapshot(carruselCol, (snapshot) => {
+      const imagenes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      imagenes.sort((a, b) => a.orden - b.orden);
+      renderizarCarrusel(imagenes);
     });
 
-    // 3. Controles de flechas
     document.getElementById("prev-slide")?.addEventListener("click", () => { anteriorSlide(); detenerAutoRotacion(); iniciarAutoRotacion(); });
     document.getElementById("next-slide")?.addEventListener("click", () => { siguienteSlide(); detenerAutoRotacion(); iniciarAutoRotacion(); });
 
-    // 4. Auto rotación
     iniciarAutoRotacion();
 
-    // 5. Botón de edición (solo admin)
-    if (window.Auth?.checkPermission("edit_carousel")) initCarouselModal();
+    if (window.Auth?.checkPermission && window.Auth.checkPermission("edit_carousel")) {
+      initCarouselModal();
+    }
 
-    // 6. Renderizar UI
     window.UI?.render();
   }
 
-  // Arranque inmediato (sin DOMContentLoaded porque es módulo ES)
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", iniciarTodo);
   } else {
