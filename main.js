@@ -7,8 +7,8 @@ import {
   "use strict";
 
   // ==================== CONFIGURACIÓN DE CLOUDINARY ====================
-  const CLOUD_NAME = "TU_CLOUD_NAME";           // Reemplaza con tu cloud name
-  const UPLOAD_PRESET = "TU_UPLOAD_PRESET";     // Reemplaza con tu upload preset sin firmar
+  const CLOUD_NAME = "kjfgogu5";
+  const UPLOAD_PRESET = "orquestas_unsigned";
 
   // ==================== REFERENCIAS ====================
   const carruselCol = collection(db, "carrusel");
@@ -61,12 +61,6 @@ import {
   }
 
   // ==================== SUBIR A CLOUDINARY ====================
-  /**
-   * Sube un Blob (imagen o PDF) a Cloudinary usando unsigned upload.
-   * @param {Blob} blob - Archivo binario
-   * @param {string} carpeta - Carpeta en Cloudinary (ej. "carrusel")
-   * @returns {Promise<string>} URL segura (https)
-   */
   async function subirArchivoACloudinary(blob, carpeta = "carrusel") {
     const formData = new FormData();
     formData.append("file", blob);
@@ -106,7 +100,6 @@ import {
       const item = datos[i];
       let urlFinal = item.src || "";
       if (urlFinal.startsWith("data:")) {
-        // Convertir base64 a Blob y subir a Cloudinary
         const resp = await fetch(urlFinal);
         const blob = await resp.blob();
         urlFinal = await subirArchivoACloudinary(blob, "carrusel");
@@ -145,7 +138,7 @@ import {
     }
   }
 
-  // ==================== CROP MODAL (con Cloudinary) ====================
+  // ==================== CROP MODAL ====================
   let cropCallback = null;
 
   function abrirCropModal(file, callback) {
@@ -208,7 +201,6 @@ import {
         cropArea.addEventListener("pointerdown", down);
         handle.addEventListener("pointerdown", down);
 
-        // Botón Recortar
         confirmBtn.onclick = async () => {
           confirmBtn.disabled = true;
           confirmBtn.textContent = "⏳ Subiendo...";
@@ -219,9 +211,7 @@ import {
             });
             if (!blob) throw new Error("No se pudo generar la imagen.");
 
-            // Subir a Cloudinary
             const url = await subirArchivoACloudinary(blob, "carrusel");
-
             modal.style.display = "none";
             cropCallback(url);
           } catch (error) {
@@ -248,7 +238,7 @@ import {
     reader.readAsDataURL(file);
   }
 
-  // ==================== MODALES ====================
+  // ==================== CREAR MODALES ====================
   function crearCropModal() {
     if (document.getElementById("crop-modal")) return;
     const div = document.createElement("div");
