@@ -75,8 +75,8 @@
         import { collection, query, where, onSnapshot, addDoc, orderBy } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
 
         // ==================== CONFIGURACIÓN DE CLOUDINARY ====================
-        const CLOUD_NAME = "TU_CLOUD_NAME";
-        const UPLOAD_PRESET = "TU_UPLOAD_PRESET"; // Configurado para permitir PDFs
+        const CLOUD_NAME = "kjfgogu5";
+        const UPLOAD_PRESET = "orquestas_unsigned";
 
         // ==================== OBTENER PARÁMETRO DE LA URL ====================
         const urlParams = new URLSearchParams(window.location.search);
@@ -119,7 +119,6 @@
 
                 card.appendChild(grid);
 
-                // Botón para subir PDF (según permisos)
                 const session = window.Auth?.getSession();
                 if (session && (window.Auth?.checkPermission("manage_users") || session.role === "profesor")) {
                     const btnAdmin = document.createElement("button");
@@ -136,7 +135,6 @@
             });
         }
 
-        // Escuchar piezas de esta agrupación
         const qPiezas = query(piezasCol, where("agrupacionId", "==", agrupacionId), orderBy("titulo"));
         onSnapshot(qPiezas, (snapshot) => {
             const piezas = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -194,10 +192,7 @@
             btn.textContent = "Subiendo...";
 
             try {
-                // Subir a Cloudinary (acepta PDF)
                 const url = await subirArchivoACloudinary(archivo, "partituras");
-
-                // Guardar en Firestore
                 const session = window.Auth?.getSession();
                 await addDoc(partiturasCol, {
                     piezaId,
