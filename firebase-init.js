@@ -1,6 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+import { getStorage } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBHHCJM6JFb6IkaT-MgazyTGgOKJdjcKvo",
@@ -11,10 +12,9 @@ const firebaseConfig = {
   appId: "1:356833587736:web:b44458eebc115eb98d096d"
 };
 
-// Inicialización de Firebase
 const app = initializeApp(firebaseConfig);
 
-// Exportación de servicios para auth.js, ui-manager.js y demás módulos
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const storage = getStorage(app);
 export { firebaseConfig };
