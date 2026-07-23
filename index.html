@@ -1,142 +1,86 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<script>
-  if (!sessionStorage.getItem("sistemaOrquestas_session") && !localStorage.getItem("sistemaOrquestas_session")) {
-    window.location.href = "login.html";
-  }
-</script>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Control - Sistema CMA</title>
+    <title>Sistema Nacional de Orquestas</title>
     <link rel="stylesheet" href="estilos.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div class="app-container">
-        <!-- SIDEBAR -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <h2><i class="fa-solid fa-music"></i> Sistema CMA</h2>
-            </div>
-            <ul class="sidebar-menu">
-                <li><a href="index.html" class="active"><i class="fa-solid fa-chart-pie"></i> Panel Principal</a></li>
-                <li><a href="miembros.html"><i class="fa-solid fa-users"></i> Miembros</a></li>
-                <li><a href="piezas.html"><i class="fa-solid fa-file-audio"></i> Piezas</a></li>
-                <li><a href="formacion.html"><i class="fa-solid fa-graduation-cap"></i> Formación</a></li>
-                <li><a href="panel.html"><i class="fa-solid fa-calendar"></i> Eventos</a></li>
-                <li><a href="cambiar-clave.html"><i class="fa-solid fa-key"></i> Seguridad</a></li>
-            </ul>
-            <div class="sidebar-footer">
-                <button id="btn-logout" class="btn-logout"><i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión</button>
-            </div>
-        </aside>
+    <!-- FILA 1: Gobierno + navegación de usuario (login / cerrar sesión / acceder / avatar) -->
+    <header class="barra-superior">
+        <div class="marca-gobierno">
+            <img src="datos.png" alt="Gobierno de Venezuela" style="max-height:44px;" />
+        </div>
+        <!-- ui-manager.js llena esto: "Iniciar Sesión" si no hay sesión,
+             o Cerrar sesión / Acceder a la página / avatar si ya la hay -->
+        <nav id="user-nav" class="user-nav"></nav>
+    </header>
 
-        <!-- CONTENIDO PRINCIPAL -->
-        <main class="main-content">
-            <!-- Topbar -->
-            <header class="topbar">
-                <div class="topbar-title">
-                    <h1>Dashboard General</h1>
-                </div>
-                <div class="user-nav" id="user-nav-area">
-                    <span id="user-email-display">Cargando usuario...</span>
-                </div>
-            </header>
-
-            <!-- Carrusel global -->
-            <div class="modulo-carrusel" id="carousel-container">
-                <button class="carousel-arrow carousel-arrow-left" id="prev-slide">&#10094;</button>
-                <div class="carrusel-caja">
-                    <img src="images.jpg" alt="Imagen del Carrusel" class="imagen-carrusel" id="carousel-image" />
-                </div>
-                <button class="carousel-arrow carousel-arrow-right" id="next-slide">&#10095;</button>
-                <div class="carrusel-texto">
-                    <h2 id="carousel-title">Sistema Nacional de Orquestas</h2>
-                    <p id="carousel-desc">Texto explicativo del carrusel…</p>
-                </div>
-            </div>
-
-            <!-- Citas / testimonios -->
-            <div class="citas-grid">
-                <div class="cita-card">
-                    <i class="fa-solid fa-quote-left"></i>
-                    <p>"La música transformó mi manera de ver el mundo y de relacionarme con los demás."</p>
-                    <div class="cita-autor">— Cita 1</div>
-                </div>
-                <div class="cita-card">
-                    <i class="fa-solid fa-quote-left"></i>
-                    <p>"Gracias al Sistema pude formarme como músico y hoy enseño a nuevas generaciones."</p>
-                    <div class="cita-autor">— Cita 2</div>
-                </div>
-                <div class="cita-card">
-                    <i class="fa-solid fa-quote-left"></i>
-                    <p>"Un espacio de oportunidades donde la disciplina y el arte van de la mano."</p>
-                    <div class="cita-autor">— Cita 3</div>
-                </div>
-            </div>
-
-            <!-- Dashboard métricas + tabla -->
-            <div class="dashboard-container">
-                <div class="metrics-grid">
-                    <div class="metric-card">
-                        <div class="metric-icon bg-blue"><i class="fa-solid fa-users"></i></div>
-                        <div class="metric-info">
-                            <h3>Total Miembros</h3>
-                            <p id="metric-miembros">0</p>
-                        </div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-icon bg-green"><i class="fa-solid fa-book"></i></div>
-                        <div class="metric-info">
-                            <h3>Partituras</h3>
-                            <p id="metric-partituras">0</p>
-                        </div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-icon bg-purple"><i class="fa-solid fa-layer-group"></i></div>
-                        <div class="metric-info">
-                            <h3>Agrupaciones</h3>
-                            <p id="metric-agrupaciones">0</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card-section">
-                    <div class="section-header">
-                        <h2><i class="fa-solid fa-list-check"></i> Resumen de Registros Recientes</h2>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Nombre / Registro</th>
-                                    <th>Categoría / Rol</th>
-                                    <th>Núcleo / Estado</th>
-                                    <th>Fecha</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tabla-resumen-body">
-                                <tr>
-                                    <td colspan="4" class="text-center">Cargando datos desde Firebase...</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <footer class="site-footer">
-                <p>&copy; <span id="footer-year"></span> Sistema Nacional de Orquestas — CMA. Todos los derechos reservados.</p>
-            </footer>
-        </main>
+    <!-- FILA 2: "Barra de Movimiento" — ticker institucional -->
+    <div class="barra-movimiento">
+        <span class="barra-movimiento-texto">🎵 Sistema Nacional de Orquestas — Formando futuro a través de la música. Bienvenido al portal institucional. 🎵</span>
     </div>
 
-    <!-- Los modales de crop y gestión se crean dinámicamente en main.js -->
+    <!-- FILA 3: banner "Sistema Nacional de Orquestas" + insignia 50 -->
+    <div class="sistema-banner">
+        <span class="linea"></span>
+        <i class="fa-solid fa-music sistema-icono"></i>
+        <h1>Sistema Nacional de Orquestas</h1>
+        <span class="linea"></span>
+        <span class="marca-badge">50</span>
+    </div>
+
+    <main class="contenido-web container">
+        <!-- CARRUSEL NACIONAL: Img y Texto lado a lado, flechas afuera (boceto PC y Teléfono) -->
+        <div class="modulo-carrusel" id="carousel-container">
+            <div class="carrusel-visual">
+                <button class="carousel-arrow" id="prev-slide" aria-label="Anterior">&#10094;</button>
+                <div class="carrusel-caja">
+                    <img src="images.jpg" alt="Imagen del carrusel" class="imagen-carrusel" id="carousel-image" />
+                </div>
+                <div class="carrusel-texto">
+                    <h2 id="carousel-title">Sistema Nacional de Orquestas</h2>
+                    <p id="carousel-desc">Cargando información del carrusel…</p>
+                </div>
+                <button class="carousel-arrow" id="next-slide" aria-label="Siguiente">&#10095;</button>
+            </div>
+            <!-- El botón de editar (lápiz) lo agrega ui-manager.js aquí dentro,
+                 solo visible para Owner Supremo / Director Nacional -->
+        </div>
+
+        <!-- CITAS: 3 tarjetas debajo del carrusel -->
+        <div class="citas-grid">
+            <div class="cita-card">
+                <i class="fa-solid fa-quote-left"></i>
+                <p>"La música transformó mi manera de ver el mundo y de relacionarme con los demás."</p>
+                <div class="cita-autor">— Cita 1</div>
+            </div>
+            <div class="cita-card">
+                <i class="fa-solid fa-quote-left"></i>
+                <p>"Gracias al Sistema pude formarme como músico y hoy enseño a nuevas generaciones."</p>
+                <div class="cita-autor">— Cita 2</div>
+            </div>
+            <div class="cita-card">
+                <i class="fa-solid fa-quote-left"></i>
+                <p>"Un espacio de oportunidades donde la disciplina y el arte van de la mano."</p>
+                <div class="cita-autor">— Cita 3</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- PIE DE PÁGINA -->
+    <footer class="pie-pagina">
+        <div class="footer-contenido">
+            <p>&copy; <span id="footer-year"></span> Sistema Nacional de Orquestas. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
     <script>document.getElementById("footer-year").textContent = new Date().getFullYear();</script>
     <script type="module" src="firebase-init.js"></script>
     <script type="module" src="auth.js"></script>
+    <script type="module" src="ui-manager.js"></script>
     <script type="module" src="main.js"></script>
 </body>
 </html>

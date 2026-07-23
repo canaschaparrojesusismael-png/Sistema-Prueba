@@ -62,7 +62,8 @@ body {
   line-height: 1.6;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
-  display: flex; /* para sidebar layout */
+  display: flex;
+  flex-direction: column; /* header / main / footer apilados en TODAS las páginas */
 }
 img {
   display: block;
@@ -71,75 +72,211 @@ img {
 }
 
 /* ================================================================
-   LAYOUT PRINCIPAL: SIDEBAR + CONTENIDO
+   LAYOUT COMPARTIDO DEL SITIO
+   Usado por: index.html, panel.html, miembros.html, piezas.html,
+   formacion.html, agrupacion-detalle.html, repertorio.html
+   Estructura: <header class="barra-superior"> + <main class="contenido-web container"> + <footer class="pie-pagina">
    ================================================================ */
-.app-container {
+.barra-superior {
+  background-color: var(--color-blanco);
+  padding: 12px 32px;
+  border-bottom: 1px solid #e0e4f0;
   display: flex;
-  width: 100%;
-  min-height: 100vh;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  position: sticky;
+  top: 0;
+  z-index: 900;
+}
+.marca-gobierno { display: flex; align-items: center; gap: 0.7rem; min-width: 0; }
+.marca-gobierno span { font-weight: 800; color: var(--color-primario); font-size: 1.05rem; white-space: nowrap; }
+
+/* Fila 2: "Barra de Movimiento" — ticker animado con @keyframes (nada de <marquee>) */
+.barra-movimiento {
+  background: var(--color-secundario);
+  border-bottom: 1px solid #e0e4f0;
+  overflow: hidden;
+  white-space: nowrap;
+  padding: 7px 0;
+}
+.barra-movimiento-texto {
+  display: inline-block;
+  padding-left: 100%;
+  color: var(--color-primario);
+  font-weight: 600;
+  font-size: 0.85rem;
+  animation: recorrer-barra 24s linear infinite;
+}
+.barra-movimiento:hover .barra-movimiento-texto { animation-play-state: paused; }
+@keyframes recorrer-barra {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-100%); }
 }
 
-/* Sidebar */
-.sidebar {
-  width: var(--sidebar-width);
-  background-color: var(--bg-sidebar);
-  color: #ffffff;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  flex-shrink: 0;
-  z-index: 100;
-}
-.sidebar-header {
-  padding: 24px;
-  font-size: 1.2rem;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-}
-.sidebar-menu {
-  list-style: none;
-  padding: 20px 12px;
-  flex-grow: 1;
-}
-.sidebar-menu li {
-  margin-bottom: 8px;
-}
-.sidebar-menu a {
+/* Fila 3: banner "Sistema Nacional de Orquestas" + insignia 50 */
+.sistema-banner {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  color: var(--text-sidebar);
-  text-decoration: none;
-  border-radius: 8px;
-  font-weight: 500;
-  transition: background 0.2s, color 0.2s;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.3rem 1rem;
+  background: var(--color-blanco);
+  border-bottom: 1px solid #e0e4f0;
 }
-.sidebar-menu a:hover,
-.sidebar-menu a.active {
-  background-color: var(--color-primario);
-  color: #ffffff;
+.sistema-banner .linea {
+  flex: 0 1 110px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--color-primario-claro), transparent);
 }
-.sidebar-footer {
-  padding: 20px 24px;
-  border-top: 1px solid rgba(255,255,255,0.1);
+.sistema-banner .sistema-icono { font-size: 1.5rem; color: var(--color-primario); }
+.sistema-banner h1 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--color-primario);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
 }
-.btn-logout {
+.sistema-banner .marca-badge {
+  background: linear-gradient(135deg, #c1121f, #1a1a1a);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.contenido-web.container {
   width: 100%;
-  padding: 10px;
-  background-color: rgba(239,68,68,0.1);
-  color: var(--color-acento);
-  border: 1px solid var(--color-acento);
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: background 0.3s;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  flex: 1 0 auto; /* empuja el pie de página hacia abajo */
 }
-.btn-logout:hover {
-  background-color: var(--color-acento);
-  color: white;
+.pie-pagina {
+  margin-top: auto;
+  background-color: var(--color-blanco);
+  border-top: 1px solid #e5e7eb;
+  padding: 1.4rem 2rem;
+  text-align: center;
+}
+.footer-contenido p {
+  color: var(--color-texto-claro);
+  font-size: 0.85rem;
 }
 
-/* Contenido principal */
+/* ---- Sistema de botones de navegación (rojo/negro, colores institucionales) ---- */
+.user-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  position: relative;
+}
+.btn-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.15rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(135deg, #c1121f, #1a1a1a);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.18);
+  transition: var(--transition-fast);
+  white-space: nowrap;
+}
+.btn-nav:hover { transform: translateY(-1px); filter: brightness(1.12); box-shadow: 0 5px 14px rgba(0,0,0,0.25); }
+.btn-nav.btn-cerrar { background: linear-gradient(135deg, #2b2b2b, #000); }
+.btn-nav.btn-panel { background: linear-gradient(135deg, #c1121f, #7a0c14); }
+.btn-nav.btn-login { background: linear-gradient(135deg, #c1121f, #1a1a1a); }
+.btn-nav.btn-user {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  user-select: none;
+}
+.user-submenu {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  background: var(--color-blanco);
+  color: var(--color-texto);
+  border-radius: var(--border-radius-sm);
+  box-shadow: var(--shadow-modal);
+  padding: 1rem 1.2rem;
+  min-width: 220px;
+  text-align: left;
+  font-size: 0.85rem;
+  z-index: 950;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(6px);
+  transition: var(--transition-fast);
+}
+.user-submenu.visible { opacity: 1; visibility: visible; transform: translateY(0); }
+.user-submenu-nombre { font-weight: 700; color: var(--color-primario); margin-bottom: 0.5rem; font-size: 0.95rem; }
+.user-submenu-dato { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; color: var(--color-texto-claro); }
+.user-submenu-sep { border: none; border-top: 1px solid #eef0f7; margin: 0.6rem 0; }
+.user-submenu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  padding: 0.5rem 0.3rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-texto);
+  transition: var(--transition-fast);
+}
+.user-submenu-item:hover { background: var(--color-secundario); color: var(--color-primario); }
+
+/* ---- Barra de estado flotante (nombre / rol / núcleo / online) ---- */
+.status-bar {
+  position: fixed;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 1.2rem;
+  background: rgba(26,26,26,0.9);
+  color: #fff;
+  padding: 0.55rem 1.4rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+  z-index: 400;
+  backdrop-filter: blur(6px);
+}
+.status-item { display: flex; align-items: center; gap: 0.4rem; opacity: 0.9; }
+.online-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-exito); display: inline-block; box-shadow: 0 0 0 3px rgba(16,185,129,0.25); }
+
+/* El engrane de Configuración vive dentro del menú de usuario; el ícono de config heredado
+   (si quedara alguno suelto en una barra oscura) se ve oscuro sobre fondo blanco */
+#config-gear-btn i, #config-gear-btn svg { color: inherit; }
+
+/* Ajuste puntual: la barra lateral corta de enlaces dentro del panel (Piezas/Formación/Miembros) */
+.dashboard-grid .sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  background: none;
+}
+
+/* Contenido principal (heredado, aún usado por módulos internos) */
 .main-content {
   flex-grow: 1;
   display: flex;
@@ -148,7 +285,7 @@ img {
   background-color: var(--color-fondo);
 }
 
-/* Topbar */
+/* Topbar (heredado, aún usado por módulos internos) */
 .topbar {
   background-color: var(--color-blanco);
   padding: 16px 32px;
@@ -163,35 +300,32 @@ img {
   font-weight: 700;
   color: var(--color-primario);
 }
-.user-nav {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  font-size: 0.9rem;
-  color: var(--color-texto-claro);
-}
 
 /* ================================================================
-   CARRUSEL (ubicado debajo del topbar)
+   CARRUSEL NACIONAL (Img + Texto lado a lado, como en los bocetos)
    ================================================================ */
 .modulo-carrusel {
-  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 1.8rem;
+  gap: 0.9rem;
   margin: 2rem;
+  position: relative;
+}
+.carrusel-visual {
+  display: flex;
+  align-items: stretch;
+  gap: 0.8rem;
 }
 .carrusel-caja {
-  width: 100%;
-  height: 400px;
-  max-height: 45vh;
+  flex: 1.3 1 0;
+  min-width: 0;
+  height: 340px;
   background: linear-gradient(135deg, var(--color-primario-oscuro), var(--color-primario));
   border: 1px solid #e5e7eb;
   border-radius: var(--border-radius);
   overflow: hidden;
   box-shadow: var(--shadow-card);
   transition: var(--transition-normal);
-  position: relative;
 }
 .carrusel-caja:hover {
   box-shadow: var(--shadow-hover);
@@ -206,77 +340,85 @@ img {
   object-position: center;
   display: block;
   image-rendering: -webkit-optimize-contrast;
+  background: rgba(0,0,0,0.08);
 }
 .carousel-arrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(0,0,0,0.4);
+  flex: 0 0 auto;
+  align-self: center;
+  background: linear-gradient(135deg, #c1121f, #1a1a1a);
   color: white;
   border: none;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  font-size: 1.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 5;
-  transition: background 0.3s;
-}
-.carousel-arrow:hover,
-.carousel-arrow:focus {
-  background: rgba(0,0,0,0.7);
-  outline: none;
-}
-.carousel-arrow-left { left: 10px; }
-.carousel-arrow-right { right: 10px; }
-.carrusel-texto {
-  background-color: rgba(255,255,255,0.95);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(0,0,0,0.05);
-  border-radius: var(--border-radius);
-  padding: 2rem 1.8rem;
-  box-shadow: var(--shadow-card);
-  transition: var(--transition-normal);
-}
-.carrusel-texto:hover { box-shadow: var(--shadow-hover); }
-.carrusel-texto h2 {
-  color: var(--color-primario);
-  font-size: 1.5rem;
-  margin-bottom: 0.6rem;
-  font-weight: 700;
-}
-.carrusel-texto p {
-  font-size: 0.95rem;
-  line-height: 1.7;
-  color: var(--color-texto);
-  opacity: 0.9;
-}
-.carousel-edit-btn {
-  position: absolute;
-  top: -35px;
-  right: 10px;
-  background: var(--color-primario);
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
   font-size: 1.3rem;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+  transition: var(--transition-fast);
+}
+.carousel-arrow:hover,
+.carousel-arrow:focus {
+  transform: translateY(-1px) scale(1.05);
+  filter: brightness(1.1);
+  outline: none;
+}
+.carrusel-texto {
+  flex: 1 1 0;
+  min-width: 0;
+  background-color: var(--color-blanco);
+  border: 1px solid #e5e7eb;
+  border-radius: var(--border-radius);
+  padding: 1.6rem 1.4rem;
+  box-shadow: var(--shadow-card);
+  transition: var(--transition-normal);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+}
+.carrusel-texto:hover { box-shadow: var(--shadow-hover); }
+.carrusel-texto h2 {
+  color: var(--color-primario);
+  font-size: 1.3rem;
+  margin-bottom: 0.6rem;
+  font-weight: 700;
+}
+.carrusel-texto p {
+  font-size: 0.92rem;
+  line-height: 1.7;
+  color: var(--color-texto);
+  opacity: 0.9;
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.carousel-edit-btn {
+  position: absolute;
+  top: -18px;
+  right: 0;
+  background: linear-gradient(135deg, #c1121f, #1a1a1a);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
   z-index: 10;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
   transition: transform 0.3s;
 }
 .carousel-edit-btn:hover,
 .carousel-edit-btn:focus {
   transform: rotate(90deg);
-  background: var(--color-primario-oscuro);
+  filter: brightness(1.15);
   outline: none;
 }
 
@@ -661,7 +803,7 @@ img {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1.2rem;
-  margin: 0 2rem 2rem;
+  margin: 0 0 2rem;
 }
 .cita-card {
   background: var(--color-blanco);
@@ -682,71 +824,53 @@ img {
 .cita-card p { font-size: 0.92rem; color: var(--color-texto); opacity: 0.9; }
 .cita-card .cita-autor { margin-top: 0.8rem; font-weight: 700; color: var(--color-primario); font-size: 0.85rem; }
 
-/* Pie de página */
-.site-footer {
-  margin-top: auto;
-  padding: 1.5rem 2rem;
-  text-align: center;
-  color: var(--color-texto-claro);
-  font-size: 0.85rem;
-  border-top: 1px solid #e5e7eb;
-  background: var(--color-blanco);
-}
-
 /* ================================================================
    RESPONSIVE
-   PC / Escritorio grande: layout normal definido arriba (sidebar fija)
-   Tablet (<=1024px): sidebar más angosta, carrusel más bajo
-   Teléfono (<=768px): sidebar se convierte en barra superior horizontal
+   El sitio usa un layout único (barra-superior + contenido + pie de página)
+   que se adapta con las mismas reglas en TODAS las páginas.
    ================================================================ */
 
 /* --- Tablet / laptop pequeña --- */
 @media (max-width: 1024px) {
-  :root { --sidebar-width: 220px; }
-  .carrusel-caja { height: 320px; }
+  .carrusel-caja { height: 300px; }
   .metrics-grid { grid-template-columns: repeat(2, 1fr); }
-  .citas-grid { grid-template-columns: repeat(2, 1fr); margin: 0 1.2rem 1.5rem; }
+  .citas-grid { grid-template-columns: repeat(2, 1fr); margin: 0 0 1.5rem; }
   .citas-grid .cita-card:last-child { grid-column: 1 / -1; }
 }
 
 /* --- Teléfono / tablet vertical --- */
 @media (max-width: 768px) {
-  .app-container { flex-direction: column; }
+  .barra-superior { padding: 10px 16px; }
+  .barra-superior img { max-height: 34px !important; }
+  .marca-gobierno span { font-size: 0.8rem; }
+  .barra-movimiento-texto { font-size: 0.75rem; }
+  .sistema-banner { padding: 0.9rem 0.6rem; gap: 0.5rem; }
+  .sistema-banner .linea { flex-basis: 30px; }
+  .sistema-banner .sistema-icono { font-size: 1.1rem; }
+  .sistema-banner h1 { font-size: 1rem; }
+  .sistema-banner .marca-badge { font-size: 0.65rem; padding: 0.2rem 0.55rem; }
+  .user-nav { gap: 0.4rem; }
+  .btn-nav { padding: 0.5rem 0.8rem; font-size: 0.75rem; }
+  .btn-nav.btn-user { width: 34px; height: 34px; font-size: 0.85rem; }
+  .user-submenu { min-width: 180px; font-size: 0.8rem; }
+  .status-bar { flex-wrap: wrap; justify-content: center; gap: 0.6rem 1rem; width: calc(100% - 24px); bottom: 8px; padding: 0.5rem 1rem; }
 
-  .sidebar {
-    width: 100%;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 14px;
-    position: sticky;
-    top: 0;
-  }
-  .sidebar-header { padding: 0; border-bottom: none; font-size: 1rem; }
-  .sidebar-menu {
-    display: flex;
-    flex-direction: row;
-    gap: 6px;
-    overflow-x: auto;
-    padding: 0;
-    flex-grow: 0;
-  }
-  .sidebar-menu a { padding: 8px 10px; white-space: nowrap; font-size: 0.85rem; }
-  .sidebar-footer { padding: 0; border-top: none; }
-  .btn-logout { width: auto; padding: 8px 10px; font-size: 0.8rem; }
+  .contenido-web.container { padding: 1.1rem; }
 
-  .main-content { width: 100%; }
-  .topbar { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
-  .topbar-title h1 { font-size: 1.15rem; }
-
-  .modulo-carrusel { margin: 1rem; gap: 1rem; }
-  .carrusel-caja { height: 220px; }
-  .carousel-arrow { width: 32px; height: 32px; font-size: 1.1rem; }
+  .modulo-carrusel { margin: 0 0 1.5rem; gap: 0.6rem; }
+  .carrusel-visual { gap: 0.4rem; }
+  .carrusel-caja { height: 150px; flex: 1.1 1 0; }
+  .carrusel-texto { padding: 0.9rem 0.8rem; }
+  .carrusel-texto h2 { font-size: 1rem; margin-bottom: 0.3rem; }
+  .carrusel-texto p { font-size: 0.78rem; -webkit-line-clamp: 4; }
+  .carousel-arrow { width: 32px; height: 32px; font-size: 1rem; }
+  .carousel-edit-btn { width: 30px; height: 30px; font-size: 0.85rem; top: -14px; }
 
   .metrics-grid { grid-template-columns: 1fr; }
   .dashboard-container { margin: 1rem; }
 
-  .citas-grid { grid-template-columns: 1fr 1fr; margin: 0 1rem 1.2rem; }
+  .citas-grid { grid-template-columns: 1fr 1fr; margin: 0 0 1.2rem; gap: 0.7rem; }
   .citas-grid .cita-card:last-child { grid-column: 1 / -1; }
-  .site-footer { padding: 1rem; }
+  .cita-card { padding: 1rem; }
+  .cita-card p { font-size: 0.8rem; }
 }

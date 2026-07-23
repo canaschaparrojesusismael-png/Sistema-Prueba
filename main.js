@@ -396,20 +396,22 @@ const UPLOAD_PRESET = "orquestas_unsigned";
     document.getElementById("prev-slide")?.addEventListener("click", () => { anteriorSlide(); autoRotacionStop(); autoRotacionStart(); });
     document.getElementById("next-slide")?.addEventListener("click", () => { siguienteSlide(); autoRotacionStop(); autoRotacionStart(); });
     autoRotacionStart();
-    if (window.Auth?.checkPermission && window.Auth.checkPermission("edit_carousel")) {
+    // El carrusel de index.html es el carrusel NACIONAL: solo Owner Supremo y
+    // Director Nacional pueden modificarlo. (El botón visual lo crea ui-manager.js;
+    // aquí solo dejamos lista la función que ese botón invoca.)
+    const rol = window.Auth?.getSession()?.role;
+    if (["owner_supremo", "director_nacional"].includes(rol)) {
       initCarouselModal();
-      document.getElementById("carousel-container")?.insertAdjacentHTML(
-        "beforeend",
-        `<button class="carousel-edit-btn" id="btn-abrir-gestor-carrusel" title="Gestionar carrusel"><i class="fa-solid fa-pen"></i></button>`
-      );
-      document.getElementById("btn-abrir-gestor-carrusel")?.addEventListener("click", () => window.showCarouselModal());
     }
-    window.UI?.render(); // opcional
+    window.UI?.render(); // vuelve a pintar la barra de navegación para que muestre (o no) el botón de editar
   })();
 })();
 
 // ==================== DASHBOARD: MÉTRICAS Y RESUMEN ====================
 async function cargarMetricasYResumen() {
+  // Esta función es para el futuro panel administrativo; si la página actual
+  // no tiene el dashboard de métricas (como el index.html público), no hace nada.
+  if (!document.getElementById("metric-miembros")) return;
   try {
     const miembrosSnap = await getDocs(collection(db, "usuarios"));
     document.getElementById("metric-miembros").textContent = miembrosSnap.size;
