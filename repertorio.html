@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<script>
+  if (!sessionStorage.getItem("sistemaOrquestas_session") && !localStorage.getItem("sistemaOrquestas_session")) {
+    window.location.href = "login.html";
+  }
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalle Agrupación – Sistema de Orquestas</title>
+    <link rel="stylesheet" href="estilos.css?v=3.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .back-link { display: inline-block; margin: 1.5rem 0; color: var(--color-primario); font-weight: 600; text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
+
+        .pieza-card {
+            background: var(--color-blanco);
+            border: 1px solid #e0e4f0;
+            border-radius: var(--border-radius);
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: var(--shadow-card);
+            transition: var(--transition-normal);
+        }
+        .pieza-card:hover { box-shadow: var(--shadow-hover); }
+
+        .instrumentos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-top: 15px; }
+        .btn-instrumento {
+            padding: 12px; background: #f0eeff; border: 2px solid var(--color-primario);
+            border-radius: 12px; font-weight: 600; color: var(--color-primario); cursor: pointer;
+            transition: var(--transition-normal); text-align: center;
+        }
+        .btn-instrumento:hover { background: var(--color-primario); color: white; transform: scale(1.03); }
+
+        .is-admin .btn-admin-accion { display: inline-block; }
+        .btn-admin-accion {
+            display: none; padding: 6px 12px; background: var(--color-acento); color: white;
+            border: none; border-radius: 15px; cursor: pointer; font-weight: 600; font-size: 0.8rem;
+        }
+
+        .form-control { width: 100%; padding: 0.5rem; margin-top: 0.3rem; border: 1px solid #ccc; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <header class="barra-superior">
+        <img src="datos.png" alt="Gobierno de Venezuela" style="max-height:50px;" />
+        <nav id="user-nav" class="user-nav"></nav>
+    </header>
+    <div class="barra-movimiento">
+        <span class="barra-movimiento-texto">Audiciones abiertas para la fila de metales. | Próximo ensayo general: Viernes 4:00 PM.</span>
+    </div>
+
+
+    <main class="contenido-web container" id="agrupacion-container">
+        <a class="back-link" href="piezas.html">&larr; Volver a Agrupaciones</a>
+        <h2 id="agrupacion-titulo" style="color: var(--color-primario); font-weight: 800;">Cargando...</h2>
+        <div id="piezas-container"></div>
+    </main>
+
+    <!-- Modal para subir partitura -->
+    <div class="modal-overlay" id="modal-partitura">
+        <div class="modal-content">
+            <button class="modal-close-btn" id="partitura-close-btn">&times;</button>
+            <h2>Subir Partitura</h2>
+            <input type="hidden" id="partitura-pieza-id" />
+            <div class="editor-row">
+                <label>Instrumento:</label>
+                <input type="text" id="partitura-instrumento" class="modal-input" placeholder="Ej. Violín 1" />
+            </div>
+            <div class="editor-row">
+                <label>Archivo PDF:</label>
+                <input type="file" id="partitura-archivo" accept=".pdf" class="modal-input" />
+            </div>
+            <button id="btn-subir-partitura" class="btn btn-submit">Subir</button>
+            <button id="btn-cerrar-modal-partitura" class="btn btn-cerrar">Cancelar</button>
+        </div>
+    </div>
+
+    <script src="check-entorno.js"></script>
+
+    <script type="module" src="auth.js?v=5.0"></script>
+    <script type="module" src="ui-manager.js?v=5.0"></script>
+    <script type="module">
+        import { db } from "./firebase-init.js";
+        import { collection, query, where, onSnapshot, addDoc, orderBy } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+
+        // ==================== CONFIGURACIÓN DE CLOUDINARY ====================
+        const CLOUD_NAME = "kjfgogu5";
+        const UPLOAD_PRESET = "orquestas_unsigned";
+
+        // ==================== OBTENER PARÁMETRO DE LA URL ====================
+        const urlParams = new URLSearchParams(window.location.search);
+        const agrupacionId = urlParams.get("agrup") || urlParams.get("id");
+        if (!agrupacionId) {
+            document.getElementById("agrupacion-titulo").textContent = "Error: falta el identificador de la agrupación.";
+        } else {
+            document.getElementById("agrupacion-titulo").textContent = decodeURIComponent(agrupacionId);
+        }
+
+        // ==================== COLECCIONES ====================
+        const piezasCol = collection(db, "piezas");
+        const partiturasCol = collection(db, "partituras");
+
+        // ==================== RENDERIZADO DE PIEZAS ====================
+        const piezasContainer = document.getElementById("piezas-container");
+
+        function renderizarPiezas(piezas) {
+            piezasContainer.innerHTML = "";
+            if (piezas.length === 0) {
+                piezasContainer.innerHTML = `<p>No hay piezas registradas para esta agrupación.</p>`;
+                return;
+            }
+
+            piezas.forEach(pieza => {
+                const card = document.createElement("section");
+                card.className = "pieza-card";
+                card.innerHTML = `<h3 style="color: var(--color-primario);">${pieza.titulo}</h3>`;
+
+                const grid = document.createElement("div");
+                grid.className = "instrumentos-grid";
+
+                pieza.instrumentos.forEach(inst => {
+                    const btn = document.createElement("button");
+                    btn.className = "btn-instrumento";
+                    btn.textContent = inst;
+                    btn.addEventListener("click", () => abrirModalPartitura(pieza.id, inst));
+                    grid.appendChild(btn);
+                });
+
+                card.appendChild(grid);
+
+                const session = window.Auth?.getSession();
+                if (session && (window.Auth?.checkPermission("manage_users") || session.role === "profesor")) {
+                    const btnAdmin = document.createElement("button");
+                    btnAdmin.className = "btn-admin-accion";
+                    btnAdmin.textContent = "Subir PDF";
+                    btnAdmin.addEventListener("click", (e) => {
+                        e.stopPropagation();
+                        abrirModalPartitura(pieza.id, null);
+                    });
+                    card.appendChild(btnAdmin);
+                }
+
+                piezasContainer.appendChild(card);
+            });
+        }
+
+        const qPiezas = query(piezasCol, where("agrupacionId", "==", agrupacionId), orderBy("titulo"));
+        onSnapshot(qPiezas, (snapshot) => {
+            const piezas = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            renderizarPiezas(piezas);
+        });
+
+        // ==================== SUBIR ARCHIVO A CLOUDINARY ====================
+        async function subirArchivoACloudinary(blob, carpeta = "partituras") {
+            const formData = new FormData();
+            formData.append("file", blob);
+            formData.append("upload_preset", UPLOAD_PRESET);
+            formData.append("folder", carpeta);
+
+            const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, {
+                method: "POST",
+                body: formData
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error?.message || "Error al subir");
+            }
+
+            const data = await response.json();
+            return data.secure_url;
+        }
+
+        // ==================== MODAL DE PARTITURA ====================
+        function abrirModalPartitura(piezaId, instrumento) {
+            document.getElementById("partitura-pieza-id").value = piezaId;
+            document.getElementById("partitura-instrumento").value = instrumento || "";
+            document.getElementById("partitura-archivo").value = "";
+            document.getElementById("modal-partitura").style.display = "flex";
+        }
+
+        document.getElementById("btn-cerrar-modal-partitura").addEventListener("click", () => {
+            document.getElementById("modal-partitura").style.display = "none";
+        });
+        document.getElementById("partitura-close-btn").addEventListener("click", () => {
+            document.getElementById("modal-partitura").style.display = "none";
+        });
+
+        document.getElementById("btn-subir-partitura").addEventListener("click", async () => {
+            const piezaId = document.getElementById("partitura-pieza-id").value;
+            const instrumento = document.getElementById("partitura-instrumento").value.trim();
+            const archivo = document.getElementById("partitura-archivo").files[0];
+
+            if (!instrumento || !archivo) {
+                alert("Debe indicar el instrumento y seleccionar un PDF.");
+                return;
+            }
+
+            const btn = document.getElementById("btn-subir-partitura");
+            btn.disabled = true;
+            btn.textContent = "Subiendo...";
+
+            try {
+                const url = await subirArchivoACloudinary(archivo, "partituras");
+                const session = window.Auth?.getSession();
+                await addDoc(partiturasCol, {
+                    piezaId,
+                    instrumento,
+                    url,
+                    nombre: archivo.name,
+                    agrupacionId,
+                    subidoPor: session?.uid || "desconocido",
+                    fecha: new Date()
+                });
+
+                alert("Partitura subida correctamente.");
+                document.getElementById("modal-partitura").style.display = "none";
+            } catch (error) {
+                alert("Error al subir: " + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Subir";
+            }
+        });
+
+        // ==================== INICIALIZACIÓN ====================
+        UI.render();
+    </script>
+    <script type="module" src="chat-widget.js?v=1.0"></script>
+</body>
+</html>

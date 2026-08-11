@@ -1,0 +1,23 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /carrusel/{allImages} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.rango == 'owner_supremo';
+    }
+
+    match /flyers/{estado}/{nucleo}/{allImages} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null &&
+        ( request.auth.token.rango == 'owner_supremo' ||
+          request.auth.token.rango == 'director_nacional' ||
+          (request.auth.token.rango == 'director_regional' && estado == request.auth.token.estado) ||
+          (nucleo == request.auth.token.nucleo)
+        );
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

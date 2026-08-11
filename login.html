@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>Iniciar Sesión - Sistema de Orquestas</title>
+    <link rel="stylesheet" href="style.css?v=2.1">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <main class="login-wrapper">
+        <section class="login-visual">
+            <div class="visual-content">
+                <h1>Sistema Nacional de Orquestas</h1>
+                <p>"Música para iluminar, música para salvar."</p>
+            </div>
+        </section>
+        <section class="login-panel">
+            <form class="login-form" id="form-login" novalidate>
+                <h2>Iniciar Sesión</h2>
+                <div class="input-group">
+                    <label for="usuario">Correo electrónico</label>
+                    <input type="text" id="usuario" placeholder="Correo electrónico" required>
+                </div>
+                <div class="input-group">
+                    <label for="password">Contraseña</label>
+                    <input type="password" id="password" placeholder="Ingresa tu contraseña" required>
+                </div>
+                <div class="input-group remember-group">
+                    <input type="checkbox" id="remember" />
+                    <label for="remember">Recuérdame</label>
+                </div>
+                <button type="submit" class="btn-submit">Iniciar Sesión</button>
+            </form>
+        </section>
+    </main>
+
+    <script src="check-entorno.js"></script>
+
+    <script type="module" src="auth.js?v=5.0"></script>
+    <script>
+        // Redirigir inmediatamente si ya hay sesión
+        if (sessionStorage.getItem("sistemaOrquestas_session") || localStorage.getItem("sistemaOrquestas_session")) {
+            window.location.href = "index.html";
+        }
+
+        document.getElementById("form-login").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const username = document.getElementById("usuario").value.trim();
+            const password = document.getElementById("password").value.trim();
+            const remember = document.getElementById("remember").checked;
+
+            if (!username || !password) {
+                alert("Complete todos los campos.");
+                return;
+            }
+
+            const btn = document.querySelector(".btn-submit");
+            btn.textContent = "Validando...";
+            btn.disabled = true;
+
+            try {
+                const resultado = await window.Auth.login(username, password, remember);
+
+                if (resultado.success) {
+                    if (resultado.requiresPasswordChange) {
+                        window.location.href = "cambiar-clave.html";
+                    } else {
+                        window.location.href = "index.html";
+                    }
+                } else {
+                    alert("Error al iniciar sesión: " + (resultado.error || "Error desconocido"));
+                }
+            } catch (err) {
+                alert("Error inesperado: " + err.message);
+            } finally {
+                btn.textContent = "Iniciar Sesión";
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<script>
+  if (!sessionStorage.getItem("sistemaOrquestas_session") && !localStorage.getItem("sistemaOrquestas_session")) {
+    window.location.href = "login.html";
+  }
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piezas – Sistema de Orquestas</title>
+    <link rel="stylesheet" href="estilos.css?v=3.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .back-link {
+            display: inline-block;
+            margin: 1.5rem 0;
+            color: var(--color-primario);
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .back-link:hover { text-decoration: underline; }
+
+        .grid-agrupaciones {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 25px;
+            padding: 20px 0;
+        }
+        @media (max-width: 900px) { .grid-agrupaciones { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 600px) { .grid-agrupaciones { grid-template-columns: 1fr; } }
+
+        .card-agrupacion {
+            position: relative;
+            border-radius: var(--border-radius);
+            transition: transform 0.3s ease;
+        }
+        .card-agrupacion:hover { transform: translateY(-5px); }
+
+        .btn-agrupacion {
+            width: 100%;
+            min-height: 160px;
+            padding: 30px 20px;
+            background: linear-gradient(135deg, #ffffff 0%, #f9faff 100%);
+            border: 3px solid var(--color-primario);
+            border-radius: var(--border-radius);
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--color-primario);
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-align: center;
+            box-shadow: var(--shadow-card);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .btn-agrupacion::before { content: "🎵"; font-size: 2rem; display: block; }
+        .btn-agrupacion:hover {
+            background: var(--color-primario);
+            color: white;
+            border-color: var(--color-primario);
+            box-shadow: var(--shadow-hover);
+        }
+        .btn-agrupacion:hover::before { content: "🎶"; }
+
+        .btn-eliminar-agrupacion {
+            position: absolute;
+            top: -12px; right: -12px;
+            background: var(--color-acento);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 32px; height: 32px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: none;
+            z-index: 10;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .btn-eliminar-agrupacion:hover { background: #b71c1c; }
+
+        .is-admin .btn-eliminar-agrupacion { display: block; }
+        .is-admin .btn-agregar-agrupacion { display: flex; }
+
+        .btn-agregar-agrupacion {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            min-height: 160px;
+            background: rgba(255,255,255,0.6);
+            border: 3px dashed var(--color-primario);
+            border-radius: var(--border-radius);
+            font-weight: 800;
+            color: var(--color-primario);
+            cursor: pointer;
+            transition: var(--transition-normal);
+            font-size: 1.2rem;
+            gap: 10px;
+            backdrop-filter: blur(4px);
+        }
+        .btn-agregar-agrupacion:hover { background: var(--color-primario); color: white; border-style: solid; }
+    </style>
+</head>
+<body>
+    <header class="barra-superior">
+        <img src="datos.png" alt="Gobierno de Venezuela" style="max-height:50px;" />
+        <nav id="user-nav" class="user-nav"></nav>
+    </header>
+    <div class="barra-movimiento">
+        <span class="barra-movimiento-texto">Audiciones abiertas para la fila de metales. | Próximo ensayo general: Viernes 4:00 PM.</span>
+    </div>
+
+
+    <main class="contenido-web container">
+        <a class="back-link" href="panel.html">&larr; Volver al Panel</a>
+        <h2 style="color: var(--color-primario); font-weight: 800;">Agrupaciones</h2>
+        <div class="grid-agrupaciones" id="grid-agrupaciones"></div>
+    </main>
+
+    <div class="modal-overlay" id="modal-agrupacion">
+        <div class="modal-content">
+            <button class="modal-close-btn" id="agrup-close-btn">&times;</button>
+            <h2>Nueva Agrupación</h2>
+            <input type="text" id="input-nombre-agrupacion" class="modal-input" placeholder="Nombre de la agrupación" />
+            <button id="btn-guardar-agrupacion" class="btn btn-submit">Guardar</button>
+            <button id="btn-cerrar-modal" class="btn btn-cerrar">Cancelar</button>
+        </div>
+    </div>
+
+    <script src="check-entorno.js"></script>
+
+    <script type="module" src="auth.js?v=5.0"></script>
+    <script type="module" src="ui-manager.js?v=5.0"></script>
+    <script type="module">
+        import { db } from "./firebase-init.js";
+        import { abrirSelectorUbicacion } from "./ubicaciones.js";
+        import {
+            collection, query, where, onSnapshot, addDoc, deleteDoc, doc, getDocs
+        } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+
+        const ROLES_MULTI_NUCLEO = ["owner_supremo", "director_nacional", "director_regional"];
+
+        function initPiezas() {
+            const session = window.Auth?.getSession();
+            if (!session) { window.location.href = "index.html"; return; }
+
+            const agrupacionesCol = collection(db, "agrupaciones");
+            let agrupaciones = [];
+            let unsub = null;
+            let nucleoActivo = ROLES_MULTI_NUCLEO.includes(session.role) ? "" : (session.nucleus || "");
+
+            function esMultiNucleo() { return ROLES_MULTI_NUCLEO.includes(session.role); }
+
+            async function cargarSelectorNucleos() {
+                if (!esMultiNucleo()) return;
+                document.getElementById("barra-nucleo-piezas")?.remove();
+                try {
+                    const snap = await getDocs(collection(db, "nucleos"));
+                    const lista = snap.docs.map(d => d.data().nombre).sort();
+                    if (!nucleoActivo && lista.length) nucleoActivo = lista[0];
+                    const barra = document.createElement("div");
+                    barra.id = "barra-nucleo-piezas";
+                    barra.style.cssText = "display:flex;align-items:center;gap:0.6rem;margin:0.5rem 0 1rem;";
+                    barra.innerHTML = `<label style="font-weight:700;color:var(--color-primario);">Núcleo:</label>
+                        <select id="nucleo-selector-piezas" style="padding:0.4rem 0.7rem;border-radius:8px;border:1px solid #e0e4f0;">
+                            ${lista.length ? lista.map(n => `<option value="${n}" ${n === nucleoActivo ? "selected" : ""}>${n}</option>`).join("") : `<option value="">(sin núcleos todavía)</option>`}
+                        </select>
+                        <button type="button" id="btn-gestionar-nucleos-piezas" class="btn-config-mini">⚙️ Núcleos</button>`;
+                    document.querySelector(".back-link").insertAdjacentElement("afterend", barra);
+                    document.getElementById("nucleo-selector-piezas").addEventListener("change", (e) => {
+                        nucleoActivo = e.target.value;
+                        suscribirAgrupaciones();
+                    });
+                    document.getElementById("btn-gestionar-nucleos-piezas").addEventListener("click", () => {
+                        abrirSelectorUbicacion({
+                            nucleoInicial: nucleoActivo,
+                            onConfirmar: async ({ nucleo }) => {
+                                nucleoActivo = nucleo;
+                                await cargarSelectorNucleos();
+                                suscribirAgrupaciones();
+                            },
+                        });
+                    });
+                } catch (err) { console.error("No se pudo cargar la lista de núcleos:", err); }
+            }
+
+            function suscribirAgrupaciones() {
+                if (unsub) unsub();
+                const grid = document.getElementById("grid-agrupaciones");
+                if (!nucleoActivo) { agrupaciones = []; renderizarAgrupaciones(); return; }
+                grid.innerHTML = `<p style="grid-column:1/-1;text-align:center;color:var(--color-texto-claro);">Cargando…</p>`;
+                unsub = onSnapshot(
+                    query(agrupacionesCol, where("nucleo", "==", nucleoActivo)),
+                    (snap) => { agrupaciones = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderizarAgrupaciones(); },
+                    (err) => {
+                        console.error("No se pudieron leer las agrupaciones:", err);
+                        grid.innerHTML = `<p style="grid-column:1/-1;text-align:center;color:var(--color-acento);">No se pudieron cargar (revisá permisos/consola).</p>`;
+                    }
+                );
+            }
+
+            function renderizarAgrupaciones() {
+                const grid = document.getElementById("grid-agrupaciones");
+                grid.innerHTML = "";
+
+                agrupaciones.forEach(agrup => {
+                    const card = document.createElement("div");
+                    card.className = "card-agrupacion";
+
+                    const btn = document.createElement("button");
+                    btn.className = "btn-agrupacion";
+                    btn.textContent = agrup.nombre;
+                    btn.addEventListener("click", () => {
+                        window.location.href = `repertorio.html?agrup=${encodeURIComponent(agrup.nombre)}`;
+                    });
+
+                    const btnEliminar = document.createElement("button");
+                    btnEliminar.className = "btn-eliminar-agrupacion";
+                    btnEliminar.innerHTML = "✖";
+                    btnEliminar.addEventListener("click", async (e) => {
+                        e.stopPropagation();
+                        if (!confirm(`¿Eliminar "${agrup.nombre}"?`)) return;
+                        try {
+                            await deleteDoc(doc(db, "agrupaciones", agrup.id));
+                        } catch (err) {
+                            window._showToast?.("No se pudo eliminar: " + err.message, "error");
+                        }
+                    });
+
+                    card.appendChild(btn);
+                    card.appendChild(btnEliminar);
+                    grid.appendChild(card);
+                });
+
+                const btnAgregar = document.createElement("button");
+                btnAgregar.className = "btn-agregar-agrupacion";
+                btnAgregar.innerHTML = "&#9881; Agregar Agrupación";
+                btnAgregar.addEventListener("click", () => {
+                    if (!nucleoActivo) { window._showToast?.("Elegí un núcleo primero", "error"); return; }
+                    document.getElementById("input-nombre-agrupacion").value = "";
+                    document.getElementById("modal-agrupacion").style.display = "flex";
+                });
+                grid.appendChild(btnAgregar);
+
+                if (window.Auth.checkPermission("manage_users")) {
+                    grid.classList.add("is-admin");
+                } else {
+                    grid.classList.remove("is-admin");
+                }
+            }
+
+            document.getElementById("btn-guardar-agrupacion").addEventListener("click", async () => {
+                const nombre = document.getElementById("input-nombre-agrupacion").value.trim();
+                if (!nombre) return window._showToast?.("Nombre obligatorio.", "error");
+                if (!nucleoActivo) return window._showToast?.("Elegí un núcleo primero", "error");
+                try {
+                    await addDoc(agrupacionesCol, { nombre, nucleo: nucleoActivo });
+                    document.getElementById("modal-agrupacion").style.display = "none";
+                } catch (err) {
+                    window._showToast?.("No se pudo guardar: " + err.message, "error");
+                }
+            });
+
+            document.getElementById("btn-cerrar-modal").addEventListener("click", () => {
+                document.getElementById("modal-agrupacion").style.display = "none";
+            });
+            document.getElementById("agrup-close-btn").addEventListener("click", () => {
+                document.getElementById("modal-agrupacion").style.display = "none";
+            });
+
+            window.UI?.render();
+            cargarSelectorNucleos().then(suscribirAgrupaciones);
+        }
+
+        window.addEventListener("auth-ready", initPiezas);
+        if (window.Auth?.getSession()) initPiezas();
+    </script>
+    <script type="module" src="chat-widget.js?v=1.0"></script>
+</body>
+</html>

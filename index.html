@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Nacional de Orquestas</title>
+    <link rel="stylesheet" href="estilos.css?v=3.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- FILA 1: Gobierno + navegación de usuario -->
+    <header class="barra-superior">
+        <div class="marca-gobierno">
+            <img src="datos.png" alt="Gobierno de Venezuela" style="max-height:50px; width: auto;" />
+        </div>
+        <nav id="user-nav" class="user-nav"></nav>
+    </header>
+
+    <!-- ========================================== -->
+    <div class="barra-movimiento">
+        <span class="barra-movimiento-texto">Audiciones abiertas para la fila de metales. | Próximo ensayo general: Viernes 4:00 PM.</span>
+    </div>
+
+    <!-- FILA 3: banner "Sistema Nacional de Orquestas" -->
+    <div class="sistema-banner">
+        <img src="Estandarte.png" alt="Estandarte Sistema Nacional">  
+    </div>
+
+    <!-- Contenedor principal restringido a 1200px -->
+    <!-- AQUÍ DENTRO DEBE IR EL CARRUSEL PARA QUE SE ALINEE CON LAS CITAS -->
+    <main class="contenido-web container">
+        
+        <!-- MÓDULO CARRUSEL (Ahora alineado y con proporción 30/70) -->
+        <div class="modulo-carrusel" id="carousel-container">
+            <div class="carrusel-visual">
+                <button class="carousel-arrow" id="prev-slide" aria-label="Anterior">&#10094;</button>
+                <div class="carrusel-caja">
+                    <img src="images.jpg" alt="Imagen del carrusel" class="imagen-carrusel" id="carousel-image" />
+                </div>
+                <div class="carrusel-texto">
+                    <h2 id="carousel-title">Sistema Nacional de Orquestas</h2>
+                    <p id="carousel-desc">Cargando información del carrusel…</p>
+                </div>
+                <button class="carousel-arrow" id="next-slide" aria-label="Siguiente">&#10095;</button>
+            </div>
+        </div>
+
+        <!-- CITAS: 3 tarjetas debajo del carrusel -->
+        <div class="citas-grid">
+            <div class="cita-card">
+                <i class="fa-solid fa-quote-left"></i>
+                <p>"La música transformó mi manera de ver el mundo y de relacionarme con los demás."</p>
+                <div class="cita-autor">— Cita 1</div>
+            </div>
+            <div class="cita-card">
+                <i class="fa-solid fa-quote-left"></i>
+                <p>"Gracias al Sistema pude formarme como músico y hoy enseño a nuevas generaciones."</p>
+                <div class="cita-autor">— Cita 2</div>
+            </div>
+            <div class="cita-card">
+                <i class="fa-solid fa-quote-left"></i>
+                <p>"Un espacio de oportunidades donde la disciplina y el arte van de la mano."</p>
+                <div class="cita-autor">— Cita 3</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- PIE DE PÁGINA -->
+    <footer class="pie-pagina">
+        <div class="footer-contenido">
+            <p>&copy; <span id="footer-year"></span> Sistema Nacional de Orquestas. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <script>document.getElementById("footer-year").textContent = new Date().getFullYear();</script>
+    <script src="check-entorno.js"></script>
+    <script type="module" src="chat-widget.js?v=1.0"></script>
+    <script type="module" src="firebase-init.js?v=5.0"></script>
+    <script type="module" src="auth.js?v=5.0"></script>
+    <script type="module" src="ui-manager.js?v=5.0"></script>
+    <script type="module" src="main.js?v=5.0"></script>
+</body>
+</html>

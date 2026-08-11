@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<script>
+  if (!sessionStorage.getItem("sistemaOrquestas_session") && !localStorage.getItem("sistemaOrquestas_session")) {
+    window.location.href = "login.html";
+  }
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Miembros – Sistema de Orquestas</title>
+    <link rel="stylesheet" href="estilos.css?v=3.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .back-link { display:inline-block; margin:1.5rem 0; color:var(--color-primario); font-weight:600; text-decoration:none; cursor:pointer; border:none; background:transparent; font-size:1rem; }
+        .back-link:hover { text-decoration: underline; }
+        .roles-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:20px; margin-top:20px; }
+        .rol-card { background:var(--color-blanco); border:2px solid #e0e4f0; border-radius:var(--border-radius); padding:2rem 1.5rem; text-align:center; cursor:pointer; transition:var(--transition-normal); box-shadow:var(--shadow-card); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.5rem; }
+        .rol-card:hover { border-color:var(--color-primario); transform:translateY(-4px); box-shadow:var(--shadow-hover); }
+        .rol-card .icono { font-size:2.5rem; }
+        .selecciones-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:15px; margin-top:20px; }
+        .seleccion-card { background:var(--color-blanco); border:1px solid #e0e4f0; border-radius:var(--border-radius); padding:1rem; text-align:center; cursor:pointer; font-weight:600; color:var(--color-texto); transition:var(--transition-fast); box-shadow:0 2px 5px rgba(0,0,0,0.05); }
+        .seleccion-card:hover { background:var(--color-primario); color:white; transform:scale(1.03); }
+        .miembros-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:20px; margin-top:20px; }
+        .persona-card { background:var(--color-blanco); border:1px solid #e0e4f0; border-radius:var(--border-radius); padding:1.5rem; text-align:center; box-shadow:var(--shadow-card); position:relative; transition:var(--transition-fast); display:flex; flex-direction:column; align-items:center; gap:0.4rem; }
+        .persona-card:hover { box-shadow:var(--shadow-hover); transform:translateY(-2px); }
+        .avatar { width:64px; height:64px; background:var(--color-primario); color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.5rem; margin:0 auto 0.8rem; }
+        .is-admin .btn-admin-accion { display:inline-flex; align-items:center; justify-content:center; }
+        .btn-admin-accion { display:none; position:absolute; top:-10px; right:-10px; background:var(--color-acento); color:white; border:none; border-radius:50%; width:28px; height:28px; cursor:pointer; font-weight:bold; font-size:0.9rem; box-shadow:0 2px 8px rgba(0,0,0,0.2); z-index:5; }
+        .btn-admin-accion:hover { background:#d40404; transform:scale(1.1); }
+        .btn-editar { position:absolute; top:-10px; right:24px; background:var(--color-primario); color:white; border:none; border-radius:50%; width:28px; height:28px; cursor:pointer; font-weight:bold; font-size:0.9rem; box-shadow:0 2px 8px rgba(0,0,0,0.2); z-index:5; display:none; }
+        .is-admin .btn-editar { display:flex; align-items:center; justify-content:center; }
+        .btn-editar:hover { background:var(--color-primario-oscuro); transform:scale(1.1); }
+        .btn-reset { position:absolute; top:-10px; right:52px; background:#f59e0b; color:white; border:none; border-radius:50%; width:28px; height:28px; cursor:pointer; font-weight:bold; font-size:0.9rem; box-shadow:0 2px 8px rgba(0,0,0,0.2); z-index:5; display:none; }
+        .is-admin .btn-reset { display:flex; align-items:center; justify-content:center; }
+        .btn-reset:hover { background:#d97706; transform:scale(1.1); }
+        .spinner { display:flex; justify-content:center; padding:2rem; }
+        .spinner::after { content:""; width:40px; height:40px; border:4px solid #e0e4f0; border-top-color:var(--color-primario); border-radius:50%; animation:spin 0.8s linear infinite; }
+        @keyframes spin { to { transform:rotate(360deg); } }
+        .top-controls { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:1rem; }
+        .breadcrumb { font-size:0.9rem; color:#666; margin-bottom:1rem; }
+        .breadcrumb span { font-weight:600; color:var(--color-primario); }
+    </style>
+</head>
+<body>
+    <header class="barra-superior">
+        <img src="datos.png" alt="Gobierno de Venezuela" style="max-height:50px;">
+        <nav id="user-nav" class="user-nav"></nav>
+    </header>
+    <div class="barra-movimiento">
+        <span class="barra-movimiento-texto">Audiciones abiertas para la fila de metales. | Próximo ensayo general: Viernes 4:00 PM.</span>
+    </div>
+
+
+    <main class="contenido-web container" id="miembros-container">
+        <button class="back-link" id="btn-atras" style="display:none;">&larr; Volver</button>
+        <a class="back-link" id="btn-panel" href="panel.html">&larr; Volver al Panel</a>
+        <h2 class="titulo-pagina" id="titulo-vista">Directorio</h2>
+        <div id="breadcrumb-container" class="breadcrumb"></div>
+        <div id="miembros-vista"></div>
+    </main>
+
+    <!-- Modal CREAR -->
+    <div class="modal-overlay" id="modal-persona">
+        <div class="modal-content">
+            <button class="modal-close-btn" id="persona-close-btn">&times;</button>
+            <h2>Agregar Registro</h2>
+            <div class="editor-row"><label>Nombre:</label><input type="text" id="persona-nombre" class="modal-input"></div>
+            <div class="editor-row"><label>Email:</label><input type="email" id="persona-email" class="modal-input"></div>
+            <div class="editor-row"><label>Edad:</label><input type="number" id="persona-edad" class="modal-input" value="0"></div>
+            <div class="editor-row"><label>Rol:</label><select id="persona-rango" class="modal-input" disabled></select></div>
+            <div class="editor-row"><label>Agrupación:</label><input type="text" id="persona-agrupacion" class="modal-input"></div>
+            <div class="editor-row" id="row-persona-estado"><label>Estado:</label><select id="persona-estado" class="modal-input"><option value="">Seleccione un estado...</option></select></div>
+            <div class="editor-row" id="row-persona-nucleo"><label>Núcleo:</label><select id="persona-nucleo" class="modal-input"><option value="">Seleccione un estado primero...</option></select></div>
+            <button id="btn-guardar-persona" class="btn btn-submit">Guardar</button>
+            <button id="btn-cerrar-modal-persona" class="btn btn-cerrar">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- Modal EDITAR -->
+    <div class="modal-overlay" id="modal-editar">
+        <div class="modal-content">
+            <button class="modal-close-btn" id="editar-close-btn">&times;</button>
+            <h2>Editar Registro</h2>
+            <input type="hidden" id="editar-id">
+            <input type="hidden" id="editar-rango">
+            <div class="editor-row"><label>Nombre:</label><input type="text" id="editar-nombre" class="modal-input"></div>
+            <div class="editor-row"><label>Email:</label><input type="email" id="editar-email" class="modal-input" disabled title="No se puede cambiar el email por aquí"></div>
+            <div class="editor-row"><label>Edad:</label><input type="number" id="editar-edad" class="modal-input" value="0"></div>
+            <div class="editor-row"><label>Agrupación:</label><input type="text" id="editar-agrupacion" class="modal-input"></div>
+            <div class="editor-row" id="row-editar-estado"><label>Estado:</label><select id="editar-estado" class="modal-input"><option value="">Seleccione...</option></select></div>
+            <div class="editor-row" id="row-editar-nucleo"><label>Núcleo:</label><select id="editar-nucleo" class="modal-input"><option value="">Seleccione un estado primero...</option></select></div>
+            <button id="btn-guardar-edicion" class="btn btn-submit">Guardar Cambios</button>
+            <button id="btn-cerrar-modal-editar" class="btn btn-cerrar">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- Modal CONTRASEÑA -->
+    <div class="modal-overlay" id="modal-password" style="display:none;">
+        <div class="modal-content" style="text-align:center;">
+            <h2 style="color:var(--color-primario);">Contraseña generada</h2>
+            <p style="margin:1rem 0;">La nueva contraseña temporal es:</p>
+            <div id="password-display" style="font-size:2rem; font-weight:bold; background:#f0f0f0; padding:0.5rem; border-radius:8px; letter-spacing:2px; user-select:all; margin:1rem 0;"></div>
+            <button id="btn-copiar-password" class="btn btn-submit" style="margin-right:0.5rem;">📋 Copiar al portapapeles</button>
+            <button id="btn-cerrar-password" class="btn btn-cerrar">Entendido</button>
+        </div>
+    </div>
+
+    <script src="check-entorno.js"></script>
+
+    <script type="module" src="auth.js?v=5.0"></script>
+    <script type="module" src="ui-manager.js?v=5.0"></script>
+    <script type="module">
+        import { db, auth } from "./firebase-init.js";
+        import { collection, query, where, getDocs, doc, updateDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+        import { fetchSignInMethodsForEmail } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
+        import { backendAPI } from "./backend-api.js";
+        import { ESTADOS_VENEZUELA, crearNucleo as crearNucleoCompartido } from "./ubicaciones.js";
+
+        // Constantes
+        const JERARQUIA = { owner_supremo:70, director_nacional:60, director_regional:50, director_nucleo:40, admin:30, profesor:20, estudiante:10 };
+        const CATEGORIAS = [
+            { clave:"owner_supremo", icono:"👑", label:"Owner Supremo" },
+            { clave:"director_nacional", icono:"🇻🇪", label:"Directores Nacionales" },
+            { clave:"director_regional", icono:"🌎", label:"Directores Regionales" },
+            { clave:"director_nucleo", icono:"🏫", label:"Directores de Núcleo" },
+            { clave:"admin", icono:"🛡️", label:"Administradores" },
+            { clave:"profesor", icono:"👩‍🏫", label:"Profesores" },
+            { clave:"estudiante", icono:"👦", label:"Estudiantes" }
+        ];
+
+        let historyStack = ["main"];
+        let currentContext = { rol:null, estado:null, nucleo:null };
+
+        // Helpers
+        const $ = (id) => document.getElementById(id);
+        const cerrarModal = (id) => { $(id).style.display = "none"; };
+        const showSpinner = () => { $("miembros-vista").innerHTML = '<div class="spinner"></div>'; };
+        const getRoleLabel = (clave) => (CATEGORIAS.find(c => c.clave === clave) || {}).label || clave;
+        const llenarSelect = (id, opciones, val = "") => {
+            const s = $(id); if(!s) return;
+            s.innerHTML = '<option value="">Seleccione...</option>';
+            opciones.forEach(op => { const o = document.createElement("option"); o.value = op; o.textContent = op; if(op === val) o.selected = true; s.appendChild(o); });
+        };
+        const cargarNucleosPorEstado = async (estado) => {
+            if(!estado) return [];
+            const snap = await getDocs(query(collection(db,"nucleos"), where("estado","==",estado)));
+            return snap.docs.map(d => d.data().nombre).sort();
+        };
+        const toggleCampos = (rango, prefijo) => {
+            const re = document.getElementById(`row-${prefijo}-estado`);
+            const rn = document.getElementById(`row-${prefijo}-nucleo`);
+            const lvl = JERARQUIA[rango];
+            re.style.display = lvl >= 60 ? "none" : "flex";
+            rn.style.display = lvl >= 50 ? "none" : "flex";
+        };
+
+        function initMiembros() {
+            if(!window.Auth?.getSession()) { location.href = "index.html"; return; }
+            const container = $("miembros-container");
+            const session = window.Auth.getSession();
+            const miNivel = JERARQUIA[session.role] || 0;
+            if(miNivel >= 30) container.classList.add("is-admin");
+
+            // Antes: Cloud Functions callable (requerían plan Blaze). Ahora: backendAPI (Vercel).
+
+            const puedeVerCasilla = (rol) => {
+                const nivel = JERARQUIA[rol];
+                if(miNivel === 70) return true;
+                if(nivel === 70) return false;
+                if(miNivel >= nivel) return true;
+                if(miNivel === 50 && nivel === 60) return true;
+                if(miNivel === 40 && nivel === 50) return true;
+                if(miNivel <= 30 && nivel <= 40) return true;
+                return false;
+            };
+
+            const navigateTo = (vista) => { historyStack.push(vista); renderizarPantalla(); };
+
+            $("btn-atras").addEventListener("click", () => {
+                if(historyStack.length > 1) { historyStack.pop(); renderizarPantalla(); }
+            });
+
+            async function renderizarPantalla() {
+                const vistaActual = historyStack[historyStack.length-1];
+                const vc = $("miembros-vista");
+                const titulo = $("titulo-vista");
+                const bc = $("breadcrumb-container");
+                const btnAtras = $("btn-atras");
+                const btnPanel = $("btn-panel");
+                vc.innerHTML = "";
+
+                if(vistaActual === "main") {
+                    btnAtras.style.display = "none";
+                    btnPanel.style.display = "inline-block";
+                    titulo.textContent = "Directorio Institucional";
+                    bc.innerHTML = "Seleccione el departamento que desea consultar.";
+                    currentContext = { rol:null, estado:null, nucleo:null };
+                } else {
+                    btnAtras.style.display = "inline-block";
+                    btnPanel.style.display = "none";
+                }
+
+                // ---------- PANTALLA PRINCIPAL ----------
+                if(vistaActual === "main") {
+                    const grid = document.createElement("div"); grid.className = "roles-grid";
+                    CATEGORIAS.forEach(cat => {
+                        if(!puedeVerCasilla(cat.clave)) return;
+                        const card = document.createElement("div"); card.className = "rol-card";
+                        card.innerHTML = `<span class="icono">${cat.icono}</span><h3>${cat.label}</h3>`;
+                        card.addEventListener("click", () => {
+                            currentContext.rol = cat.clave;
+                            const dest = JERARQUIA[cat.clave];
+                            if(dest >= 60) navigateTo("miembros");
+                            else if(miNivel >= 60) navigateTo("estados");
+                            else if(miNivel === 50) {
+                                currentContext.estado = session.state;
+                                navigateTo(dest === 50 ? "miembros" : "nucleos");
+                            } else {
+                                currentContext.estado = session.state;
+                                currentContext.nucleo = session.nucleus || session.nucleo;
+                                navigateTo("miembros");
+                            }
+                        });
+                        grid.appendChild(card);
+                    });
+                    vc.appendChild(grid);
+                }
+                // ---------- ESTADOS ----------
+                else if(vistaActual === "estados") {
+                    titulo.textContent = `Seleccione el Estado (${getRoleLabel(currentContext.rol)})`;
+                    const grid = document.createElement("div"); grid.className = "selecciones-grid";
+                    ESTADOS_VENEZUELA.forEach(est => {
+                        const card = document.createElement("div"); card.className = "seleccion-card";
+                        card.textContent = est;
+                        card.addEventListener("click", () => {
+                            currentContext.estado = est;
+                            navigateTo(JERARQUIA[currentContext.rol] === 50 ? "miembros" : "nucleos");
+                        });
+                        grid.appendChild(card);
+                    });
+                    vc.appendChild(grid);
+                }
+                // ---------- NÚCLEOS ----------
+                else if(vistaActual === "nucleos") {
+                    titulo.textContent = `Núcleos de ${currentContext.estado}`;
+                    showSpinner();
+                    const nucleos = await cargarNucleosPorEstado(currentContext.estado);
+                    vc.innerHTML = "";
+
+                    // owner_supremo / director_nacional / director_regional (en su propio estado)
+                    // pueden dar de alta núcleos nuevos — antes no existía forma de hacerlo.
+                    const puedeCrearNucleo = miNivel === 70 || miNivel === 60 ||
+                        (miNivel === 50 && currentContext.estado === session.state);
+                    if (puedeCrearNucleo) {
+                        const topControls = document.createElement("div");
+                        topControls.style.cssText = "display:flex;gap:0.6rem;margin-bottom:1rem;max-width:420px;";
+                        topControls.innerHTML = `
+                            <input type="text" id="input-nuevo-nucleo-rapido" class="modal-input" placeholder="Nombre del nuevo núcleo…" style="flex:1;" />
+                            <button type="button" id="btn-crear-nucleo-rapido" class="btn btn-submit" style="flex-shrink:0;">+ Crear</button>
+                        `;
+                        vc.appendChild(topControls);
+                        const inputNuevo = document.getElementById("input-nuevo-nucleo-rapido");
+                        const btnNuevo = document.getElementById("btn-crear-nucleo-rapido");
+                        const crear = async () => {
+                            const nombre = inputNuevo.value.trim();
+                            if (!nombre) { inputNuevo.focus(); return; }
+                            btnNuevo.disabled = true; btnNuevo.textContent = "Creando…";
+                            try {
+                                await crearNucleoCompartido(nombre, currentContext.estado);
+                                window._showToast("Núcleo \"" + nombre + "\" creado", "success");
+                                renderizarPantalla();
+                            } catch (err) {
+                                window._showToast("Error al crear núcleo: " + err.message, "error");
+                                btnNuevo.disabled = false; btnNuevo.textContent = "+ Crear";
+                            }
+                        };
+                        btnNuevo.addEventListener("click", crear);
+                        inputNuevo.addEventListener("keydown", (e) => { if (e.key === "Enter") crear(); });
+                    }
+
+                    if(!nucleos.length) {
+                        vc.innerHTML += `<p style="text-align:center;padding:2rem;">No hay núcleos registrados en ${currentContext.estado}.</p>`;
+                        return;
+                    }
+                    const grid = document.createElement("div"); grid.className = "selecciones-grid";
+                    nucleos.forEach(nuc => {
+                        const card = document.createElement("div"); card.className = "seleccion-card";
+                        card.textContent = nuc;
+                        card.addEventListener("click", () => { currentContext.nucleo = nuc; navigateTo("miembros"); });
+                        grid.appendChild(card);
+                    });
+                    vc.appendChild(grid);
+                }
+                // ---------- MIEMBROS (solo activos) ----------
+                else if(vistaActual === "miembros") {
+                    titulo.textContent = getRoleLabel(currentContext.rol);
+                    let ruta = `<span>Rol:</span> ${getRoleLabel(currentContext.rol)}`;
+                    if(currentContext.estado && JERARQUIA[currentContext.rol] <= 50) ruta += ` &rarr; <span>Estado:</span> ${currentContext.estado}`;
+                    if(currentContext.nucleo && JERARQUIA[currentContext.rol] <= 40) ruta += ` &rarr; <span>Núcleo:</span> ${currentContext.nucleo}`;
+                    bc.innerHTML = ruta;
+
+                    const topControls = document.createElement("div"); topControls.className = "top-controls";
+                    const nivelDestino = JERARQUIA[currentContext.rol];
+                    const puedoModificar = miNivel > nivelDestino || miNivel === 70;
+
+                    if(puedoModificar) {
+                        const btnAdd = document.createElement("button"); btnAdd.className = "btn btn-submit";
+                        btnAdd.textContent = "+ Nuevo Registro";
+                        btnAdd.addEventListener("click", () => {
+                            $("persona-rango").innerHTML = `<option value="${currentContext.rol}">${getRoleLabel(currentContext.rol)}</option>`;
+                            $("persona-nombre").value = $("persona-email").value = $("persona-agrupacion").value = "";
+                            $("persona-edad").value = "0";
+                            const selEstado = $("persona-estado");
+                            selEstado.innerHTML = '<option value="">Seleccione un estado...</option>';
+                            ESTADOS_VENEZUELA.forEach(est => { const o = document.createElement("option"); o.value = est; o.textContent = est; if(est === currentContext.estado) o.selected = true; selEstado.appendChild(o); });
+                            $("persona-nucleo").innerHTML = '<option value="">Seleccione un estado primero...</option>';
+                            toggleCampos(currentContext.rol, 'persona');
+                            if(currentContext.estado) cargarNucleosPorEstado(currentContext.estado).then(nucs => llenarSelect("persona-nucleo", nucs, currentContext.nucleo));
+                            $("modal-persona").style.display = "flex";
+                        });
+                        topControls.appendChild(btnAdd);
+                    }
+                    vc.appendChild(topControls);
+
+                    const gridM = document.createElement("div"); gridM.className = "miembros-grid";
+                    const spinner = document.createElement("div"); spinner.className = "spinner"; vc.appendChild(spinner);
+
+                    // 🔧 CORRECCIÓN 1.1: filtro cuentaActiva + estado geográfico
+                    let q = query(
+                        collection(db, "usuarios"),
+                        where("rango", "==", currentContext.rol),
+                        where("cuentaActiva", "==", true)
+                    );
+                    if (nivelDestino <= 50 && currentContext.estado) {
+                        q = query(q, where("estado", "==", currentContext.estado));
+                    }
+                    if (nivelDestino <= 40 && currentContext.nucleo) {
+                        q = query(q, where("nucleo", "==", currentContext.nucleo));
+                    }
+
+                    try {
+                        const snap = await getDocs(q);
+                        spinner.remove();
+                        if(snap.empty) {
+                            gridM.innerHTML = `<p style="grid-column:1/-1;text-align:center;">No se encontraron registros activos para esta selección.</p>`;
+                        } else {
+                            snap.docs.forEach(d => {
+                                const p = { id:d.id, ...d.data() };
+                                const card = document.createElement("div"); card.className = "persona-card";
+                                card.innerHTML = `
+                                    <div class="avatar">${p.nombre?.charAt(0)||"?"}</div>
+                                    <strong>${p.nombre||"Sin nombre"}</strong>
+                                    <p style="font-size:0.85rem;color:var(--color-texto-claro);">${p.email||""}</p>
+                                    <p style="font-size:0.85rem;font-weight:600;margin-top:0.5rem;">🎵 ${p.agrupacion||"N/A"}</p>
+                                    <hr style="margin:10px 0;border:0;border-top:1px solid #e0e4f0;width:100%;">
+                                `;
+                                if(JERARQUIA[p.rango] <= 40) card.innerHTML += `<p style="font-size:0.8rem;color:var(--color-primario);">📍 ${p.nucleo||'Núcleo vacío'}</p>`;
+                                if(JERARQUIA[p.rango] <= 50) card.innerHTML += `<p style="font-size:0.75rem;color:var(--color-texto-claro);">${p.estado||'Estado vacío'}</p>`;
+
+                                if(puedoModificar) {
+                                    const btnEdit = document.createElement("button"); btnEdit.className = "btn-editar"; btnEdit.innerHTML = "✎";
+                                    btnEdit.addEventListener("click", async (e) => {
+                                        e.stopPropagation();
+                                        $("editar-id").value = p.id;
+                                        $("editar-rango").value = p.rango;
+                                        $("editar-nombre").value = p.nombre || "";
+                                        $("editar-email").value = p.email || "";
+                                        $("editar-edad").value = p.edad || 0;
+                                        $("editar-agrupacion").value = p.agrupacion || "";
+                                        toggleCampos(p.rango, 'editar');
+                                        llenarSelect("editar-estado", ESTADOS_VENEZUELA, p.estado);
+                                        if(p.estado) {
+                                            const nucs = await cargarNucleosPorEstado(p.estado);
+                                            llenarSelect("editar-nucleo", nucs, p.nucleo);
+                                        }
+                                        $("modal-editar").style.display = "flex";
+                                    });
+                                    card.appendChild(btnEdit);
+
+                                    // Botón DESACTIVAR (usa cuentaActiva)
+                                    const btnDel = document.createElement("button"); btnDel.className = "btn-admin-accion"; btnDel.innerHTML = "✖";
+                                    btnDel.title = "Desactivar usuario";
+                                    btnDel.addEventListener("click", async (e) => {
+                                        e.stopPropagation();
+                                        if(confirm(`¿Desactivar al usuario ${p.nombre}? No podrá iniciar sesión.`)) {
+                                            try {
+                                                await updateDoc(doc(db,"usuarios",p.id), {
+                                                    cuentaActiva: false,
+                                                    fechaEliminacion: new Date().toISOString()
+                                                });
+                                                window._showToast("Usuario desactivado correctamente","success");
+                                                renderizarPantalla();
+                                            } catch (err) {
+                                                window._showToast("Error al desactivar: " + err.message,"error");
+                                            }
+                                        }
+                                    });
+                                    card.appendChild(btnDel);
+
+                                    // Botón ELIMINAR DEFINITIVAMENTE (borra Auth + Firestore de verdad,
+                                    // libera el email para poder volver a registrarlo)
+                                    const btnBorrar = document.createElement("button"); btnBorrar.className = "btn-admin-accion"; btnBorrar.style.right = "80px"; btnBorrar.innerHTML = "🗑️";
+                                    btnBorrar.title = "Eliminar definitivamente (libera el email)";
+                                    btnBorrar.addEventListener("click", async (e) => {
+                                        e.stopPropagation();
+                                        if (!confirm(`Esto BORRA por completo a ${p.nombre} (no se puede deshacer) y libera su email para volver a registrarlo. ¿Continuar?`)) return;
+                                        btnBorrar.disabled = true; btnBorrar.innerHTML = "⌛";
+                                        try {
+                                            const res = await backendAPI.eliminarUsuario(p.id);
+                                            if (res.success) {
+                                                window._showToast("Usuario eliminado definitivamente", "success");
+                                                renderizarPantalla();
+                                            }
+                                        } catch (err) {
+                                            window._showToast("Error: " + err.message, "error");
+                                            btnBorrar.disabled = false; btnBorrar.innerHTML = "🗑️";
+                                        }
+                                    });
+                                    card.appendChild(btnBorrar);
+
+                                    // Botón RESET (solo owner_supremo)
+                                    if(session.role === "owner_supremo") {
+                                        const btnReset = document.createElement("button"); btnReset.className = "btn-reset"; btnReset.innerHTML = "🔑";
+                                        btnReset.addEventListener("click", async (e) => {
+                                            e.stopPropagation();
+                                            if(!confirm(`¿Generar una nueva contraseña para ${p.nombre}?`)) return;
+                                            btnReset.disabled = true; btnReset.innerHTML = "⌛";
+                                            try {
+                                                const nueva = window.Auth.generarClaveSegura();
+                                                const res = await backendAPI.resetPassword(p.id, nueva);
+                                                if(res.success) {
+                                                    $("password-display").textContent = nueva;
+                                                    $("modal-password").style.display = "flex";
+                                                    window._showToast("Contraseña actualizada. Se obligará a cambiarla.","success");
+                                                }
+                                            } catch(err) { window._showToast("Error: "+err.message,"error"); }
+                                            finally { btnReset.disabled = false; btnReset.innerHTML = "🔑"; }
+                                        });
+                                        card.appendChild(btnReset);
+                                    }
+                                }
+                                gridM.appendChild(card);
+                            });
+                        }
+                        vc.appendChild(gridM);
+                    } catch(err) { spinner.remove(); vc.innerHTML = `<p style="color:red;">Error: ${err.message}</p>`; }
+                }
+            }
+
+            // Listeners de selectores
+            $("persona-estado").addEventListener("change", async (e) => {
+                const val = e.target.value;
+                const sel = $("persona-nucleo");
+                sel.innerHTML = '<option value="">Cargando...</option>';
+                if(!val) { sel.innerHTML = '<option value="">Seleccione un estado primero...</option>'; return; }
+                try { llenarSelect("persona-nucleo", await cargarNucleosPorEstado(val)); }
+                catch(err) { window._showToast("Error cargando núcleos","error"); }
+            });
+            $("editar-estado").addEventListener("change", async (e) => llenarSelect("editar-nucleo", await cargarNucleosPorEstado(e.target.value)));
+
+            // Guardar creación
+            $("btn-guardar-persona").addEventListener("click", async () => {
+                const email = $("persona-email").value.trim();
+                const nombre = $("persona-nombre").value.trim();
+                const edad = parseInt($("persona-edad").value)||0;
+                const rango = currentContext.rol;
+                const agrup = $("persona-agrupacion").value.trim();
+                let estado = $("persona-estado").value;
+                let nucleo = $("persona-nucleo").value;
+                if(JERARQUIA[rango] >= 60) { estado = ""; nucleo = ""; }
+                if(JERARQUIA[rango] === 50) { nucleo = ""; }
+                if(!email || !nombre) { window._showToast("Nombre y email obligatorios","error"); return; }
+                try {
+                    if((await fetchSignInMethodsForEmail(auth, email)).length) { window._showToast("El correo ya existe.","error"); return; }
+                    const res = await Auth.registerUser(email, nombre, rango, agrup, estado, nucleo, edad);
+                    if(res.success) { window._showToast(`Creado. Contraseña: ${res.clave}`,"success"); cerrarModal("modal-persona"); renderizarPantalla(); }
+                    else window._showToast(res.error,"error");
+                } catch(err) { window._showToast(err.message,"error"); }
+            });
+
+            // Guardar edición
+            $("btn-guardar-edicion").addEventListener("click", async () => {
+                const id = $("editar-id").value;
+                const rango = $("editar-rango").value;
+                const nombre = $("editar-nombre").value.trim();
+                const agrupacion = $("editar-agrupacion").value.trim();
+                const edad = parseInt($("editar-edad").value)||0;
+                let estado = $("editar-estado").value;
+                let nucleo = $("editar-nucleo").value;
+                if(JERARQUIA[rango] >= 60) { estado = ""; nucleo = ""; }
+                if(JERARQUIA[rango] === 50) { nucleo = ""; }
+                if(!nombre) { window._showToast("El nombre es obligatorio","error"); return; }
+                try {
+                    await updateDoc(doc(db,"usuarios",id), { nombre, agrupacion, estado, nucleo, edad });
+                    window._showToast("Usuario actualizado","success");
+                    cerrarModal("modal-editar");
+                    renderizarPantalla();
+                } catch(err) { window._showToast(err.message,"error"); }
+            });
+
+            // Cierres y copiado
+            $("btn-cerrar-modal-persona").addEventListener("click", () => cerrarModal("modal-persona"));
+            $("persona-close-btn").addEventListener("click", () => cerrarModal("modal-persona"));
+            $("btn-cerrar-modal-editar").addEventListener("click", () => cerrarModal("modal-editar"));
+            $("editar-close-btn").addEventListener("click", () => cerrarModal("modal-editar"));
+            $("btn-cerrar-password").addEventListener("click", () => cerrarModal("modal-password"));
+            $("btn-copiar-password").addEventListener("click", async () => {
+                const txt = $("password-display").textContent;
+                try { await navigator.clipboard.writeText(txt); window._showToast("Contraseña copiada","success"); }
+                catch {
+                    const inp = document.createElement("input"); inp.value = txt; document.body.appendChild(inp);
+                    inp.select(); document.execCommand("copy"); document.body.removeChild(inp);
+                    window._showToast("Contraseña copiada","success");
+                }
+            });
+
+            // Arranque único
+            UI.render();
+            renderizarPantalla();
+        }
+
+        if(window.Auth?.getSession()) initMiembros();
+        else window.addEventListener("auth-ready", initMiembros, { once: true });
+    </script>
+    <script type="module" src="chat-widget.js?v=1.0"></script>
+</body>
+</html>

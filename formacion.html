@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<script>
+  if (!sessionStorage.getItem("sistemaOrquestas_session") && !localStorage.getItem("sistemaOrquestas_session")) {
+    window.location.href = "login.html";
+  }
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formación – Sistema de Orquestas</title>
+    <link rel="stylesheet" href="estilos.css?v=3.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .back-link { display: inline-block; margin: 1.5rem 0; color: var(--color-primario); font-weight: 600; text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
+
+        .formacion-intro { color: var(--color-texto-claro); margin-bottom: 1.2rem; max-width: 700px; }
+
+        .niveles-tabs { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+        .nivel-tab {
+            padding: 0.55rem 1.1rem; border-radius: 999px; border: 2px solid var(--color-primario);
+            background: var(--color-blanco); color: var(--color-primario); font-weight: 700; font-size: 0.85rem;
+            cursor: pointer; transition: var(--transition-fast); white-space: nowrap;
+        }
+        .nivel-tab:hover { background: var(--color-secundario); }
+        .nivel-tab.activo { background: var(--color-primario); color: #fff; }
+        .nivel-tab-add {
+            padding: 0.55rem 1rem; border-radius: 999px; border: 2px dashed var(--color-texto-claro);
+            background: transparent; color: var(--color-texto-claro); font-weight: 700; font-size: 0.85rem; cursor: pointer;
+        }
+        .nivel-tab-add:hover { border-color: var(--color-primario); color: var(--color-primario); }
+
+        .grid-recursos { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+
+        .card-recurso {
+            background: var(--color-blanco); border: 1px solid #e0e4f0; border-radius: var(--border-radius);
+            padding: 1.2rem; box-shadow: var(--shadow-card); transition: var(--transition-normal);
+            display: flex; flex-direction: column; gap: 0.5rem; text-align: left; cursor: pointer; position: relative;
+        }
+        .card-recurso:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); border-color: var(--color-primario); }
+        .card-recurso .tipo-badge {
+            align-self: flex-start; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
+            padding: 0.2rem 0.55rem; border-radius: 999px; background: var(--color-secundario); color: var(--color-primario);
+        }
+        .card-recurso .icono-nombre { display: flex; align-items: center; gap: 0.6rem; font-weight: 700; color: var(--color-texto); }
+        .card-recurso .icono-nombre .icono { font-size: 1.4rem; }
+        .card-recurso p { font-size: 0.82rem; color: var(--color-texto-claro); margin: 0; }
+        .card-recurso .fuente { font-size: 0.72rem; color: var(--color-primario); font-weight: 600; margin-top: auto; }
+
+        .card-recurso-admin-acciones { position: absolute; top: 8px; right: 8px; display: none; gap: 4px; }
+        .is-admin .card-recurso-admin-acciones { display: flex; }
+        .card-recurso-admin-acciones button {
+            width: 24px; height: 24px; border-radius: 50%; border: none; cursor: pointer; font-size: 0.7rem;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .btn-editar-recurso { background: var(--color-secundario); color: var(--color-primario); }
+        .btn-borrar-recurso { background: var(--color-acento); color: #fff; }
+
+        .card-agregar {
+            border: 2px dashed var(--color-texto-claro); display: flex; align-items: center; justify-content: center;
+            color: var(--color-texto-claro); font-weight: 700; min-height: 120px;
+        }
+        .card-agregar:hover { border-color: var(--color-primario); color: var(--color-primario); }
+
+        .vacio-nivel { grid-column: 1/-1; text-align: center; color: var(--color-texto-claro); padding: 2rem; }
+
+        #modal-recurso .editor-row { margin-bottom: 0.9rem; }
+        #modal-recurso textarea.modal-input { min-height: 140px; resize: vertical; }
+        #lector-contenido { white-space: pre-wrap; line-height: 1.7; font-size: 0.95rem; }
+    </style>
+</head>
+<body>
+    <header class="barra-superior">
+        <img src="datos.png" alt="Gobierno de Venezuela" style="max-height:50px;" />
+        <nav id="user-nav" class="user-nav"></nav>
+    </header>
+
+    <div class="barra-movimiento">
+        <span class="barra-movimiento-texto">Audiciones abiertas para la fila de metales. | Próximo ensayo general: Viernes 4:00 PM.</span>
+    </div>
+
+    <main class="contenido-web container" id="formacion-container">
+        <a class="back-link" href="panel.html">&larr; Volver al Panel</a>
+        <h2 style="color: var(--color-primario); font-weight: 800;">Formación</h2>
+        <p class="formacion-intro">
+            Material organizado por niveles — métodos (como Dan Hauser), correcciones, aclaraciones y otros
+            recursos. Cualquiera puede leerlo; agregar o editar recursos lo puede hacer un director
+            (de núcleo, regional, estadal) o administrador.
+        </p>
+
+        <div class="niveles-tabs" id="niveles-tabs"></div>
+        <div class="grid-recursos" id="grid-recursos"></div>
+    </main>
+
+    <div class="modal-overlay" id="modal-recurso">
+        <div class="modal-content">
+            <button class="modal-close-btn" id="recurso-close-btn">&times;</button>
+            <h2 id="modal-recurso-title">Nuevo recurso</h2>
+            <input type="hidden" id="recurso-id" />
+            <div class="editor-row">
+                <label>Nivel</label>
+                <input type="text" id="recurso-nivel" class="modal-input" placeholder="Ej: Nivel 1 — Iniciación" />
+            </div>
+            <div class="editor-row">
+                <label>Tipo</label>
+                <select id="recurso-tipo" class="modal-input">
+                    <option value="Método">Método</option>
+                    <option value="Libro">Libro</option>
+                    <option value="Corrección">Corrección</option>
+                    <option value="Aclaración">Aclaración</option>
+                    <option value="Recurso">Recurso</option>
+                    <option value="Otro">Otro</option>
+                </select>
+            </div>
+            <div class="editor-row"><label>Nombre</label><input type="text" id="recurso-nombre" class="modal-input" placeholder="Ej: Método Dan Hauser Vol. 1" /></div>
+            <div class="editor-row"><label>Icono (emoji)</label><input type="text" id="recurso-icono" class="modal-input" placeholder="📘" /></div>
+            <div class="editor-row"><label>Descripción breve</label><input type="text" id="recurso-descripcion" class="modal-input" placeholder="De qué trata este recurso" /></div>
+            <div class="editor-row">
+                <label>Enlace externo (opcional — PDF, sitio, etc.)</label>
+                <input type="url" id="recurso-url" class="modal-input" placeholder="https://..." />
+            </div>
+            <div class="editor-row">
+                <label>O contenido/notas propias (opcional — se lee dentro del sitio)</label>
+                <textarea id="recurso-contenido" class="modal-input" placeholder="Texto, notas, aclaraciones…"></textarea>
+            </div>
+            <button id="btn-guardar-recurso" class="btn btn-submit">Guardar</button>
+            <button id="btn-cerrar-modal-recurso" class="btn btn-cerrar">Cancelar</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-nivel">
+        <div class="modal-content" style="max-width:420px;">
+            <button class="modal-close-btn" id="nivel-close-btn">&times;</button>
+            <h2>Nuevo nivel</h2>
+            <div class="editor-row"><label>Nombre del nivel</label><input type="text" id="nivel-nombre" class="modal-input" placeholder="Ej: Nivel 3 — Avanzado" /></div>
+            <button id="btn-crear-nivel" class="btn btn-submit">Crear</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-lector">
+        <div class="modal-content">
+            <button class="modal-close-btn" id="lector-close-btn">&times;</button>
+            <h2 id="lector-titulo">Recurso</h2>
+            <div id="lector-contenido"></div>
+        </div>
+    </div>
+
+    <script src="check-entorno.js"></script>
+
+    <script type="module" src="auth.js?v=5.0"></script>
+    <script type="module" src="ui-manager.js?v=5.0"></script>
+    <script type="module">
+        import { db } from "./firebase-init.js";
+        import {
+            collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc
+        } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+
+        function initFormacion() {
+            const session = window.Auth?.getSession();
+            if (!session) { window.location.href = "index.html"; return; }
+
+            const modulosCol = collection(db, "formacion_modulos");
+            let recursos = [];
+            let nivelActivo = "";
+            const puedeEditar = window.Auth.checkPermission("manage_users"); // director de núcleo/regional/estadal/nacional/admin/owner
+
+            if (puedeEditar) document.getElementById("formacion-container").classList.add("is-admin");
+
+            onSnapshot(modulosCol, (snap) => {
+                recursos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                if (!nivelActivo && recursos.length) nivelActivo = [...new Set(recursos.map(r => r.nivel))].sort()[0];
+                renderizarTodo();
+            }, (err) => {
+                console.error("No se pudieron leer los recursos de Formación:", err);
+                window._showToast?.("No se pudieron cargar los recursos (revisá permisos/consola)", "error");
+            });
+
+            function renderizarTodo() {
+                const niveles = [...new Set(recursos.map(r => r.nivel))].filter(Boolean).sort();
+                const tabsEl = document.getElementById("niveles-tabs");
+                tabsEl.innerHTML = niveles.map(n =>
+                    `<button type="button" class="nivel-tab ${n === nivelActivo ? "activo" : ""}" data-nivel="${n}">${n}</button>`
+                ).join("") + (puedeEditar ? `<button type="button" class="nivel-tab-add" id="btn-nuevo-nivel">+ Nivel</button>` : "");
+
+                tabsEl.querySelectorAll(".nivel-tab").forEach(btn => {
+                    btn.addEventListener("click", () => { nivelActivo = btn.dataset.nivel; renderizarTodo(); });
+                });
+                document.getElementById("btn-nuevo-nivel")?.addEventListener("click", () => {
+                    document.getElementById("nivel-nombre").value = "";
+                    document.getElementById("modal-nivel").style.display = "flex";
+                });
+
+                const grid = document.getElementById("grid-recursos");
+                grid.innerHTML = "";
+                const items = recursos.filter(r => r.nivel === nivelActivo);
+
+                if (!niveles.length) {
+                    grid.innerHTML = `<p class="vacio-nivel">Todavía no hay recursos cargados${puedeEditar ? ". Usá el botón de abajo para agregar el primero." : "."}</p>`;
+                } else if (!items.length) {
+                    grid.innerHTML = `<p class="vacio-nivel">Este nivel todavía no tiene recursos.</p>`;
+                } else {
+                    items.forEach(r => {
+                        const card = document.createElement("div");
+                        card.className = "card-recurso";
+                        card.innerHTML = `
+                            <span class="tipo-badge">${r.tipo || "Recurso"}</span>
+                            <div class="icono-nombre"><span class="icono">${r.icono || "📄"}</span> ${r.nombre}</div>
+                            ${r.descripcion ? `<p>${r.descripcion}</p>` : ""}
+                            <span class="fuente">${r.url ? '<i class="fa-solid fa-up-right-from-square"></i> Abrir enlace' : (r.contenido ? '<i class="fa-solid fa-book-open"></i> Leer aquí' : "")}</span>
+                            ${puedeEditar ? `<div class="card-recurso-admin-acciones">
+                                <button type="button" class="btn-editar-recurso" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                                <button type="button" class="btn-borrar-recurso" title="Eliminar"><i class="fa-solid fa-xmark"></i></button>
+                            </div>` : ""}
+                        `;
+                        card.addEventListener("click", () => {
+                            if (r.url) { window.open(r.url, "_blank", "noopener"); return; }
+                            if (r.contenido) {
+                                document.getElementById("lector-titulo").textContent = r.nombre;
+                                document.getElementById("lector-contenido").textContent = r.contenido;
+                                document.getElementById("modal-lector").style.display = "flex";
+                            }
+                        });
+                        card.querySelector(".btn-editar-recurso")?.addEventListener("click", (e) => {
+                            e.stopPropagation();
+                            abrirModalRecurso(r);
+                        });
+                        card.querySelector(".btn-borrar-recurso")?.addEventListener("click", async (e) => {
+                            e.stopPropagation();
+                            if (!confirm(`¿Eliminar "${r.nombre}"?`)) return;
+                            try { await deleteDoc(doc(db, "formacion_modulos", r.id)); }
+                            catch (err) { window._showToast?.("No se pudo eliminar: " + err.message, "error"); }
+                        });
+                        grid.appendChild(card);
+                    });
+                }
+
+                if (puedeEditar && nivelActivo) {
+                    const btnAgregar = document.createElement("div");
+                    btnAgregar.className = "card-recurso card-agregar";
+                    btnAgregar.innerHTML = `<i class="fa-solid fa-plus"></i>&nbsp; Agregar recurso`;
+                    btnAgregar.addEventListener("click", () => abrirModalRecurso(null));
+                    grid.appendChild(btnAgregar);
+                }
+            }
+
+            function abrirModalRecurso(r) {
+                document.getElementById("modal-recurso-title").textContent = r ? "Editar recurso" : "Nuevo recurso";
+                document.getElementById("recurso-id").value = r?.id || "";
+                document.getElementById("recurso-nivel").value = r?.nivel || nivelActivo || "";
+                document.getElementById("recurso-tipo").value = r?.tipo || "Método";
+                document.getElementById("recurso-nombre").value = r?.nombre || "";
+                document.getElementById("recurso-icono").value = r?.icono || "";
+                document.getElementById("recurso-descripcion").value = r?.descripcion || "";
+                document.getElementById("recurso-url").value = r?.url || "";
+                document.getElementById("recurso-contenido").value = r?.contenido || "";
+                document.getElementById("modal-recurso").style.display = "flex";
+            }
+
+            document.getElementById("btn-guardar-recurso").addEventListener("click", async () => {
+                const id = document.getElementById("recurso-id").value;
+                const nivel = document.getElementById("recurso-nivel").value.trim();
+                const nombre = document.getElementById("recurso-nombre").value.trim();
+                if (!nivel || !nombre) { window._showToast?.("Nivel y nombre son obligatorios.", "error"); return; }
+                const datos = {
+                    nivel,
+                    tipo: document.getElementById("recurso-tipo").value,
+                    nombre,
+                    icono: document.getElementById("recurso-icono").value.trim() || "📄",
+                    descripcion: document.getElementById("recurso-descripcion").value.trim(),
+                    url: document.getElementById("recurso-url").value.trim(),
+                    contenido: document.getElementById("recurso-contenido").value.trim(),
+                    autor: session.nombre || session.firstName || "",
+                };
+                const btn = document.getElementById("btn-guardar-recurso");
+                btn.disabled = true;
+                try {
+                    if (id) await updateDoc(doc(db, "formacion_modulos", id), datos);
+                    else await addDoc(modulosCol, datos);
+                    nivelActivo = nivel;
+                    document.getElementById("modal-recurso").style.display = "none";
+                } catch (err) {
+                    window._showToast?.("No se pudo guardar: " + err.message, "error");
+                } finally { btn.disabled = false; }
+            });
+
+            document.getElementById("btn-crear-nivel").addEventListener("click", () => {
+                const nombre = document.getElementById("nivel-nombre").value.trim();
+                if (!nombre) return;
+                document.getElementById("modal-nivel").style.display = "none";
+                nivelActivo = nombre;
+                abrirModalRecurso(null);
+            });
+
+            document.getElementById("recurso-close-btn").addEventListener("click", () => document.getElementById("modal-recurso").style.display = "none");
+            document.getElementById("btn-cerrar-modal-recurso").addEventListener("click", () => document.getElementById("modal-recurso").style.display = "none");
+            document.getElementById("nivel-close-btn").addEventListener("click", () => document.getElementById("modal-nivel").style.display = "none");
+            document.getElementById("lector-close-btn").addEventListener("click", () => document.getElementById("modal-lector").style.display = "none");
+
+            window.UI?.render();
+        }
+
+        window.addEventListener("auth-ready", initFormacion);
+        if (window.Auth?.getSession()) initFormacion();
+    </script>
+    <script type="module" src="chat-widget.js?v=1.0"></script>
+</body>
+</html>
