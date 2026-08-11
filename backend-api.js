@@ -2,7 +2,7 @@ import { auth } from "./firebase-init.js";
 
 // 👉 Cambiá esto por la URL real que te da Vercel al desplegar sistema-cma-api
 // (ver README.md de esa carpeta). Ejemplo: "https://sistema-cma-api.vercel.app"
-export const API_BASE_URL = "https://sistema-prueba-kohl.vercel.app";
+export const API_BASE_URL = "https://sistema-cma-api.vercel.app";
 
 async function llamarAPI(endpoint, body, { anonimo = false } = {}) {
   let headers = { "Content-Type": "application/json" };
