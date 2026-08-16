@@ -41,4 +41,14 @@ export const backendAPI = {
   sincronizarRango: (targetUid) => llamarAPI("sincronizar-rango", { targetUid }),
   // El chat no requiere sesión: cualquier visitante del sitio público puede usarlo.
   chat: (mensaje, historial) => llamarAPI("chat", { mensaje, historial }, { anonimo: true }),
+  // Diagnóstico: dice exactamente qué pieza del backend está fallando
+  // (Firebase / Groq / Gemini / variables de entorno), sin exponer claves.
+  async diagnostico() {
+    try {
+      const resp = await fetch(`${API_BASE_URL}/api/diagnostico`);
+      return await resp.json();
+    } catch (err) {
+      return { ok: false, error: "No se pudo contactar ni siquiera al diagnóstico: " + err.message };
+    }
+  },
 };

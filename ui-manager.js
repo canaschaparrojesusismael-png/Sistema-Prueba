@@ -49,6 +49,7 @@ window.UI = {
       window.Auth.clearPreviewOverride();
       window.location.href = "panel.html";
     });
+  },
 
   _renderAutenticado(session, container) {
     if (!container) return;
@@ -141,13 +142,13 @@ window.UI = {
               <h3><i class="fa-solid fa-id-card"></i> Mi perfil</h3>
               <div class="config-field">
                 <label>Nombre</label>
-                <input type="text" id="config-perfil-nombre" class="modal-input" />
+                <div class="config-valor-solo-lectura" id="config-perfil-nombre">—</div>
               </div>
               <div class="config-field">
                 <label>Agrupación</label>
-                <input type="text" id="config-perfil-agrupacion" class="modal-input" />
+                <div class="config-valor-solo-lectura" id="config-perfil-agrupacion">—</div>
               </div>
-              <button type="button" id="btn-guardar-perfil" class="btn btn-submit config-btn-full">Guardar cambios</button>
+              <p class="config-hint">Para cambiar estos datos, pedile a un director o administrador de mayor rango que lo haga desde Miembros.</p>
             </div>
 
             <div class="config-section" id="config-preview-section" style="display:none;">
@@ -201,27 +202,6 @@ window.UI = {
       }
       document.getElementById("config-notif-toggle").disabled = true;
 
-      // ---- Guardar perfil (nombre/agrupación de la cuenta REAL, nunca la de prueba) ----
-      document.getElementById("btn-guardar-perfil").addEventListener("click", async () => {
-        const real = window.Auth.getRealSession();
-        if (!real) return;
-        const btn = document.getElementById("btn-guardar-perfil");
-        const nombre = document.getElementById("config-perfil-nombre").value.trim();
-        const agrupacion = document.getElementById("config-perfil-agrupacion").value.trim();
-        if (!nombre) { window._showToast?.("El nombre no puede quedar vacío", "error"); return; }
-        btn.disabled = true; const txt = btn.textContent; btn.textContent = "Guardando...";
-        try {
-          await updateDoc(doc(db, "usuarios", real.uid), { nombre, agrupacion });
-          real.nombre = nombre;
-          sessionStorage.getItem("sistemaOrquestas_session") && sessionStorage.setItem("sistemaOrquestas_session", JSON.stringify(real));
-          localStorage.getItem("sistemaOrquestas_session") && localStorage.setItem("sistemaOrquestas_session", JSON.stringify(real));
-          window._showToast?.("Perfil actualizado", "success");
-          window.UI.render();
-        } catch (err) {
-          window._showToast?.("No se pudo guardar: " + err.message, "error");
-        } finally { btn.disabled = false; btn.textContent = txt; }
-      });
-
       // ---- Modo de prueba (solo Owner Supremo real) ----
       document.getElementById("btn-aplicar-preview").addEventListener("click", () => {
         const rol = document.getElementById("config-preview-rol").value;
@@ -254,8 +234,8 @@ window.UI = {
     try {
       const snap = await getDoc(doc(db, "usuarios", real.uid));
       const data = snap.exists() ? snap.data() : {};
-      document.getElementById("config-perfil-nombre").value = data.nombre || real.nombre || "";
-      document.getElementById("config-perfil-agrupacion").value = data.agrupacion || "";
+      document.getElementById("config-perfil-nombre").textContent = data.nombre || real.nombre || "—";
+      document.getElementById("config-perfil-agrupacion").textContent = data.agrupacion || "— (sin asignar)";
     } catch (err) { console.error("No se pudo leer el perfil:", err); }
 
     // Banner de "estás viendo como X"
@@ -306,4 +286,15 @@ window.UI = {
 };
 
 // Inicialización directa (módulo ES)
-window.UI.render();
+try {
+  window.UI.render();
+} catch (err) {
+  // Si algo rompe acá, es EXACTAMENTE el tipo de error que deja a la gente sin
+  // poder iniciar sesión sin ninguna pista. Lo mostramos fuerte en consola y
+  // dejamos un botón de emergencia para que el login nunca quede bloqueado.
+  console.error("💥 window.UI.render() falló — esto es lo que impide ver el botón de Iniciar Sesión:", err);
+  const target = document.getElementById("user-nav") || document.getElementById("login-area");
+  if (target && !target.innerHTML.trim()) {
+    target.innerHTML = `<a href="login.html" class="btn btn-nav btn-login">Iniciar Sesión</a>`;
+  }
+}

@@ -91,8 +91,21 @@ const UPLOAD_PRESET = "orquestas_unsigned";
         </div>
         <div class="crop-container">
           <img id="crop-source"/>
-          <div id="crop-area" class="crop-area"><div class="resize-handle"></div></div>
+          <div id="crop-area" class="crop-area">
+            <div class="resize-handle rh-nw" data-pos="nw"></div>
+            <div class="resize-handle rh-n" data-pos="n"></div>
+            <div class="resize-handle rh-ne" data-pos="ne"></div>
+            <div class="resize-handle rh-e" data-pos="e"></div>
+            <div class="resize-handle rh-se" data-pos="se"></div>
+            <div class="resize-handle rh-s" data-pos="s"></div>
+            <div class="resize-handle rh-sw" data-pos="sw"></div>
+            <div class="resize-handle rh-w" data-pos="w"></div>
+          </div>
         </div>
+        <label class="chk-evitar-estirar-label">
+          <input type="checkbox" id="chk-evitar-estirar" />
+          No ampliar imágenes pequeñas (agrega fondo oscuro en vez de estirar y verse borrosa)
+        </label>
         <div class="tool-panel" id="panel-rotar" style="display:none;">
           <button type="button" id="rotar-btn" class="btn btn-submit"><i class="fa-solid fa-rotate-right"></i> Rotar 90°</button>
         </div>
@@ -146,6 +159,7 @@ const UPLOAD_PRESET = "orquestas_unsigned";
     let area = document.getElementById("crop-area");
     const dW = img.width, dH = img.height;
     let cW = Math.min(dW, dH * 16 / 9), cH = cW * 9 / 16, cX = (dW - cW) / 2, cY = (dH - cH) / 2;
+    const clamp = (v, min, max) => Math.max(min, Math.min(v, max));
     const upd = () => { area.style.left = cX + "px"; area.style.top = cY + "px"; area.style.width = cW + "px"; area.style.height = cH + "px"; };
 
     // Clonamos el área para eliminar TODOS los listeners de una rotación/carga anterior
@@ -153,27 +167,48 @@ const UPLOAD_PRESET = "orquestas_unsigned";
     const nuevaArea = area.cloneNode(true);
     area.parentNode.replaceChild(nuevaArea, area);
     area = nuevaArea;
-    const handle = area.querySelector(".resize-handle");
     upd();
 
     let modo = null; // "mover" | "redimensionar" — nunca los dos a la vez
-    let sx, sy, sl, st, sw;
+    let sx, sy, startBox, posHandle;
 
     const moverMove = (ev) => {
       const dx = ev.clientX - sx, dy = ev.clientY - sy;
-      cX = Math.max(0, Math.min(sl + dx, dW - cW));
-      cY = Math.max(0, Math.min(st + dy, dH - cH));
+      cX = clamp(startBox.cX + dx, 0, dW - cW);
+      cY = clamp(startBox.cY + dy, 0, dH - cH);
       upd();
     };
+
+    // Redimensiona manteniendo siempre el aspecto 16:9, sea cual sea la
+    // manija usada (las 4 esquinas o los 4 lados), anclando del lado
+    // contrario al que se está arrastrando.
     const redimensionarMove = (ev) => {
-      const dx = ev.clientX - sx;
-      let nW = sw + dx;
-      if (nW < 50) nW = 50;
-      if (cX + nW > dW) nW = dW - cX;
-      if (cY + nW * 9 / 16 > dH) nW = (dH - cY) * 16 / 9;
-      cW = nW; cH = cW * 9 / 16;
+      const dx = ev.clientX - sx, dy = ev.clientY - sy;
+      const { cX: x0, cY: y0, cW: w0, cH: h0 } = startBox;
+      let nuevoAncho = w0;
+
+      if (["nw", "sw", "w"].includes(posHandle)) nuevoAncho = w0 - dx;
+      else if (["ne", "se", "e"].includes(posHandle)) nuevoAncho = w0 + dx;
+      else if (posHandle === "n") nuevoAncho = (h0 - dy) * 16 / 9;
+      else if (posHandle === "s") nuevoAncho = (h0 + dy) * 16 / 9;
+
+      nuevoAncho = clamp(nuevoAncho, 60, dW);
+      let nuevoAlto = nuevoAncho * 9 / 16;
+      if (nuevoAlto > dH) { nuevoAlto = dH; nuevoAncho = nuevoAlto * 16 / 9; }
+
+      let nuevoX = x0, nuevoY = y0;
+      if (["nw", "w", "sw"].includes(posHandle)) nuevoX = x0 + (w0 - nuevoAncho);
+      else if (["n", "s"].includes(posHandle)) nuevoX = x0 + (w0 - nuevoAncho) / 2;
+
+      if (["nw", "n", "ne"].includes(posHandle)) nuevoY = y0 + (h0 - nuevoAlto);
+      else if (["e", "w"].includes(posHandle)) nuevoY = y0 + (h0 - nuevoAlto) / 2;
+
+      cW = nuevoAncho; cH = nuevoAlto;
+      cX = clamp(nuevoX, 0, dW - cW);
+      cY = clamp(nuevoY, 0, dH - cH);
       upd();
     };
+
     const onMove = (ev) => {
       if (modo === "mover") moverMove(ev);
       else if (modo === "redimensionar") redimensionarMove(ev);
@@ -184,23 +219,28 @@ const UPLOAD_PRESET = "orquestas_unsigned";
       document.removeEventListener("pointerup", onUp);
     };
 
-    // El manejador de la manija SIEMPRE gana: detiene la propagación para que
-    // el mismo clic no dispare también el "mover" del área contenedora.
-    handle.addEventListener("pointerdown", (ev) => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      modo = "redimensionar";
-      sx = ev.clientX; sy = ev.clientY; sw = cW;
-      document.addEventListener("pointermove", onMove);
-      document.addEventListener("pointerup", onUp);
+    // Cada manija gana siempre: detiene la propagación para que el mismo
+    // clic no dispare también el "mover" del área contenedora.
+    area.querySelectorAll(".resize-handle").forEach(handle => {
+      handle.addEventListener("pointerdown", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        modo = "redimensionar";
+        posHandle = handle.dataset.pos;
+        sx = ev.clientX; sy = ev.clientY;
+        startBox = { cX, cY, cW, cH };
+        document.addEventListener("pointermove", onMove);
+        document.addEventListener("pointerup", onUp);
+      });
     });
 
-    // El área solo mueve el cuadro completo si el clic NO empezó en la manija.
+    // El área solo mueve el cuadro completo si el clic no empezó en una manija.
     area.addEventListener("pointerdown", (ev) => {
-      if (ev.target === handle) return; // la manija ya lo maneja arriba
+      if (ev.target.classList.contains("resize-handle")) return;
       ev.preventDefault();
       modo = "mover";
-      sx = ev.clientX; sy = ev.clientY; sl = cX; st = cY;
+      sx = ev.clientX; sy = ev.clientY;
+      startBox = { cX, cY };
       document.addEventListener("pointermove", onMove);
       document.addEventListener("pointerup", onUp);
     });
@@ -260,8 +300,21 @@ const UPLOAD_PRESET = "orquestas_unsigned";
         canvas.width = finalW; canvas.height = finalH; // esto también limpia el canvas
         ctx.clearRect(0, 0, finalW, finalH); // explícito, por claridad y por si el canvas se reutiliza
         ctx.filter = "none"; // sin filtro CSS: la saturación se aplica manualmente abajo
+
+        const evitarEstirar = document.getElementById("chk-evitar-estirar")?.checked;
         if (box) {
-          ctx.drawImage(img, box.cX * escala, box.cY * escala, box.cW * escala, box.cH * escala, 0, 0, finalW, finalH);
+          const anchoReal = box.cW * escala, altoReal = box.cH * escala;
+          if (evitarEstirar && anchoReal < finalW) {
+            // La imagen recortada tiene menos resolución real que el tamaño final:
+            // en vez de ampliarla (se ve borrosa), la dibujamos a su tamaño real
+            // (factor 1, sin ampliar), centrada, con un fondo oscuro alrededor.
+            ctx.fillStyle = "#111318";
+            ctx.fillRect(0, 0, finalW, finalH);
+            const offX = (finalW - anchoReal) / 2, offY = (finalH - altoReal) / 2;
+            ctx.drawImage(img, box.cX * escala, box.cY * escala, anchoReal, altoReal, offX, offY, anchoReal, altoReal);
+          } else {
+            ctx.drawImage(img, box.cX * escala, box.cY * escala, box.cW * escala, box.cH * escala, 0, 0, finalW, finalH);
+          }
         } else {
           ctx.drawImage(img, 0, 0, finalW, finalH);
         }

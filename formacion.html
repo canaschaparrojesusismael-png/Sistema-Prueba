@@ -10,7 +10,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Formación – Sistema de Orquestas</title>
-    <link rel="stylesheet" href="estilos.css?v=3.0">
+    <link rel="stylesheet" href="estilos.css?v=7.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .back-link { display: inline-block; margin: 1.5rem 0; color: var(--color-primario); font-weight: 600; text-decoration: none; }
@@ -69,6 +69,9 @@
         #modal-recurso .editor-row { margin-bottom: 0.9rem; }
         #modal-recurso textarea.modal-input { min-height: 140px; resize: vertical; }
         #lector-contenido { white-space: pre-wrap; line-height: 1.7; font-size: 0.95rem; }
+
+        .formacion-layout { display: flex; flex-direction: column; gap: 24px; }
+        .chat-ia-seccion-titulo { font-size: 1.1rem; font-weight: 800; color: var(--color-primario); margin-bottom: 0.6rem; }
     </style>
 </head>
 <body>
@@ -76,10 +79,6 @@
         <img src="datos.png" alt="Gobierno de Venezuela" style="max-height:50px;" />
         <nav id="user-nav" class="user-nav"></nav>
     </header>
-
-    <div class="barra-movimiento">
-        <span class="barra-movimiento-texto">Audiciones abiertas para la fila de metales. | Próximo ensayo general: Viernes 4:00 PM.</span>
-    </div>
 
     <main class="contenido-web container" id="formacion-container">
         <a class="back-link" href="panel.html">&larr; Volver al Panel</a>
@@ -90,8 +89,15 @@
             (de núcleo, regional, estadal) o administrador.
         </p>
 
-        <div class="niveles-tabs" id="niveles-tabs"></div>
-        <div class="grid-recursos" id="grid-recursos"></div>
+        <div class="formacion-layout">
+            <div class="niveles-tabs" id="niveles-tabs"></div>
+            <div class="grid-recursos" id="grid-recursos"></div>
+
+            <div>
+                <div class="chat-ia-seccion-titulo"><i class="fa-solid fa-comments"></i> Tutor Musical</div>
+                <div class="chat-ia-embebido" id="chat-ia-embebido"></div>
+            </div>
+        </div>
     </main>
 
     <div class="modal-overlay" id="modal-recurso">
@@ -149,13 +155,14 @@
 
     <script src="check-entorno.js"></script>
 
-    <script type="module" src="auth.js?v=5.0"></script>
-    <script type="module" src="ui-manager.js?v=5.0"></script>
+    <script type="module" src="auth.js?v=7.0"></script>
+    <script type="module" src="ui-manager.js?v=7.0"></script>
     <script type="module">
         import { db } from "./firebase-init.js";
         import {
             collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc
         } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+        import { montarChatEmbebido } from "./chat-widget.js";
 
         function initFormacion() {
             const session = window.Auth?.getSession();
@@ -299,11 +306,11 @@
             document.getElementById("lector-close-btn").addEventListener("click", () => document.getElementById("modal-lector").style.display = "none");
 
             window.UI?.render();
+            montarChatEmbebido(document.getElementById("chat-ia-embebido"));
         }
 
         window.addEventListener("auth-ready", initFormacion);
         if (window.Auth?.getSession()) initFormacion();
     </script>
-    <script type="module" src="chat-widget.js?v=1.0"></script>
 </body>
 </html>

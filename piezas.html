@@ -10,7 +10,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Piezas – Sistema de Orquestas</title>
-    <link rel="stylesheet" href="estilos.css?v=3.0">
+    <link rel="stylesheet" href="estilos.css?v=7.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .back-link {
@@ -111,9 +111,6 @@
         <img src="datos.png" alt="Gobierno de Venezuela" style="max-height:50px;" />
         <nav id="user-nav" class="user-nav"></nav>
     </header>
-    <div class="barra-movimiento">
-        <span class="barra-movimiento-texto">Audiciones abiertas para la fila de metales. | Próximo ensayo general: Viernes 4:00 PM.</span>
-    </div>
 
 
     <main class="contenido-web container">
@@ -134,8 +131,8 @@
 
     <script src="check-entorno.js"></script>
 
-    <script type="module" src="auth.js?v=5.0"></script>
-    <script type="module" src="ui-manager.js?v=5.0"></script>
+    <script type="module" src="auth.js?v=7.0"></script>
+    <script type="module" src="ui-manager.js?v=7.0"></script>
     <script type="module">
         import { db } from "./firebase-init.js";
         import { abrirSelectorUbicacion } from "./ubicaciones.js";
@@ -280,6 +277,5 @@
         window.addEventListener("auth-ready", initPiezas);
         if (window.Auth?.getSession()) initPiezas();
     </script>
-    <script type="module" src="chat-widget.js?v=1.0"></script>
 </body>
 </html>

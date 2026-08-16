@@ -1,5 +1,5 @@
 import { db } from "./firebase-init.js";
-import { collection, query, where, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+import { collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
 
 // Los 23 estados + Distrito Capital: esto es geografía real de Venezuela y no
 // cambia, así que va fijo en el código (no tiene sentido que alguien "cree"
@@ -13,18 +13,45 @@ export const ESTADOS_VENEZUELA = [
 
 const cacheNucleosPorEstado = new Map();
 
-export async function cargarNucleosPorEstado(estado, { forzar = false } = {}) {
+// Devuelve [{id, nombre}] — el id hace falta para poder renombrar/eliminar.
+export async function cargarNucleosConIdPorEstado(estado, { forzar = false } = {}) {
   if (!estado) return [];
   if (!forzar && cacheNucleosPorEstado.has(estado)) return cacheNucleosPorEstado.get(estado);
   const snap = await getDocs(query(collection(db, "nucleos"), where("estado", "==", estado)));
-  const lista = [...new Set(snap.docs.map(d => d.data().nombre))].sort();
+  const lista = snap.docs
+    .map(d => ({ id: d.id, nombre: d.data().nombre }))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
   cacheNucleosPorEstado.set(estado, lista);
   return lista;
+}
+
+// Compatibilidad con código existente que solo necesita los nombres.
+export async function cargarNucleosPorEstado(estado, opts) {
+  const lista = await cargarNucleosConIdPorEstado(estado, opts);
+  return [...new Set(lista.map(n => n.nombre))];
 }
 
 export async function crearNucleo(nombre, estado) {
   await addDoc(collection(db, "nucleos"), { nombre: nombre.trim(), estado });
   cacheNucleosPorEstado.delete(estado); // refrescar el caché de ese estado
+}
+
+export async function renombrarNucleo(id, nuevoNombre, estado) {
+  await updateDoc(doc(db, "nucleos", id), { nombre: nuevoNombre.trim() });
+  cacheNucleosPorEstado.delete(estado);
+}
+
+export async function eliminarNucleo(id, estado) {
+  await deleteDoc(doc(db, "nucleos", id));
+  cacheNucleosPorEstado.delete(estado);
+}
+
+// Cuenta cuántos usuarios tienen asignado este núcleo — para avisar antes de
+// borrarlo (borrar el núcleo NO borra ni desvincula a esos usuarios, solo
+// hace que el nombre deje de aparecer en los selectores para elegir de nuevo).
+export async function contarUsuariosEnNucleo(nombreNucleo) {
+  const snap = await getDocs(query(collection(db, "usuarios"), where("nucleo", "==", nombreNucleo)));
+  return snap.size;
 }
 
 /**
@@ -66,7 +93,11 @@ export function abrirSelectorUbicacion(options = {}) {
           <select id="ubicacion-select-nucleo" class="modal-input" ${estadoInicial ? "" : "disabled"} style="flex:1;">
             <option value="">${estadoInicial ? "Cargando…" : "Elegí un estado primero"}</option>
           </select>
-          ${permitirCrearNucleo ? `<button type="button" id="ubicacion-btn-nuevo-nucleo" class="btn-config-mini" title="Crear núcleo nuevo" style="flex-shrink:0;">+ Nuevo</button>` : ""}
+          ${permitirCrearNucleo ? `
+            <button type="button" id="ubicacion-btn-renombrar-nucleo" class="btn-config-mini" title="Renombrar este núcleo" style="flex-shrink:0;"><i class="fa-solid fa-pen"></i></button>
+            <button type="button" id="ubicacion-btn-borrar-nucleo" class="btn-config-mini" title="Eliminar este núcleo" style="flex-shrink:0;background:#c1121f;"><i class="fa-solid fa-trash"></i></button>
+            <button type="button" id="ubicacion-btn-nuevo-nucleo" class="btn-config-mini" title="Crear núcleo nuevo" style="flex-shrink:0;">+ Nuevo</button>
+          ` : ""}
         </div>
         <div id="ubicacion-crear-nucleo-form" style="display:none;margin-top:0.6rem;gap:0.5rem;">
           <input type="text" id="ubicacion-input-nuevo-nucleo" class="modal-input" placeholder="Nombre del nuevo núcleo…" style="margin-bottom:0.5rem;" />
@@ -90,9 +121,9 @@ export function abrirSelectorUbicacion(options = {}) {
     if (!estado) { selNucleo.disabled = true; selNucleo.innerHTML = `<option value="">Elegí un estado primero</option>`; return; }
     selNucleo.disabled = true;
     selNucleo.innerHTML = `<option value="">Cargando…</option>`;
-    const lista = await cargarNucleosPorEstado(estado, { forzar: true });
+    const lista = await cargarNucleosConIdPorEstado(estado, { forzar: true });
     selNucleo.innerHTML = lista.length
-      ? lista.map(n => `<option value="${n}" ${n === preseleccionar ? "selected" : ""}>${n}</option>`).join("")
+      ? lista.map(n => `<option value="${n.nombre}" data-id="${n.id}" ${n.nombre === preseleccionar ? "selected" : ""}>${n.nombre}</option>`).join("")
       : `<option value="">(sin núcleos en este estado todavía)</option>`;
     selNucleo.disabled = false;
   }
@@ -128,6 +159,41 @@ export function abrirSelectorUbicacion(options = {}) {
       window._showToast?.("No se pudo crear: " + err.message, "error");
     } finally {
       btn.disabled = false; btn.textContent = "Crear";
+    }
+  });
+
+  // ---- Renombrar el núcleo seleccionado ----
+  document.getElementById("ubicacion-btn-renombrar-nucleo")?.addEventListener("click", async () => {
+    const opt = selNucleo.selectedOptions[0];
+    const id = opt?.dataset.id;
+    if (!id) { window._showToast?.("Elegí un núcleo primero", "error"); return; }
+    const nuevoNombre = prompt("Nuevo nombre para este núcleo:", opt.value);
+    if (!nuevoNombre || !nuevoNombre.trim() || nuevoNombre.trim() === opt.value) return;
+    try {
+      await renombrarNucleo(id, nuevoNombre, selEstado.value);
+      window._showToast?.("Núcleo renombrado", "success");
+      await refrescarNucleos(selEstado.value, nuevoNombre.trim());
+    } catch (err) {
+      window._showToast?.("No se pudo renombrar: " + err.message, "error");
+    }
+  });
+
+  // ---- Eliminar el núcleo seleccionado ----
+  document.getElementById("ubicacion-btn-borrar-nucleo")?.addEventListener("click", async () => {
+    const opt = selNucleo.selectedOptions[0];
+    const id = opt?.dataset.id;
+    if (!id) { window._showToast?.("Elegí un núcleo primero", "error"); return; }
+    const cantidad = await contarUsuariosEnNucleo(opt.value).catch(() => 0);
+    const aviso = cantidad > 0
+      ? `Este núcleo tiene ${cantidad} usuario(s) asignados. Borrarlo NO los borra a ellos ni sus datos, pero el nombre dejará de aparecer en los selectores. ¿Eliminar igual "${opt.value}"?`
+      : `¿Eliminar el núcleo "${opt.value}"? Esta acción no se puede deshacer.`;
+    if (!confirm(aviso)) return;
+    try {
+      await eliminarNucleo(id, selEstado.value);
+      window._showToast?.("Núcleo eliminado", "success");
+      await refrescarNucleos(selEstado.value);
+    } catch (err) {
+      window._showToast?.("No se pudo eliminar: " + err.message, "error");
     }
   });
 
