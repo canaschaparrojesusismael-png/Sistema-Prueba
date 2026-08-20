@@ -10,7 +10,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Miembros – Sistema de Orquestas</title>
-    <link rel="stylesheet" href="estilos.css?v=7.0">
+    <link rel="stylesheet" href="estilos.css?v=9.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .back-link { display:inline-block; margin:1.5rem 0; color:var(--color-primario); font-weight:600; text-decoration:none; cursor:pointer; border:none; background:transparent; font-size:1rem; }
@@ -41,6 +41,19 @@
         .top-controls { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:1rem; }
         .breadcrumb { font-size:0.9rem; color:#666; margin-bottom:1rem; }
         .breadcrumb span { font-weight:600; color:var(--color-primario); }
+
+        @media (max-width: 768px) {
+            .roles-grid, .selecciones-grid, .miembros-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+            .rol-card { padding: 1.2rem 0.8rem; }
+            .rol-card .icono { font-size: 1.8rem; }
+            .persona-card { padding: 1rem; }
+            .avatar { width: 52px; height: 52px; font-size: 1.2rem; margin-bottom: 0.5rem; }
+            .btn-admin-accion, .btn-editar, .btn-reset { width: 24px; height: 24px; font-size: 0.75rem; }
+            .btn-editar { right: 20px; }
+            .btn-reset { right: 44px; }
+            .top-controls { gap: 0.5rem; }
+            .titulo-pagina { font-size: 1.2rem; }
+        }
     </style>
 </head>
 <body>
@@ -105,14 +118,14 @@
 
     <script src="check-entorno.js"></script>
 
-    <script type="module" src="auth.js?v=7.0"></script>
-    <script type="module" src="ui-manager.js?v=7.0"></script>
+    <script type="module" src="auth.js?v=10.0"></script>
+    <script type="module" src="ui-manager.js?v=10.0"></script>
     <script type="module">
         import { db, auth } from "./firebase-init.js";
         import { collection, query, where, getDocs, doc, updateDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
         import { fetchSignInMethodsForEmail } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
         import { backendAPI } from "./backend-api.js";
-        import { ESTADOS_VENEZUELA, crearNucleo as crearNucleoCompartido } from "./ubicaciones.js";
+        import { ESTADOS_VENEZUELA, crearNucleo as crearNucleoCompartido, cargarNucleosPorEstado as cargarNucleosCompartido } from "./ubicaciones.js";
 
         // Constantes
         const JERARQUIA = { owner_supremo:70, director_nacional:60, director_regional:50, director_nucleo:40, admin:30, profesor:20, estudiante:10 };
@@ -139,11 +152,9 @@
             s.innerHTML = '<option value="">Seleccione...</option>';
             opciones.forEach(op => { const o = document.createElement("option"); o.value = op; o.textContent = op; if(op === val) o.selected = true; s.appendChild(o); });
         };
-        const cargarNucleosPorEstado = async (estado) => {
-            if(!estado) return [];
-            const snap = await getDocs(query(collection(db,"nucleos"), where("estado","==",estado)));
-            return snap.docs.map(d => d.data().nombre).sort();
-        };
+        // Siempre forzamos refresco (forzar:true) para que un núcleo recién creado
+        // en panel.html aparezca acá al toque, sin tener que "volver a ponerlo".
+        const cargarNucleosPorEstado = (estado) => cargarNucleosCompartido(estado, { forzar: true });
         const toggleCampos = (rango, prefijo) => {
             const re = document.getElementById(`row-${prefijo}-estado`);
             const rn = document.getElementById(`row-${prefijo}-nucleo`);

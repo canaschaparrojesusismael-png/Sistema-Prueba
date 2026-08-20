@@ -147,12 +147,22 @@ window.Auth = {
       const sessionId = generarUUID();
       sessionStorage.setItem("currentSessionId", sessionId);
       if (remember) localStorage.setItem("currentSessionId", sessionId);
-      await updateDoc(doc(db, "usuarios", user.uid), {
-        isOnline: true,
-        currentSessionId: sessionId,
-        lastLogin: new Date().toISOString()
-      });
-      this.monitorSession(user.uid, sessionId);
+      try {
+        await updateDoc(doc(db, "usuarios", user.uid), {
+          isOnline: true,
+          currentSessionId: sessionId,
+          lastLogin: new Date().toISOString()
+        });
+        this.monitorSession(user.uid, sessionId);
+      } catch (errEstado) {
+        // Esto NO debe bloquear el login: si falla, solo perdés el indicador de
+        // "en línea" y el cierre de sesión remoto, pero podés entrar igual.
+        console.error(
+          "⚠️ No se pudo marcar la sesión como 'en línea' (revisá que publicaste " +
+          "las reglas de Firestore más recientes en Firebase Console). Detalle:",
+          errEstado
+        );
+      }
 
       const sessionData = {
         id: user.uid, uid: user.uid, email: user.email,
@@ -223,7 +233,11 @@ window.Auth = {
   async logout() {
     try {
       if (auth.currentUser) {
-        await updateDoc(doc(db, "usuarios", auth.currentUser.uid), { isOnline: false, currentSessionId: "" });
+        try {
+          await updateDoc(doc(db, "usuarios", auth.currentUser.uid), { isOnline: false, currentSessionId: "" });
+        } catch (errEstado) {
+          console.error("⚠️ No se pudo marcar la sesión como 'fuera de línea' (no bloquea el cierre de sesión):", errEstado);
+        }
         await signOut(auth);
       }
     } catch (e) {}

@@ -378,13 +378,9 @@ img {
   gap: 0.8rem;
   flex: 1 1 0;
   min-width: 0;
-  cursor: pointer;
 }
-.carrusel-tarjeta:hover .carrusel-caja,
-.carrusel-tarjeta:hover .carrusel-texto {
-  box-shadow: var(--shadow-hover);
-  transform: translateY(-2px);
-}
+.carrusel-caja:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+.carrusel-texto:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
 .carrusel-texto {
   flex: 7 1 0; 
   min-width: 0;
@@ -1033,19 +1029,22 @@ img {
   .contenido-web.container { padding: 1.1rem; }
 
   .modulo-carrusel { margin: 0 0 1.5rem; gap: 0.6rem; }
-  .carrusel-visual { gap: 0.4rem; }
-  
-  /* CORRECCIÓN ESTRUCTURAL: Cajas fluidas sin alturas rígidas */
-  .carrusel-caja { 
-    height: auto; 
-    aspect-ratio: 1 / 1; /* Mantiene la caja perfectamente cuadrada independientemente de la pantalla */
-    flex: 1 1 50%; 
+  .carrusel-visual { gap: 0.5rem; }
+  .carrusel-tarjeta { flex-direction: column; }
+
+  /* El carrusel apilado (imagen arriba, texto abajo) se ve mucho más grande
+     y legible en el teléfono que partido a la mitad en dos columnas chicas. */
+  .carrusel-caja {
+    height: auto;
+    aspect-ratio: 16 / 10;
+    flex: none;
+    width: 100%;
   }
-  .carrusel-texto { padding: 0.9rem 0.8rem; flex: 1 1 50%; height: auto; }
-  
-  .carrusel-texto h2 { font-size: 1rem; margin-bottom: 0.3rem; }
-  .carrusel-texto p { font-size: 0.78rem; -webkit-line-clamp: 4; }
-  
+  .carrusel-texto { padding: 1rem 1.1rem; flex: none; height: auto; width: 100%; }
+
+  .carrusel-texto h2 { font-size: 1.1rem; margin-bottom: 0.4rem; }
+  .carrusel-texto p { font-size: 0.85rem; -webkit-line-clamp: 4; }
+
   /* Controles con medidas relativas */
   .carousel-arrow { width: 2rem; height: 2rem; font-size: 1rem; }
   .carousel-edit-btn { width: 1.8rem; height: 1.8rem; font-size: 0.85rem; top: -0.8rem; }
@@ -1053,13 +1052,13 @@ img {
   .metrics-grid { grid-template-columns: 1fr; }
   .dashboard-container { margin: 1rem; }
 
-  .citas-grid { grid-template-columns: 1fr 1fr; margin: 0 0 1.2rem; gap: 0.7rem; }
-  
-  /* Control de la cuadrícula */
+  /* Citas: bien compactas, no deben competir en tamaño con el carrusel */
+  .citas-grid { grid-template-columns: 1fr 1fr; margin: 0 0 1rem; gap: 0.5rem; }
   .citas-grid .cita-card:last-child { grid-column: 1; }
-  
-  .cita-card { padding: 1rem; }
-  .cita-card p { font-size: 0.8rem; }
+  .cita-card { padding: 0.65rem; }
+  .cita-card i.fa-quote-left { font-size: 1.1rem; margin-bottom: 0.3rem; }
+  .cita-card p { font-size: 0.68rem; line-height: 1.4; }
+  .cita-card .cita-autor { font-size: 0.68rem; margin-top: 0.4rem; }
 }
 /* ================================================================
    CHAT IA — tarjeta más, con la misma estética del resto del sitio

@@ -102,10 +102,6 @@ const UPLOAD_PRESET = "orquestas_unsigned";
             <div class="resize-handle rh-w" data-pos="w"></div>
           </div>
         </div>
-        <label class="chk-evitar-estirar-label">
-          <input type="checkbox" id="chk-evitar-estirar" />
-          No ampliar imágenes pequeñas (agrega fondo oscuro en vez de estirar y verse borrosa)
-        </label>
         <div class="tool-panel" id="panel-rotar" style="display:none;">
           <button type="button" id="rotar-btn" class="btn btn-submit"><i class="fa-solid fa-rotate-right"></i> Rotar 90°</button>
         </div>
@@ -159,6 +155,7 @@ const UPLOAD_PRESET = "orquestas_unsigned";
     let area = document.getElementById("crop-area");
     const dW = img.width, dH = img.height;
     let cW = Math.min(dW, dH * 16 / 9), cH = cW * 9 / 16, cX = (dW - cW) / 2, cY = (dH - cH) / 2;
+    const MIN = 40;
     const clamp = (v, min, max) => Math.max(min, Math.min(v, max));
     const upd = () => { area.style.left = cX + "px"; area.style.top = cY + "px"; area.style.width = cW + "px"; area.style.height = cH + "px"; };
 
@@ -179,33 +176,22 @@ const UPLOAD_PRESET = "orquestas_unsigned";
       upd();
     };
 
-    // Redimensiona manteniendo siempre el aspecto 16:9, sea cual sea la
-    // manija usada (las 4 esquinas o los 4 lados), anclando del lado
-    // contrario al que se está arrastrando.
+    // Redimensiona LIBRE: cada manija mueve SOLO su(s) propio(s) borde(s).
+    // Ya no fuerza relación de aspecto durante el arrastre (por eso antes,
+    // por ejemplo, arrastrar el borde de abajo también movía el cuadro para
+    // los costados — quedó corregido). El ajuste a 16:9 final se hace al
+    // exportar, sin distorsionar la imagen (ver más abajo).
     const redimensionarMove = (ev) => {
       const dx = ev.clientX - sx, dy = ev.clientY - sy;
       const { cX: x0, cY: y0, cW: w0, cH: h0 } = startBox;
-      let nuevoAncho = w0;
+      let izq = x0, arr = y0, der = x0 + w0, aba = y0 + h0;
 
-      if (["nw", "sw", "w"].includes(posHandle)) nuevoAncho = w0 - dx;
-      else if (["ne", "se", "e"].includes(posHandle)) nuevoAncho = w0 + dx;
-      else if (posHandle === "n") nuevoAncho = (h0 - dy) * 16 / 9;
-      else if (posHandle === "s") nuevoAncho = (h0 + dy) * 16 / 9;
+      if (posHandle.includes("w")) izq = clamp(x0 + dx, 0, der - MIN);
+      if (posHandle.includes("e")) der = clamp(x0 + w0 + dx, izq + MIN, dW);
+      if (posHandle.includes("n")) arr = clamp(y0 + dy, 0, aba - MIN);
+      if (posHandle.includes("s")) aba = clamp(y0 + h0 + dy, arr + MIN, dH);
 
-      nuevoAncho = clamp(nuevoAncho, 60, dW);
-      let nuevoAlto = nuevoAncho * 9 / 16;
-      if (nuevoAlto > dH) { nuevoAlto = dH; nuevoAncho = nuevoAlto * 16 / 9; }
-
-      let nuevoX = x0, nuevoY = y0;
-      if (["nw", "w", "sw"].includes(posHandle)) nuevoX = x0 + (w0 - nuevoAncho);
-      else if (["n", "s"].includes(posHandle)) nuevoX = x0 + (w0 - nuevoAncho) / 2;
-
-      if (["nw", "n", "ne"].includes(posHandle)) nuevoY = y0 + (h0 - nuevoAlto);
-      else if (["e", "w"].includes(posHandle)) nuevoY = y0 + (h0 - nuevoAlto) / 2;
-
-      cW = nuevoAncho; cH = nuevoAlto;
-      cX = clamp(nuevoX, 0, dW - cW);
-      cY = clamp(nuevoY, 0, dH - cH);
+      cX = izq; cY = arr; cW = der - izq; cH = aba - arr;
       upd();
     };
 
@@ -301,17 +287,23 @@ const UPLOAD_PRESET = "orquestas_unsigned";
         ctx.clearRect(0, 0, finalW, finalH); // explícito, por claridad y por si el canvas se reutiliza
         ctx.filter = "none"; // sin filtro CSS: la saturación se aplica manualmente abajo
 
-        const evitarEstirar = document.getElementById("chk-evitar-estirar")?.checked;
+        let usaTransparencia = false;
+
         if (box) {
           const anchoReal = box.cW * escala, altoReal = box.cH * escala;
-          if (evitarEstirar && anchoReal < finalW) {
-            // La imagen recortada tiene menos resolución real que el tamaño final:
-            // en vez de ampliarla (se ve borrosa), la dibujamos a su tamaño real
-            // (factor 1, sin ampliar), centrada, con un fondo oscuro alrededor.
-            ctx.fillStyle = "#111318";
-            ctx.fillRect(0, 0, finalW, finalH);
-            const offX = (finalW - anchoReal) / 2, offY = (finalH - altoReal) / 2;
-            ctx.drawImage(img, box.cX * escala, box.cY * escala, anchoReal, altoReal, offX, offY, anchoReal, altoReal);
+          const aspectCanvas = finalW / finalH;
+          const aspectRecorte = box.cW / box.cH;
+          // Ahora se puede recortar libre desde cualquier lado, así que el recorte
+          // no siempre termina siendo exactamente 16:9. Cuando no lo es, la imagen
+          // se "encaja" completa sin deformarla (nunca se estira ni se recorta de
+          // más), con margen transparente alrededor en vez de negro o estiramiento.
+          const necesitaAjuste = Math.abs(aspectRecorte - aspectCanvas) > 0.02;
+          if (necesitaAjuste) {
+            usaTransparencia = true;
+            const escalaFit = Math.min(finalW / anchoReal, finalH / altoReal);
+            const wDibujo = anchoReal * escalaFit, hDibujo = altoReal * escalaFit;
+            const offX = (finalW - wDibujo) / 2, offY = (finalH - hDibujo) / 2;
+            ctx.drawImage(img, box.cX * escala, box.cY * escala, anchoReal, altoReal, offX, offY, wDibujo, hDibujo);
           } else {
             ctx.drawImage(img, box.cX * escala, box.cY * escala, box.cW * escala, box.cH * escala, 0, 0, finalW, finalH);
           }
@@ -324,14 +316,18 @@ const UPLOAD_PRESET = "orquestas_unsigned";
           aplicarSaturacionManual(datos, sat);
           ctx.putImageData(datos, 0, 0);
         }
-        const blob = await new Promise(res => canvas.toBlob(res, "image/jpeg", 0.85));
+        const blob = await new Promise(res =>
+          canvas.toBlob(res, usaTransparencia ? "image/png" : "image/jpeg", usaTransparencia ? undefined : 0.85)
+        );
         if (!blob) throw new Error("No se pudo generar la imagen");
         const url = await subirACloudinary(blob, "carrusel");
         modal.style.display = "none";
         editorCallback(url);
       } catch (err) {
         console.error(err);
-        window._showToast?.("No se pudo procesar la imagen", "error");
+        window._showToast?.("No se pudo procesar la imagen: " + err.message, "error");
+        document.getElementById("crop-area")._destruir?.();
+        modal.style.display = "none";
         editorCallback(null);
       } finally {
         confirmBtn.disabled = false; confirmBtn.textContent = origText;

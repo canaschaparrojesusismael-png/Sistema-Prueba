@@ -23,12 +23,27 @@ service cloud.firestore {
       );
       // Actualización: jerarquía respetada, rango solo owner, validación de ámbito
       allow update: if request.auth != null && (
+        // 🔧 CUALQUIER usuario puede actualizar SU PROPIA sesión al iniciar/cerrar
+        // sesión o cambiar su contraseña (isOnline, currentSessionId, lastLogin,
+        // requiresPasswordChange). Antes esto solo lo permitían los roles
+        // administrativos, por lo que profesores, estudiantes y admin NO PODÍAN
+        // iniciar sesión (el login intenta este mismo update para marcarse
+        // "en línea", y Firestore lo rechazaba con "Missing or insufficient
+        // permissions"). Nunca puede tocar su propio rango, estado, núcleo,
+        // agrupación ni reactivarse la cuenta — eso evita que alguien se
+        // autoascienda o se reactive solo.
+        (request.auth.uid == userId &&
+         request.resource.data.rango == resource.data.rango &&
+         request.resource.data.estado == resource.data.estado &&
+         request.resource.data.nucleo == resource.data.nucleo &&
+         request.resource.data.agrupacion == resource.data.agrupacion &&
+         request.resource.data.cuentaActiva == resource.data.cuentaActiva) ||
         // Owner supremo puede editar cualquier campo de cualquiera
         esOwner() ||
         // Director nacional puede editar cualquier campo excepto rango
         (getRequester().rango == 'director_nacional' &&
          request.resource.data.rango == resource.data.rango) ||
-        // Director regional puede editar usuarios de su estado, pero no el campo rango ni el estado mismo (opcional)
+        // Director regional puede editar usuarios de su estado, pero no el campo rango ni el estado mismo
         (getRequester().rango == 'director_regional' &&
          resource.data.estado == getRequester().estado &&
          request.resource.data.rango == resource.data.rango &&
@@ -39,9 +54,7 @@ service cloud.firestore {
          request.resource.data.rango == resource.data.rango &&
          request.resource.data.estado == resource.data.estado &&
          request.resource.data.nucleo == resource.data.nucleo) ||
-        // 🔧 Admin: la interfaz ya le permitía intentar editar/desactivar profesores y
-        // estudiantes de su núcleo, pero esta regla nunca lo contemplaba y la escritura
-        // se rechazaba en silencio. Se agrega con las mismas restricciones que director_nucleo.
+        // 🔧 Admin: la interfaz ya le permitía intentar editar/desactivar profesores y estudiantes
         (getRequester().rango == 'admin' &&
          resource.data.nucleo == getRequester().nucleo &&
          resource.data.rango in ['profesor','estudiante'] &&
@@ -49,28 +62,24 @@ service cloud.firestore {
          request.resource.data.estado == resource.data.estado &&
          request.resource.data.nucleo == resource.data.nucleo)
       );
-      // Eliminación: solo Owner Supremo y Director Nacional
+      // Eliminación: Owner Supremo, Director Nacional, o administradores locales limitados a su jurisdicción
       allow delete: if request.auth != null && (
-        getRequester().rango == 'owner_supremo' ||
-        getRequester().rango == 'director_nacional'
+        getRequester().rango in ['owner_supremo', 'director_nacional'] ||
+        (getRequester().rango in ['director_nucleo', 'admin'] && 
+         resource.data.nucleo == getRequester().nucleo && 
+         resource.data.rango in ['profesor', 'estudiante'])
       );
     }
 
     // ---------- CARRUSEL (nacional) ----------
-    // Este bloque NO existía antes en las reglas reales: por eso fallaba
-    // TODO (lectura y escritura), incluso para Owner Supremo.
     match /carrusel/{docId} {
       // Público: index.html lo muestra sin necesidad de sesión.
       allow read: if true;
       // Solo Owner Supremo y Director Nacional pueden modificar el carrusel nacional
-      // (debe coincidir con la restricción de rol en main.js/ui-manager.js).
       allow write: if request.auth != null && (esOwner() || esDirectorNacional());
     }
 
     // ---------- FLYERS y EVENTOS (por núcleo, en panel.html) ----------
-    // Tampoco existían: por eso panel.html fallaba incluso para leer.
-    // Lectura: cada usuario solo ve los de SU núcleo; los roles con visión
-    // multi-núcleo (owner/director nacional/director regional) ven cualquiera.
     match /flyers/{docId} {
       allow read: if request.auth != null && (
         getRequester().rango in ['owner_supremo','director_nacional','director_regional'] ||
@@ -89,8 +98,6 @@ service cloud.firestore {
     }
 
     // ---------- NÚCLEOS (lista maestra: {nombre, estado}) ----------
-    // Esta colección no existía en absoluto: por eso el selector de "Núcleo" en
-    // Miembros (y el selector de núcleo en Panel) siempre aparecía vacío.
     match /nucleos/{docId} {
       // Cualquier usuario logueado puede leerla (la necesitan los selectores)
       allow read: if request.auth != null;
@@ -107,13 +114,23 @@ service cloud.firestore {
       );
       allow write: if request.auth != null &&
         getRequester().rango in ['owner_supremo','director_nacional','director_regional','director_nucleo','admin'];
+
+      // Propagación de reglas para proteger subcolecciones (ej. partituras o repertorios)
+      match /{document=**} {
+        allow read: if request.auth != null && (
+          getRequester().rango in ['owner_supremo','director_nacional','director_regional'] ||
+          get(/databases/$(database)/documents/agrupaciones/$(docId)).data.nucleo == getRequester().nucleo
+        );
+        allow write: if request.auth != null &&
+          getRequester().rango in ['owner_supremo','director_nacional','director_regional','director_nucleo','admin'];
+      }
     }
 
-    // ---------- FORMACIÓN: recursos por nivel (nacional, sin distinción de núcleo) ----------
-    // Cualquier usuario logueado puede leer. Pueden organizar/agregar recursos los
-    // directores de cualquier ámbito (núcleo, regional, estadal, nacional) y admin/owner.
+    // ---------- FORMACIÓN: módulos de conceptos/libros (Nivel Nacional) ----------
     match /formacion_modulos/{docId} {
+      // Lectura abierta para cualquier usuario logueado en el sistema
       allow read: if request.auth != null;
+      // Escritura exclusiva para directiva y administración
       allow write: if request.auth != null &&
         getRequester().rango in ['owner_supremo','director_nacional','director_regional','director_nucleo','admin'];
     }

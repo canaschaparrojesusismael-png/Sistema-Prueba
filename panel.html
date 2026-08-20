@@ -10,7 +10,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel – Sistema de Orquestas</title>
-    <link rel="stylesheet" href="estilos.css?v=7.0">
+    <link rel="stylesheet" href="estilos.css?v=9.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* ---- Flyers: franja completa, pegada arriba, de punta a punta ---- */
@@ -180,8 +180,24 @@
             display: block;
         }
         .dropdown-btn:hover { border-color: var(--color-primario); transform: translateY(-2px); }
-        .form-control { width: 100%; padding: 0.4rem; margin-top: 0.2rem; }
+        .form-control {
+            width: 100%; padding: 0.55rem 0.7rem; margin-top: 0.3rem;
+            border-radius: 8px; border: 1px solid rgba(255,255,255,0.25);
+            background: rgba(255,255,255,0.95); color: var(--color-texto);
+            font-size: 0.9rem; font-family: inherit;
+        }
+        .form-control:focus { outline: none; border-color: var(--color-primario); }
         .modal-content textarea.form-control { resize: vertical; }
+        .editor-row label { font-weight: 700; color: rgba(255,255,255,0.9); font-size: 0.85rem; flex: 0 0 90px; }
+
+        /* Selector de color con muestras (reemplaza el <input type="color"> nativo, feo y chico) */
+        .color-swatches { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .color-swatch {
+            width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
+            border: 3px solid transparent; transition: var(--transition-fast);
+        }
+        .color-swatch:hover { transform: scale(1.12); }
+        .color-swatch.activo { border-color: #fff; box-shadow: 0 0 0 2px var(--color-primario); }
         #admin-controls { display: flex; gap: 10px; margin-top: 15px; }
         #event-group-row, #event-photo-row, #event-color-row { display: none; }
         #event-photo-preview {
@@ -298,16 +314,26 @@
             </div>
             <img id="event-photo-preview" />
             <div class="editor-row"><label>Descripción:</label><textarea id="event-desc" class="form-control" rows="3"></textarea></div>
-            <div class="editor-row" id="event-color-row"><label>Color:</label><input type="color" id="event-color" class="form-control" value="#ffeaa7" /></div>
+            <div class="editor-row" id="event-color-row">
+                <label>Color:</label>
+                <div class="color-swatches" id="event-color-swatches">
+                    <div class="color-swatch" data-color="#ffeaa7" style="background:#ffeaa7;"></div>
+                    <div class="color-swatch" data-color="#a7d8ff" style="background:#a7d8ff;"></div>
+                    <div class="color-swatch" data-color="#b7f0ad" style="background:#b7f0ad;"></div>
+                    <div class="color-swatch" data-color="#ffb3b3" style="background:#ffb3b3;"></div>
+                    <div class="color-swatch" data-color="#d9b8ff" style="background:#d9b8ff;"></div>
+                    <div class="color-swatch" data-color="#ffcf9e" style="background:#ffcf9e;"></div>
+                </div>
+                <input type="hidden" id="event-color" value="#ffeaa7" />
+            </div>
             
             <div class="editor-row" id="event-group-row">
                 <label>Visible para:</label>
-                <select id="event-group" multiple style="height:80px;" class="form-control">
+                <select id="event-group" multiple style="height:90px;" class="form-control">
                     <option value="todos">Todos</option>
-                    <option value="Orquesta Infantil">Orquesta Infantil</option>
-                    <option value="Orquesta Juvenil">Orquesta Juvenil</option>
                     <option value="Profesores">Profesores</option>
                     <option value="Estudiantes">Estudiantes</option>
+                    <!-- Las agrupaciones reales de este núcleo (desde Piezas) se agregan solas -->
                 </select>
             </div>
 
@@ -321,8 +347,8 @@
 
     <script src="check-entorno.js"></script>
 
-    <script type="module" src="auth.js?v=7.0"></script>
-    <script type="module" src="ui-manager.js?v=7.0"></script>
+    <script type="module" src="auth.js?v=10.0"></script>
+    <script type="module" src="ui-manager.js?v=10.0"></script>
     <script type="module">
         import { db } from "./firebase-init.js";
         import { abrirSelectorUbicacion } from "./ubicaciones.js";
@@ -658,7 +684,37 @@
             abrirModalEvento(null, true);
         }
 
-        function abrirModalEvento(eventId, esEdicion) {
+        document.querySelectorAll("#event-color-swatches .color-swatch").forEach(sw => {
+            sw.addEventListener("click", () => {
+                document.getElementById("event-color").value = sw.dataset.color;
+                document.querySelectorAll("#event-color-swatches .color-swatch").forEach(s => s.classList.remove("activo"));
+                sw.classList.add("activo");
+            });
+        });
+
+        // Trae las agrupaciones REALES del núcleo activo (las mismas que se
+        // crean en Piezas) para poder marcar un evento visible solo para
+        // "Orquesta Juvenil" o la que sea, en vez de una lista fija inventada.
+        async function cargarAgrupacionesEnSelectorEvento() {
+            const select = document.getElementById("event-group");
+            // Quitamos las agrupaciones cargadas antes (dejamos las 3 fijas: todos/profesores/estudiantes)
+            [...select.querySelectorAll("option[data-agrupacion]")].forEach(o => o.remove());
+            if (!nucleoActivo) return;
+            try {
+                const snap = await getDocs(query(collection(db, "agrupaciones"), where("nucleo", "==", nucleoActivo)));
+                snap.docs.forEach(d => {
+                    const opt = document.createElement("option");
+                    opt.value = d.data().nombre;
+                    opt.textContent = d.data().nombre;
+                    opt.dataset.agrupacion = "1";
+                    select.appendChild(opt);
+                });
+            } catch (err) {
+                console.error("No se pudieron cargar las agrupaciones para el evento:", err);
+            }
+        }
+
+        async function abrirModalEvento(eventId, esEdicion) {
             const esAdmin = window.Auth?.checkPermission && window.Auth.checkPermission("manage_users");
             const ev = eventId ? events.find(e => String(e.id) === String(eventId)) : null;
 
@@ -670,6 +726,9 @@
             document.getElementById("event-photo").value = ev ? (ev.photo || "") : "";
             document.getElementById("event-desc").value = ev ? (ev.desc || "") : "";
             document.getElementById("event-color").value = ev ? (ev.color || "#ffeaa7") : "#ffeaa7";
+            document.querySelectorAll("#event-color-swatches .color-swatch").forEach(sw => {
+                sw.classList.toggle("activo", sw.dataset.color === document.getElementById("event-color").value);
+            });
             document.getElementById("event-photo-file").value = "";
             eventPhotoBase64 = ev ? (ev.photo || "") : "";
 
@@ -695,6 +754,7 @@
             }
 
             if (esAdmin && esEdicion) {
+                await cargarAgrupacionesEnSelectorEvento();
                 const groupSelect = document.getElementById("event-group");
                 [...groupSelect.options].forEach(opt => opt.selected = ev ? ev.groups.includes(opt.value) : false);
             }

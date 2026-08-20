@@ -10,7 +10,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Formación – Sistema de Orquestas</title>
-    <link rel="stylesheet" href="estilos.css?v=7.0">
+    <link rel="stylesheet" href="estilos.css?v=9.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .back-link { display: inline-block; margin: 1.5rem 0; color: var(--color-primario); font-weight: 600; text-decoration: none; }
@@ -70,8 +70,22 @@
         #modal-recurso textarea.modal-input { min-height: 140px; resize: vertical; }
         #lector-contenido { white-space: pre-wrap; line-height: 1.7; font-size: 0.95rem; }
 
-        .formacion-layout { display: flex; flex-direction: column; gap: 24px; }
+        .formacion-layout { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+        .formacion-principal { flex: 1 1 480px; min-width: 0; }
+        .formacion-chat-col { flex: 0 1 340px; min-width: 280px; }
         .chat-ia-seccion-titulo { font-size: 1.1rem; font-weight: 800; color: var(--color-primario); margin-bottom: 0.6rem; }
+
+        @media (max-width: 768px) {
+            .formacion-principal, .formacion-chat-col { flex-basis: 100%; }
+            .grid-recursos { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+            .card-recurso { padding: 0.9rem; }
+            .card-recurso .icono-nombre { font-size: 0.9rem; }
+            .card-recurso p { font-size: 0.75rem; }
+            .niveles-tabs { gap: 0.4rem; margin-bottom: 1rem; }
+            .nivel-tab, .nivel-tab-add { padding: 0.45rem 0.85rem; font-size: 0.78rem; }
+            .chat-ia-embebido { height: 380px; }
+            .formacion-intro { font-size: 0.85rem; }
+        }
     </style>
 </head>
 <body>
@@ -90,10 +104,12 @@
         </p>
 
         <div class="formacion-layout">
-            <div class="niveles-tabs" id="niveles-tabs"></div>
-            <div class="grid-recursos" id="grid-recursos"></div>
+            <div class="formacion-principal">
+                <div class="niveles-tabs" id="niveles-tabs"></div>
+                <div class="grid-recursos" id="grid-recursos"></div>
+            </div>
 
-            <div>
+            <div class="formacion-chat-col">
                 <div class="chat-ia-seccion-titulo"><i class="fa-solid fa-comments"></i> Tutor Musical</div>
                 <div class="chat-ia-embebido" id="chat-ia-embebido"></div>
             </div>
@@ -155,8 +171,8 @@
 
     <script src="check-entorno.js"></script>
 
-    <script type="module" src="auth.js?v=7.0"></script>
-    <script type="module" src="ui-manager.js?v=7.0"></script>
+    <script type="module" src="auth.js?v=10.0"></script>
+    <script type="module" src="ui-manager.js?v=10.0"></script>
     <script type="module">
         import { db } from "./firebase-init.js";
         import {
