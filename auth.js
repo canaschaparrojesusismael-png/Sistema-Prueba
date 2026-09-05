@@ -92,6 +92,22 @@ window._showToast = function (mensaje, tipo = "info") {
   setTimeout(() => toast.remove(), 3500);
 };
 
+// Escapa texto antes de insertarlo con innerHTML. Cualquier campo que
+// escribe una persona (nombre, agrupación, título de una pieza, texto de
+// un flyer...) puede terminar mostrado en la pantalla de OTRA persona con
+// más privilegios (un admin viendo la lista de Miembros, por ejemplo). Sin
+// esto, alguien podría escribir algo como <img src=x onerror=...> en su
+// propio nombre y ese código se ejecutaría en el navegador de quien lo mire.
+window._escapeHtml = function (texto) {
+  if (texto === null || texto === undefined) return "";
+  return String(texto)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+};
+
 window.Auth = {
   auth,
   db,

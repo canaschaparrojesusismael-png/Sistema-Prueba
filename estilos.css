@@ -31,12 +31,14 @@
   --sidebar-width: 260px;
 }
 
-/* Modo oscuro (toggle) */
+/* Modo oscuro (toggle) — todo el texto en tonos casi blancos para que
+   se lea bien sobre los fondos oscuros (antes quedaba gris medio y en
+   algunas tarjetas no se distinguía). */
 body.dark-mode {
   --color-fondo: #1a1a2e;
   --color-blanco: #16213e;
-  --color-texto: #e0e0e0;
-  --color-texto-claro: #a0a0b0;
+  --color-texto: #f5f5f7;
+  --color-texto-claro: #c9c9d4;
   --color-secundario: #0f3460;
   --color-sombra: rgba(255, 255, 255, 0.05);
   --color-sombra-fuerte: rgba(255, 255, 255, 0.1);
@@ -645,7 +647,10 @@ img {
 .config-panel select.modal-input {
   width: 100%; padding: 0.55rem 0.7rem; border-radius: 8px;
   border: 1px solid rgba(255,255,255,0.25);
-  background: rgba(255,255,255,0.95); color: var(--color-texto);
+  /* Fondo siempre claro (no sigue el modo oscuro a propósito, para que el
+     texto que se escribe acá adentro sea siempre legible) — por eso el
+     color de texto va fijo y no con var(--color-texto). */
+  background: rgba(255,255,255,0.95); color: #1a1a2e;
   font-size: 0.9rem;
 }
 .config-valor-solo-lectura {
@@ -655,6 +660,39 @@ img {
   font-size: 0.9rem;
 }
 .config-btn-full { width: 100%; margin-top: 0.3rem; }
+
+/* ---- Cabecera de perfil (avatar + nombre + rol) dentro de Configuración ---- */
+.config-perfil-header {
+  display: flex; align-items: center; gap: 0.9rem;
+  margin-bottom: 1rem; padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+}
+.config-perfil-avatar {
+  width: 48px; height: 48px; flex-shrink: 0; border-radius: 50%;
+  background: rgba(255,255,255,0.18); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 1.2rem;
+  border: 2px solid rgba(255,255,255,0.35);
+}
+.config-perfil-header-datos { min-width: 0; }
+.config-perfil-header-nombre {
+  font-weight: 800; font-size: 1.05rem; color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.config-perfil-header-rol {
+  font-size: 0.8rem; color: rgba(255,255,255,0.75);
+  text-transform: uppercase; letter-spacing: 0.03em; margin-top: 0.15rem;
+}
+
+/* ---- Campos de contraseña con botón de mostrar/ocultar ---- */
+.config-password-wrap { display: flex; align-items: stretch; gap: 0.4rem; }
+.config-password-wrap .modal-input { flex: 1 1 auto; }
+.config-toggle-clave {
+  flex-shrink: 0; width: 38px; border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 8px; background: rgba(255,255,255,0.1); color: #fff;
+  cursor: pointer; transition: var(--transition-fast);
+}
+.config-toggle-clave:hover { background: rgba(255,255,255,0.2); }
 .config-toggle {
   display: flex; align-items: center; gap: 0.5rem;
   font-size: 0.88rem; color: rgba(255,255,255,0.9);
@@ -751,7 +789,7 @@ img {
 .crop-modal .modal-overlay { z-index: 10200; }
 .crop-modal .modal-close-btn { z-index: 10300; }
 .crop-content { max-width: 700px; }
-.crop-container { position: relative; display: inline-block; margin: 1rem 0; user-select: none; max-width: 100%; }
+.crop-container { position: relative; display: inline-block; margin: 1rem 0; user-select: none; max-width: 100%; touch-action: none; }
 #crop-source { display: block; max-width: 100%; max-height: 50vh; }
 
 .editor-tools {
@@ -840,6 +878,7 @@ img {
   border: 2px solid var(--color-primario);
   border-radius: 50%;
   z-index: 5;
+  touch-action: none;
 }
 /* Esquinas */
 .rh-nw { top: -6px;  left: -6px;  cursor: nwse-resize; }
@@ -852,6 +891,22 @@ img {
 .rh-e { right: -6px; top: 50%; margin-top: -6px; cursor: ew-resize; }
 .rh-w { left: -6px;  top: 50%; margin-top: -6px; cursor: ew-resize; }
 .resize-handle:hover { transform: scale(1.3); background: var(--color-primario); }
+/* CORREGIDO 2026-09-01: en pantalla táctil (dedo, no cursor de precisión) un
+   círculo de 12px es casi imposible de agarrar — las guías de Apple/Google
+   piden un mínimo de ~28-32px de objetivo táctil. Le damos a cada manija un
+   área invisible más grande (::after) SIN agrandar el punto visible, para no
+   tapar la imagen. También agranda el punto de recorte (.crop-area) mismo,
+   que en touch se arrastraba entero con el dedo y necesita el mismo margen. */
+.crop-area, .resize-handle { touch-action: none; }
+@media (pointer: coarse) {
+  .resize-handle::after {
+    content: "";
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 30px; height: 30px;
+    transform: translate(-50%, -50%);
+  }
+}
 
 .chk-evitar-estirar-label {
   display: flex; align-items: center; gap: 0.5rem;
@@ -867,6 +922,8 @@ img {
 .modal-content input[type="date"],
 .modal-content input[type="time"],
 .modal-content input[type="number"],
+.modal-content input[type="email"],
+.modal-content input[type="password"],
 .modal-content textarea,
 .modal-content select {
   width: 100%;
@@ -875,8 +932,10 @@ img {
   font-family: var(--font-family);
   border: 1.5px solid #e0e4f0;
   border-radius: 10px;
+  /* Fondo fijo (no sigue el modo oscuro) para que el texto escrito acá
+     siempre se lea, así que el color de texto también va fijo. */
   background: #fafbfd;
-  color: var(--color-texto);
+  color: #1a1a2e;
   transition: var(--transition-fast);
   outline: none;
   box-sizing: border-box;
@@ -1094,6 +1153,8 @@ img {
   flex: 1; padding: 0.55rem 0.8rem; border-radius: 999px; border: 1px solid #e0e4f0; font-size: 0.85rem;
 }
 .chat-ia-input-row input:focus { outline: none; border-color: var(--color-primario); }
+.chat-ia-input-row input:disabled,
+.chat-ia-input-row button:disabled { opacity: 0.55; cursor: not-allowed; }
 .chat-ia-input-row button {
   width: 38px; height: 38px; border-radius: 50%; border: none; flex-shrink: 0;
   background: linear-gradient(135deg, #c1121f, #1a1a1a); color: #fff; cursor: pointer;

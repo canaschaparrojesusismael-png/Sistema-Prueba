@@ -39,7 +39,7 @@
         .spinner::after { content:""; width:40px; height:40px; border:4px solid #e0e4f0; border-top-color:var(--color-primario); border-radius:50%; animation:spin 0.8s linear infinite; }
         @keyframes spin { to { transform:rotate(360deg); } }
         .top-controls { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:1rem; }
-        .breadcrumb { font-size:0.9rem; color:#666; margin-bottom:1rem; }
+        .breadcrumb { font-size:0.9rem; color:var(--color-texto-claro); margin-bottom:1rem; }
         .breadcrumb span { font-weight:600; color:var(--color-primario); }
 
         @media (max-width: 768px) {
@@ -116,7 +116,7 @@
         </div>
     </div>
 
-    <script src="check-entorno.js"></script>
+    <script src="check-entorno.js" defer></script>
 
     <script type="module" src="auth.js?v=10.0"></script>
     <script type="module" src="ui-manager.js?v=10.0"></script>
@@ -152,9 +152,11 @@
             s.innerHTML = '<option value="">Seleccione...</option>';
             opciones.forEach(op => { const o = document.createElement("option"); o.value = op; o.textContent = op; if(op === val) o.selected = true; s.appendChild(o); });
         };
-        // Siempre forzamos refresco (forzar:true) para que un núcleo recién creado
-        // en panel.html aparezca acá al toque, sin tener que "volver a ponerlo".
-        const cargarNucleosPorEstado = (estado) => cargarNucleosCompartido(estado, { forzar: true });
+        // El módulo compartido ya invalida su propia caché cuando alguien crea,
+        // renombra o elimina un núcleo (ver ubicaciones.js), así que acá NO hace
+        // falta forzar:true — usar la caché ahorra una consulta a Firestore cada
+        // vez que se abre un selector de estado, sin arriesgar datos viejos.
+        const cargarNucleosPorEstado = (estado) => cargarNucleosCompartido(estado);
         const toggleCampos = (rango, prefijo) => {
             const re = document.getElementById(`row-${prefijo}-estado`);
             const rn = document.getElementById(`row-${prefijo}-nucleo`);
@@ -253,7 +255,23 @@
                 else if(vistaActual === "nucleos") {
                     titulo.textContent = `Núcleos de ${currentContext.estado}`;
                     showSpinner();
-                    const nucleos = await cargarNucleosPorEstado(currentContext.estado);
+                    let nucleos;
+                    try {
+                        nucleos = await cargarNucleosPorEstado(currentContext.estado);
+                    } catch (err) {
+                        // Antes: no había try/catch acá, así que un fallo dejaba el
+                        // spinner girando para siempre — la página "cargaba" pero
+                        // quedaba completamente inutilizable, sin aviso ni forma de
+                        // reintentar sin recargar todo.
+                        console.error("No se pudieron cargar los núcleos:", err);
+                        vc.innerHTML = `<div style="text-align:center;padding:2.5rem 1rem;">
+                            <p style="color:var(--color-acento);font-weight:600;margin-bottom:1rem;">⚠️ No se pudieron cargar los núcleos de ${currentContext.estado}. Revisá tu conexión.</p>
+                            <button type="button" class="btn btn-submit" id="btn-reintentar-nucleos-miembros">🔄 Reintentar</button>
+                        </div>`;
+                        $("btn-reintentar-nucleos-miembros").addEventListener("click", renderizarPantalla);
+                        window._showToast?.("No se pudieron cargar los núcleos.", "error");
+                        return;
+                    }
                     vc.innerHTML = "";
 
                     // owner_supremo / director_nacional / director_regional (en su propio estado)
@@ -355,16 +373,17 @@
                         } else {
                             snap.docs.forEach(d => {
                                 const p = { id:d.id, ...d.data() };
+                                const nombreSeguro = window._escapeHtml(p.nombre);
                                 const card = document.createElement("div"); card.className = "persona-card";
                                 card.innerHTML = `
-                                    <div class="avatar">${p.nombre?.charAt(0)||"?"}</div>
-                                    <strong>${p.nombre||"Sin nombre"}</strong>
-                                    <p style="font-size:0.85rem;color:var(--color-texto-claro);">${p.email||""}</p>
-                                    <p style="font-size:0.85rem;font-weight:600;margin-top:0.5rem;">🎵 ${p.agrupacion||"N/A"}</p>
+                                    <div class="avatar">${window._escapeHtml(p.nombre?.charAt(0)) || "?"}</div>
+                                    <strong>${nombreSeguro || "Sin nombre"}</strong>
+                                    <p style="font-size:0.85rem;color:var(--color-texto-claro);">${window._escapeHtml(p.email)}</p>
+                                    <p style="font-size:0.85rem;font-weight:600;margin-top:0.5rem;">🎵 ${window._escapeHtml(p.agrupacion) || "N/A"}</p>
                                     <hr style="margin:10px 0;border:0;border-top:1px solid #e0e4f0;width:100%;">
                                 `;
-                                if(JERARQUIA[p.rango] <= 40) card.innerHTML += `<p style="font-size:0.8rem;color:var(--color-primario);">📍 ${p.nucleo||'Núcleo vacío'}</p>`;
-                                if(JERARQUIA[p.rango] <= 50) card.innerHTML += `<p style="font-size:0.75rem;color:var(--color-texto-claro);">${p.estado||'Estado vacío'}</p>`;
+                                if(JERARQUIA[p.rango] <= 40) card.innerHTML += `<p style="font-size:0.8rem;color:var(--color-primario);">📍 ${window._escapeHtml(p.nucleo) || 'Núcleo vacío'}</p>`;
+                                if(JERARQUIA[p.rango] <= 50) card.innerHTML += `<p style="font-size:0.75rem;color:var(--color-texto-claro);">${window._escapeHtml(p.estado) || 'Estado vacío'}</p>`;
 
                                 if(puedoModificar) {
                                     const btnEdit = document.createElement("button"); btnEdit.className = "btn-editar"; btnEdit.innerHTML = "✎";
@@ -465,7 +484,13 @@
                 try { llenarSelect("persona-nucleo", await cargarNucleosPorEstado(val)); }
                 catch(err) { window._showToast("Error cargando núcleos","error"); }
             });
-            $("editar-estado").addEventListener("change", async (e) => llenarSelect("editar-nucleo", await cargarNucleosPorEstado(e.target.value)));
+            $("editar-estado").addEventListener("change", async (e) => {
+                const sel = $("editar-nucleo");
+                sel.innerHTML = '<option value="">Cargando...</option>';
+                if (!e.target.value) { sel.innerHTML = '<option value="">Seleccione un estado primero...</option>'; return; }
+                try { llenarSelect("editar-nucleo", await cargarNucleosPorEstado(e.target.value)); }
+                catch (err) { sel.innerHTML = '<option value="">⚠️ Error — probá de nuevo</option>'; window._showToast?.("Error cargando núcleos", "error"); }
+            });
 
             // Guardar creación
             $("btn-guardar-persona").addEventListener("click", async () => {

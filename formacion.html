@@ -169,7 +169,7 @@
         </div>
     </div>
 
-    <script src="check-entorno.js"></script>
+    <script src="check-entorno.js" defer></script>
 
     <script type="module" src="auth.js?v=10.0"></script>
     <script type="module" src="ui-manager.js?v=10.0"></script>
@@ -204,7 +204,7 @@
                 const niveles = [...new Set(recursos.map(r => r.nivel))].filter(Boolean).sort();
                 const tabsEl = document.getElementById("niveles-tabs");
                 tabsEl.innerHTML = niveles.map(n =>
-                    `<button type="button" class="nivel-tab ${n === nivelActivo ? "activo" : ""}" data-nivel="${n}">${n}</button>`
+                    `<button type="button" class="nivel-tab ${n === nivelActivo ? "activo" : ""}" data-nivel="${window._escapeHtml(n)}">${window._escapeHtml(n)}</button>`
                 ).join("") + (puedeEditar ? `<button type="button" class="nivel-tab-add" id="btn-nuevo-nivel">+ Nivel</button>` : "");
 
                 tabsEl.querySelectorAll(".nivel-tab").forEach(btn => {
@@ -228,9 +228,9 @@
                         const card = document.createElement("div");
                         card.className = "card-recurso";
                         card.innerHTML = `
-                            <span class="tipo-badge">${r.tipo || "Recurso"}</span>
-                            <div class="icono-nombre"><span class="icono">${r.icono || "📄"}</span> ${r.nombre}</div>
-                            ${r.descripcion ? `<p>${r.descripcion}</p>` : ""}
+                            <span class="tipo-badge">${window._escapeHtml(r.tipo) || "Recurso"}</span>
+                            <div class="icono-nombre"><span class="icono">${window._escapeHtml(r.icono) || "📄"}</span> ${window._escapeHtml(r.nombre)}</div>
+                            ${r.descripcion ? `<p>${window._escapeHtml(r.descripcion)}</p>` : ""}
                             <span class="fuente">${r.url ? '<i class="fa-solid fa-up-right-from-square"></i> Abrir enlace' : (r.contenido ? '<i class="fa-solid fa-book-open"></i> Leer aquí' : "")}</span>
                             ${puedeEditar ? `<div class="card-recurso-admin-acciones">
                                 <button type="button" class="btn-editar-recurso" title="Editar"><i class="fa-solid fa-pen"></i></button>

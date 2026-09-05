@@ -229,6 +229,7 @@
             <!-- Solo visible para roles que pueden ver más de un núcleo -->
             <select id="nucleo-selector" style="display:none;"></select>
             <button type="button" id="btn-gestionar-nucleos" class="btn-config-mini" style="display:none;" title="Crear o cambiar de núcleo">⚙️ Núcleos</button>
+            <button type="button" id="btn-reintentar-nucleos" class="btn-config-mini" style="display:none;background:#c1121f;" title="Reintentar">🔄 Reintentar</button>
         </div>
         <div class="carrusel-flyers" id="flyers-section">
             <button class="flecha-btn" id="prev-flyer">&lt;</button>
@@ -265,31 +266,41 @@
         <div class="footer-contenido"><p>© 2026 Fundación Musical Simón Bolívar</p></div>
     </footer>
 
-    <!-- Modal flyers -->
+    <!-- Modal flyers: galería con miniaturas, con el mismo editor que el Carrusel Nacional -->
     <div class="modal-overlay" id="flyer-modal">
-        <div class="modal-content">
+        <div class="modal-content premium-modal carousel-manager">
             <button class="modal-close-btn" id="flyer-close-btn">&times;</button>
-            <h2>Gestión de Flyers</h2>
-            <div id="flyer-items"></div>
-            <button id="add-flyer-btn" class="btn btn-submit">Agregar Flyer</button>
-            <button id="save-flyers-btn" class="btn btn-submit">Guardar</button>
-            <button id="close-flyer-modal" class="btn btn-cerrar">Cerrar</button>
-        </div>
-    </div>
+            <h2><i class="fa-solid fa-images"></i> Gestión de Flyers</h2>
 
-    <!-- Modal crop (compartido) -->
-    <div class="modal-overlay" id="crop-modal" style="z-index:2500;">
-        <div class="modal-content" style="max-width:700px;">
-            <button class="modal-close-btn" id="crop-close-btn">&times;</button>
-            <h2>Recortar imagen</h2>
-            <div class="crop-container">
-                <img id="crop-source" />
-                <div id="crop-area" class="crop-area"><div class="resize-handle"></div></div>
+            <div id="flyer-empty-state" class="drop-zone">
+                <p>📌 Ingresá una imagen para comenzar</p>
+                <p style="font-size:0.8rem;color:#888;">Arrastrá un archivo o hacé clic acá</p>
             </div>
-            <canvas id="crop-canvas" style="display:none;"></canvas>
+
+            <div id="flyer-editor-body" style="display:none;">
+                <div class="preview-grande">
+                    <img id="flyer-preview-img" src="" alt="Vista previa"/>
+                </div>
+                <div class="editor-row">
+                    <label>Título:</label>
+                    <input type="text" id="flyer-preview-alt" class="form-control" placeholder="Título del flyer"/>
+                </div>
+                <div class="editor-row">
+                    <label>Texto:</label>
+                    <input type="text" id="flyer-preview-text" class="form-control" placeholder="Texto descriptivo (opcional)"/>
+                </div>
+                <div class="editor-row acciones-item">
+                    <button type="button" id="btn-editar-flyer" class="btn btn-submit"><i class="fa-solid fa-pen"></i> Editar imagen</button>
+                    <button type="button" id="btn-eliminar-flyer" class="btn btn-cerrar"><i class="fa-solid fa-trash"></i> Eliminar</button>
+                </div>
+            </div>
+
+            <input type="file" id="flyer-file-input" accept="image/*" style="display:none;"/>
+            <div class="thumb-strip" id="flyer-thumb-strip"></div>
+
             <div class="crop-buttons">
-                <button id="crop-confirm" class="btn btn-submit">Recortar</button>
-                <button id="crop-cancel" class="btn btn-cerrar">Cancelar</button>
+                <button id="save-flyers-btn" class="btn btn-submit">Guardar cambios</button>
+                <button id="close-flyer-modal" class="btn btn-cerrar">Cerrar</button>
             </div>
         </div>
     </div>
@@ -345,13 +356,14 @@
         </div>
     </div>
 
-    <script src="check-entorno.js"></script>
+    <script src="check-entorno.js" defer></script>
 
     <script type="module" src="auth.js?v=10.0"></script>
     <script type="module" src="ui-manager.js?v=10.0"></script>
     <script type="module">
         import { db } from "./firebase-init.js";
-        import { abrirSelectorUbicacion } from "./ubicaciones.js";
+        import { abrirSelectorUbicacion, cargarTodosLosNucleos } from "./ubicaciones.js";
+        import { abrirEditorImagen } from "./gestor-imagenes.js";
         import { 
             collection, onSnapshot, getDocs, doc, writeBatch, addDoc, updateDoc, deleteDoc, query, where
         } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
@@ -365,7 +377,7 @@
         let events = [];
         let currentMonth = new Date().getMonth();
         let currentYear = new Date().getFullYear();
-        let eventPhotoBase64 = "";
+        let eventPhotoUrl = "";
 
         // ====================== LÓGICA DE NÚCLEOS ======================
         // Roles que pueden VER y CAMBIAR entre núcleos (no están atados a uno solo)
@@ -386,16 +398,16 @@
 
         // Para roles que ven varios núcleos: arma un selector con los núcleos que
         // existan de verdad (usa el módulo compartido ubicaciones.js).
-        async function cargarSelectorNucleos() {
+        async function cargarSelectorNucleos({ forzar = false } = {}) {
             const selector = document.getElementById("nucleo-selector");
             const btnGestionar = document.getElementById("btn-gestionar-nucleos");
+            const btnReintentar = document.getElementById("btn-reintentar-nucleos");
+            btnReintentar.style.display = "none";
             if (!esMultiNucleo()) { selector.style.display = "none"; btnGestionar.style.display = "none"; return; }
             selector.style.display = "inline-block";
             btnGestionar.style.display = "inline-block";
             try {
-                const snap = await getDocs(collection(db, "nucleos"));
-                const nucleosDocs = snap.docs.map(d => ({ nombre: d.data().nombre, estado: d.data().estado }));
-                const lista = [...new Map(nucleosDocs.map(n => [n.nombre, n])).values()].sort((a, b) => a.nombre.localeCompare(b.nombre));
+                const lista = await cargarTodosLosNucleos({ forzar });
                 selector.innerHTML = lista.length
                     ? lista.map(n => `<option value="${n.nombre}">${n.nombre} (${n.estado})</option>`).join("")
                     : `<option value="">(sin núcleos todavía — usá "⚙️ Núcleos" para crear uno)</option>`;
@@ -403,7 +415,10 @@
                 selector.value = nucleoActivo || (lista.length ? lista[0].nombre : "");
             } catch (err) {
                 console.error("No se pudo cargar la lista de núcleos:", err);
-                selector.innerHTML = `<option value="">(error al cargar — revisá que las reglas estén publicadas)</option>`;
+                selector.innerHTML = `<option value="">⚠️ Error al cargar — tocá "🔄 Reintentar"</option>`;
+                window._showToast?.("No se pudieron cargar los núcleos. Revisá tu conexión.", "error");
+                btnReintentar.style.display = "inline-block";
+                btnReintentar.onclick = () => cargarSelectorNucleos({ forzar: true });
             }
             selector.onchange = () => { nucleoActivo = selector.value; cambiarNucleoActivo(); };
             btnGestionar.onclick = () => {
@@ -411,7 +426,7 @@
                     nucleoInicial: nucleoActivo,
                     onConfirmar: async ({ nucleo }) => {
                         nucleoActivo = nucleo;
-                        await cargarSelectorNucleos();
+                        await cargarSelectorNucleos({ forzar: true });
                         cambiarNucleoActivo();
                     },
                 });
@@ -453,78 +468,11 @@
             });
         }
 
-        // ====================== CROP MODAL (compartido) ======================
-        let cropCallback = null;
-        function abrirCropModal(file, callback) {
-            cropCallback = callback;
-            const modal = document.getElementById("crop-modal");
-            const img = document.getElementById("crop-source");
-            const canvas = document.getElementById("crop-canvas");
-            const ctx = canvas.getContext("2d");
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                img.src = e.target.result;
-                img.onload = function () {
-                    const cropArea = document.getElementById("crop-area");
-                    const naturalW = img.naturalWidth, naturalH = img.naturalHeight;
-                    const displayW = img.width, displayH = img.height;
-                    let cropW = Math.min(displayW, displayH * (16/9));
-                    let cropH = cropW * (9/16);
-                    let cropX = (displayW - cropW) / 2, cropY = (displayH - cropH) / 2;
-                    function update() {
-                        cropArea.style.left = cropX + "px";
-                        cropArea.style.top = cropY + "px";
-                        cropArea.style.width = cropW + "px";
-                        cropArea.style.height = cropH + "px";
-                    }
-                    update();
-                    let dragging = false, startX, startY, sLeft, sTop, sW, sH;
-                    const handle = cropArea.querySelector(".resize-handle");
-                    function down(e) {
-                        e.preventDefault(); dragging = true;
-                        startX = e.clientX; startY = e.clientY;
-                        sLeft = cropX; sTop = cropY; sW = cropW; sH = cropH;
-                        document.addEventListener("pointermove", move);
-                        document.addEventListener("pointerup", up);
-                    }
-                    function move(e) {
-                        if (!dragging) return;
-                        const dx = e.clientX - startX, dy = e.clientY - startY;
-                        if (e.target === handle) {
-                            let nW = sW + dx; if (nW < 50) nW = 50;
-                            if (cropX + nW > displayW) nW = displayW - cropX;
-                            if (cropY + nW*(9/16) > displayH) { nW = (displayH - cropY) * (16/9); }
-                            cropW = nW; cropH = cropW * (9/16);
-                        } else {
-                            cropX = Math.max(0, Math.min(sLeft + dx, displayW - cropW));
-                            cropY = Math.max(0, Math.min(sTop + dy, displayH - cropH));
-                        }
-                        update();
-                    }
-                    function up() { dragging = false; document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", up); }
-                    cropArea.addEventListener("pointerdown", down);
-                    handle.addEventListener("pointerdown", down);
-                    document.getElementById("crop-confirm").onclick = () => {
-                        const sx = cropX * (naturalW / displayW), sy = cropY * (naturalH / displayH);
-                        const sw = cropW * (naturalW / displayW), sh = cropH * (naturalH / displayH);
-                        canvas.width = sw; canvas.height = sh;
-                        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
-                        modal.style.display = "none";
-                        cropCallback(canvas.toDataURL("image/jpeg", 0.6));
-                    };
-                    document.getElementById("crop-cancel").onclick = () => { modal.style.display = "none"; cropCallback(null); };
-                    document.getElementById("crop-close-btn").onclick = () => { modal.style.display = "none"; cropCallback(null); };
-                    modal.style.display = "flex";
-                };
-            };
-            reader.readAsDataURL(file);
-        }
-
-        // ====================== FLYERS (Reactivo con Firestore, filtrado por núcleo) ======================
+        // ====================== FLYERS (galería con miniaturas, igual que el Carrusel Nacional) ======================
         function renderFlyers() {
             const container = document.getElementById("flyers-viewport");
             const visible = flyerData.slice(flyerStartIndex, flyerStartIndex + MAX_VISIBLE);
-            container.innerHTML = visible.map(f => `<img class="flyer-card" src="${f.url}" alt="${f.alt}" title="${f.text}" />`).join("");
+            container.innerHTML = visible.map(f => `<img class="flyer-card" src="${f.url}" alt="${window._escapeHtml(f.alt)}" title="${window._escapeHtml(f.text)}" />`).join("");
         }
         // La suscripción real (con filtro por núcleo) la arma cambiarNucleoActivo(),
         // más abajo en la inicialización — así cambia en vivo si el usuario elige otro núcleo.
@@ -540,64 +488,140 @@
             renderFlyers();
         });
 
-        // Modal de gestión de flyers
+        // Igual que el .flyer-card en pantalla (200x130 ≈ 20:13), para que lo
+        // que se recorta en el editor coincida con lo que se ve después.
+        const OPCIONES_EDITOR_FLYER = { carpeta: "flyers", aspecto: 20 / 13, ancho: 800, alto: 520 };
+        // AGREGADO 2026-09-01: antes la foto de evento usaba un editor propio y
+        // viejo (abrirCropModal) que guardaba la imagen recortada tal cual, a
+        // su resolución ORIGINAL, como texto base64 directo en el documento
+        // de Firestore — sin bajarle el tamaño. Firestore tiene un límite
+        // duro de 1 MB por documento: una foto de celular normal, recortada,
+        // ya en base64 supera ese límite fácilmente, así que guardar el
+        // evento fallaba (o el documento quedaba corrupto/incompleto) apenas
+        // alguien subía una foto de buena calidad. Ahora usa el mismo editor
+        // que ya usan el Carrusel y los Flyers: reduce la imagen a un tamaño
+        // fijo y la sube a Cloudinary, guardando solo la URL (unos 80
+        // caracteres) en el documento.
+        const OPCIONES_EDITOR_EVENTO = { carpeta: "eventos", aspecto: 16 / 9, ancho: 900, alto: 506 };
+
         let workingFlyers = [];
+        let flyerSeleccionActual = 0;
+        let flyerModalListo = false;
+
         function abrirFlyerModal() {
             if (!nucleoActivo) { window._showToast?.("Elegí un núcleo primero", "error"); return; }
-            workingFlyers = flyerData.map(f => ({ ...f })); // copia con id, url, alt, text, orden
+            workingFlyers = flyerData.map(f => ({ ...f }));
+            flyerSeleccionActual = 0;
             const modal = document.getElementById("flyer-modal");
-            const container = document.getElementById("flyer-items");
-            
-            function renderFlyerItems() {
-                container.innerHTML = workingFlyers.map((f, i) => `<div class="carousel-item-editor">
-                    <div class="editor-row"><label>URL o archivo:</label>
-                        <input type="text" class="f-url" value="${f.url}" data-index="${i}" />
-                        <span>o</span>
-                        <input type="file" class="f-file" accept="image/*" data-index="${i}" />
-                    </div>
-                    <div class="editor-row"><label>Alt:</label><input type="text" class="f-alt" value="${f.alt}" /></div>
-                    <div class="editor-row"><label>Texto:</label><input type="text" class="f-text" value="${f.text}" /></div>
-                    <button class="btn btn-cerrar eliminar-flyer" data-index="${i}">Eliminar</button>
-                </div>`).join("");
+            const fileInput = document.getElementById("flyer-file-input");
 
-                container.querySelectorAll(".f-file").forEach(inp => inp.addEventListener("change", function(e) {
-                    const idx = parseInt(this.dataset.index);
-                    const file = e.target.files[0];
-                    if (!file) return;
-                    abrirCropModal(file, (croppedDataUrl) => {
-                        if (croppedDataUrl) {
-                            const urlInput = container.querySelector(`.f-url[data-index="${idx}"]`);
-                            if (urlInput) urlInput.value = croppedDataUrl;
-                            if (workingFlyers[idx]) workingFlyers[idx].url = croppedDataUrl;
-                        }
-                        e.target.value = "";
-                    });
-                }));
-
-                container.querySelectorAll(".eliminar-flyer").forEach(btn => btn.addEventListener("click", () => {
-                    workingFlyers.splice(parseInt(btn.dataset.index), 1);
-                    renderFlyerItems();
-                }));
+            function sync() {
+                if (!workingFlyers[flyerSeleccionActual]) return;
+                workingFlyers[flyerSeleccionActual].alt = document.getElementById("flyer-preview-alt").value;
+                workingFlyers[flyerSeleccionActual].text = document.getElementById("flyer-preview-text").value;
             }
 
-            renderFlyerItems();
-            modal.style.display = "flex";
+            function renderThumbs() {
+                const strip = document.getElementById("flyer-thumb-strip");
+                strip.innerHTML = "";
+                workingFlyers.forEach((item, idx) => {
+                    const t = document.createElement("div");
+                    t.className = "thumb" + (idx === flyerSeleccionActual ? " selected" : "");
+                    t.innerHTML = item.url ? `<img src="${item.url}" alt=""/>` : `<div class="thumb-vacio"><i class="fa-solid fa-image"></i></div>`;
+                    t.addEventListener("click", () => { flyerSeleccionActual = idx; renderTodo(); });
+                    strip.appendChild(t);
+                });
+                const addBtn = document.createElement("div");
+                addBtn.className = "thumb thumb-add";
+                addBtn.innerHTML = `<i class="fa-solid fa-plus"></i>`;
+                addBtn.addEventListener("click", () => fileInput.click());
+                strip.appendChild(addBtn);
+            }
 
-            // Guardar cambios en Firestore (reemplaza todos)
-            document.getElementById("save-flyers-btn").onclick = async () => {
-                // Sincronizar los valores actuales del formulario
-                const filas = document.querySelectorAll(".carousel-item-editor");
-                workingFlyers = [...filas].map(fila => ({
-                    url: fila.querySelector(".f-url")?.value || "",
-                    alt: fila.querySelector(".f-alt")?.value || "",
-                    text: fila.querySelector(".f-text")?.value || ""
-                }));
-                await guardarFlyersEnFirestore(workingFlyers);
-                modal.style.display = "none";
+            function renderTodo() {
+                const empty = document.getElementById("flyer-empty-state");
+                const body = document.getElementById("flyer-editor-body");
+                const strip = document.getElementById("flyer-thumb-strip");
+                if (!workingFlyers.length) {
+                    empty.style.display = "block"; body.style.display = "none";
+                    strip.style.display = "none"; strip.innerHTML = "";
+                    return;
+                }
+                empty.style.display = "none"; body.style.display = "block"; strip.style.display = "flex";
+                if (flyerSeleccionActual >= workingFlyers.length) flyerSeleccionActual = workingFlyers.length - 1;
+                const item = workingFlyers[flyerSeleccionActual];
+                document.getElementById("flyer-preview-img").src = item.url || "";
+                document.getElementById("flyer-preview-alt").value = item.alt || "";
+                document.getElementById("flyer-preview-text").value = item.text || "";
+                renderThumbs();
+            }
+
+            const agregarFlyer = (url) => {
+                sync();
+                workingFlyers.push({ url, alt: "", text: "" });
+                flyerSeleccionActual = workingFlyers.length - 1;
+                renderTodo();
             };
-            document.getElementById("add-flyer-btn").onclick = () => { workingFlyers.push({ url: "", alt: "", text: "" }); renderFlyerItems(); };
-            document.getElementById("close-flyer-modal").onclick = () => modal.style.display = "none";
-            document.getElementById("flyer-close-btn").onclick = () => modal.style.display = "none";
+
+            if (!flyerModalListo) {
+                flyerModalListo = true;
+                fileInput.addEventListener("change", (e) => {
+                    const file = e.target.files[0];
+                    if (file) abrirEditorImagen(file, OPCIONES_EDITOR_FLYER, url => { if (url) agregarFlyer(url); });
+                    e.target.value = "";
+                });
+                const empty = document.getElementById("flyer-empty-state");
+                ["dragenter", "dragover", "dragleave", "drop"].forEach(ev =>
+                    empty.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); })
+                );
+                empty.addEventListener("dragenter", () => empty.classList.add("active"));
+                empty.addEventListener("dragleave", () => empty.classList.remove("active"));
+                empty.addEventListener("drop", e => {
+                    empty.classList.remove("active");
+                    const files = e.dataTransfer.files;
+                    if (files.length) abrirEditorImagen(files[0], OPCIONES_EDITOR_FLYER, url => { if (url) agregarFlyer(url); });
+                });
+                empty.addEventListener("click", () => fileInput.click());
+                document.getElementById("flyer-preview-alt").addEventListener("input", sync);
+                document.getElementById("flyer-preview-text").addEventListener("input", sync);
+                document.getElementById("btn-editar-flyer").addEventListener("click", () => {
+                    const item = workingFlyers[flyerSeleccionActual];
+                    if (!item || !item.url) return;
+                    fetch(item.url).then(r => r.blob()).then(blob => {
+                        const file = new File([blob], "flyer.jpg", { type: blob.type || "image/jpeg" });
+                        abrirEditorImagen(file, OPCIONES_EDITOR_FLYER, url => { if (url) { workingFlyers[flyerSeleccionActual].url = url; renderTodo(); } });
+                    });
+                });
+                document.getElementById("btn-eliminar-flyer").addEventListener("click", () => {
+                    workingFlyers.splice(flyerSeleccionActual, 1);
+                    flyerSeleccionActual = Math.max(0, flyerSeleccionActual - 1);
+                    renderTodo();
+                });
+                document.getElementById("close-flyer-modal").onclick = () => modal.style.display = "none";
+                document.getElementById("flyer-close-btn").onclick = () => modal.style.display = "none";
+            }
+
+            const saveBtn = document.getElementById("save-flyers-btn");
+            const saveBtnTextoOriginal = saveBtn.textContent;
+            saveBtn.onclick = async () => {
+                sync();
+                saveBtn.disabled = true;
+                saveBtn.textContent = "Guardando...";
+                try {
+                    await guardarFlyersEnFirestore(workingFlyers);
+                    window._showToast?.("Flyers guardados correctamente", "success");
+                    modal.style.display = "none";
+                } catch (err) {
+                    console.error("Error al guardar los flyers:", err);
+                    window._showToast?.("No se pudieron guardar los flyers. Mirá la consola (F12) para más detalle.", "error");
+                } finally {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = saveBtnTextoOriginal;
+                }
+            };
+
+            renderTodo();
+            modal.style.display = "flex";
         }
 
         async function guardarFlyersEnFirestore(nuevosDatos) {
@@ -608,7 +632,7 @@
             snapshot.docs.forEach(d => batch.delete(doc(db, "flyers", d.id)));
             nuevosDatos.forEach((item, idx) => {
                 const nuevoDoc = doc(flyersCol);
-                batch.set(nuevoDoc, { url: item.url, alt: item.alt, text: item.text, orden: idx, nucleo: nucleoActivo });
+                batch.set(nuevoDoc, { url: item.url, alt: item.alt || "", text: item.text || "", orden: idx, nucleo: nucleoActivo });
             });
             await batch.commit();
         }
@@ -730,7 +754,7 @@
                 sw.classList.toggle("activo", sw.dataset.color === document.getElementById("event-color").value);
             });
             document.getElementById("event-photo-file").value = "";
-            eventPhotoBase64 = ev ? (ev.photo || "") : "";
+            eventPhotoUrl = ev ? (ev.photo || "") : "";
 
             const photoRow = document.getElementById("event-photo-row");
             const colorRow = document.getElementById("event-color-row");
@@ -772,11 +796,11 @@
         document.getElementById("event-photo-file").addEventListener("change", function(e) {
             const file = e.target.files[0];
             if (!file) return;
-            abrirCropModal(file, (croppedDataUrl) => {
-                if (croppedDataUrl) {
-                    document.getElementById("event-photo").value = croppedDataUrl;
-                    eventPhotoBase64 = croppedDataUrl;
-                    document.getElementById("event-photo-preview").src = croppedDataUrl;
+            abrirEditorImagen(file, OPCIONES_EDITOR_EVENTO, (url) => {
+                if (url) {
+                    document.getElementById("event-photo").value = url;
+                    eventPhotoUrl = url;
+                    document.getElementById("event-photo-preview").src = url;
                     document.getElementById("event-photo-preview").style.display = "block";
                 }
                 e.target.value = "";
@@ -792,7 +816,7 @@
                 title: document.getElementById("event-title").value,
                 time: document.getElementById("event-time").value,
                 location: document.getElementById("event-location").value,
-                photo: eventPhotoBase64 || document.getElementById("event-photo").value,
+                photo: eventPhotoUrl || document.getElementById("event-photo").value,
                 desc: document.getElementById("event-desc").value,
                 color: document.getElementById("event-color").value,
                 groups: [...document.getElementById("event-group").selectedOptions].map(o => o.value),

@@ -3,7 +3,6 @@ import { collection, query, where, onSnapshot, doc, updateDoc, getDocs, getDoc }
 
 window.UI = {
   _configUnsub: null,
-  _livePanelUnsub: null,
 
   render() {
     const loginArea = document.getElementById("login-area");
@@ -28,7 +27,6 @@ window.UI = {
       if (puedeEditarCarruselNacional) this._renderBotonEngrane(carrusel);
       this._renderStatusBar(session);
       this._renderPreviewBanner();
-      if (window.Auth?.checkPermission && window.Auth.checkPermission("manage_users")) this._initLivePanel();
     }
   },
 
@@ -54,7 +52,7 @@ window.UI = {
   _renderAutenticado(session, container) {
     if (!container) return;
     const btnLogout = document.createElement("button"); btnLogout.className = "btn btn-nav btn-cerrar"; btnLogout.textContent = "Cerrar Sesión"; btnLogout.addEventListener("click", () => window.Auth.logout());
-    const rutasProtegidas = ["panel.html", "piezas.html", "formacion.html", "miembros.html", "agrupacion-detalle.html", "repertorio.html", "cambiar-clave.html"];
+    const rutasProtegidas = ["panel.html", "piezas.html", "formacion.html", "miembros.html", "repertorio.html"];
     const enPanel = rutasProtegidas.some(r => location.pathname.includes(r));
     const btnPanel = document.createElement("a"); btnPanel.href = enPanel ? "index.html" : "panel.html"; btnPanel.className = "btn btn-nav btn-panel"; btnPanel.textContent = enPanel ? "Volver al inicio" : "Acceder a la página";
 
@@ -138,17 +136,39 @@ window.UI = {
               </div>
             </div>
 
-            <div class="config-section">
-              <h3><i class="fa-solid fa-id-card"></i> Mi perfil</h3>
-              <div class="config-field">
-                <label>Nombre</label>
-                <div class="config-valor-solo-lectura" id="config-perfil-nombre">—</div>
+            <div class="config-section config-perfil-card">
+              <div class="config-perfil-header">
+                <div class="config-perfil-avatar" id="config-perfil-avatar">?</div>
+                <div class="config-perfil-header-datos">
+                  <div class="config-perfil-header-nombre" id="config-perfil-nombre">—</div>
+                  <div class="config-perfil-header-rol" id="config-perfil-rol">—</div>
+                </div>
               </div>
               <div class="config-field">
                 <label>Agrupación</label>
                 <div class="config-valor-solo-lectura" id="config-perfil-agrupacion">—</div>
               </div>
-              <p class="config-hint">Para cambiar estos datos, pedile a un director o administrador de mayor rango que lo haga desde Miembros.</p>
+              <p class="config-hint">Para cambiar tu nombre o agrupación, pedile a un director o administrador de mayor rango que lo haga desde Miembros.</p>
+            </div>
+
+            <div class="config-section">
+              <h3><i class="fa-solid fa-key"></i> Contraseña</h3>
+              <p class="config-hint">Cambiala cuando quieras — no es obligatorio hacerlo ahora.</p>
+              <div class="config-field">
+                <label>Nueva contraseña</label>
+                <div class="config-password-wrap">
+                  <input type="password" id="config-nueva-clave" class="modal-input" placeholder="Mínimo 8 caracteres" autocomplete="new-password" />
+                  <button type="button" class="config-toggle-clave" data-target="config-nueva-clave" title="Mostrar/ocultar contraseña"><i class="fa-solid fa-eye"></i></button>
+                </div>
+              </div>
+              <div class="config-field">
+                <label>Confirmar contraseña</label>
+                <div class="config-password-wrap">
+                  <input type="password" id="config-confirmar-clave" class="modal-input" placeholder="Repetí la contraseña" autocomplete="new-password" />
+                  <button type="button" class="config-toggle-clave" data-target="config-confirmar-clave" title="Mostrar/ocultar contraseña"><i class="fa-solid fa-eye"></i></button>
+                </div>
+              </div>
+              <button type="button" id="btn-guardar-clave" class="btn btn-submit config-btn-full"><i class="fa-solid fa-check"></i> Guardar contraseña</button>
             </div>
 
             <div class="config-section" id="config-preview-section" style="display:none;">
@@ -181,7 +201,6 @@ window.UI = {
             <div class="config-section">
               <h3><i class="fa-solid fa-sliders"></i> Preferencias</h3>
               <label class="config-toggle"><input type="checkbox" id="dark-mode-toggle-config"> Modo oscuro</label>
-              <label class="config-toggle"><input type="checkbox" id="config-notif-toggle"> Avisos por correo (próximamente)</label>
             </div>
 
           </div>
@@ -200,7 +219,51 @@ window.UI = {
         document.body.classList.add("dark-mode");
         document.getElementById("dark-mode-toggle-config").checked = true;
       }
-      document.getElementById("config-notif-toggle").disabled = true;
+      // ---- Mostrar / ocultar contraseña (los dos campos) ----
+      overlay.querySelectorAll(".config-toggle-clave").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const input = document.getElementById(btn.dataset.target);
+          const icon = btn.querySelector("i");
+          const mostrar = input.type === "password";
+          input.type = mostrar ? "text" : "password";
+          icon.className = mostrar ? "fa-solid fa-eye-slash" : "fa-solid fa-eye";
+        });
+      });
+
+      // ---- Cambiar contraseña (autoservicio, ya no es obligatorio) ----
+      document.getElementById("btn-guardar-clave").addEventListener("click", async () => {
+        const nueva = document.getElementById("config-nueva-clave");
+        const confirmar = document.getElementById("config-confirmar-clave");
+        const btn = document.getElementById("btn-guardar-clave");
+
+        if (nueva.value.length < 8) {
+          window._showToast?.("La contraseña debe tener al menos 8 caracteres.", "error");
+          return;
+        }
+        if (nueva.value !== confirmar.value) {
+          window._showToast?.("Las contraseñas no coinciden.", "error");
+          return;
+        }
+
+        const textoOriginal = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...';
+        try {
+          const res = await window.Auth.changePassword(nueva.value);
+          if (res.success) {
+            window._showToast?.("Contraseña actualizada correctamente.", "success");
+            nueva.value = "";
+            confirmar.value = "";
+          } else {
+            window._showToast?.(res.error || "No se pudo cambiar la contraseña.", "error");
+          }
+        } catch (err) {
+          window._showToast?.("Error: " + err.message, "error");
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = textoOriginal;
+        }
+      });
 
       // ---- Modo de prueba (solo Owner Supremo real) ----
       document.getElementById("btn-aplicar-preview").addEventListener("click", () => {
@@ -234,8 +297,11 @@ window.UI = {
     try {
       const snap = await getDoc(doc(db, "usuarios", real.uid));
       const data = snap.exists() ? snap.data() : {};
-      document.getElementById("config-perfil-nombre").textContent = data.nombre || real.nombre || "—";
+      const nombre = data.nombre || real.nombre || "—";
+      document.getElementById("config-perfil-nombre").textContent = nombre;
       document.getElementById("config-perfil-agrupacion").textContent = data.agrupacion || "— (sin asignar)";
+      document.getElementById("config-perfil-rol").textContent = window.Auth?.ROLES?.[real.role]?.label || real.role || "—";
+      document.getElementById("config-perfil-avatar").textContent = (nombre.charAt(0) || "?").toUpperCase();
     } catch (err) { console.error("No se pudo leer el perfil:", err); }
 
     // Banner de "estás viendo como X"
@@ -272,15 +338,6 @@ window.UI = {
       for (const [rol, count] of Object.entries(roles)) html += `<li>${rol}: ${count}</li>`;
       html += "</ul>";
       statsDiv.innerHTML = html;
-    });
-  },
-
-  _initLivePanel() {
-    if (this._livePanelUnsub) { this._livePanelUnsub(); this._livePanelUnsub = null; }
-    const q = query(collection(db, "usuarios"), where("isOnline", "==", true));
-    this._livePanelUnsub = onSnapshot(q, (snapshot) => {
-      const tbody = document.querySelector("#online-users-table tbody"); if (!tbody) return; tbody.innerHTML = "";
-      snapshot.forEach((doc) => { const u = doc.data(); const row = tbody.insertRow(); row.innerHTML = `<td><span class="online-dot"></span> ${u.nombre || "Sin nombre"}</td><td>${u.rango || "—"}</td><td>${u.agrupacion || "—"}</td>`; });
     });
   }
 };

@@ -129,15 +129,15 @@
         </div>
     </div>
 
-    <script src="check-entorno.js"></script>
+    <script src="check-entorno.js" defer></script>
 
     <script type="module" src="auth.js?v=10.0"></script>
     <script type="module" src="ui-manager.js?v=10.0"></script>
     <script type="module">
         import { db } from "./firebase-init.js";
-        import { abrirSelectorUbicacion } from "./ubicaciones.js";
+        import { abrirSelectorUbicacion, cargarTodosLosNucleos } from "./ubicaciones.js";
         import {
-            collection, query, where, onSnapshot, addDoc, deleteDoc, doc, getDocs
+            collection, query, where, onSnapshot, addDoc, deleteDoc, doc
         } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
 
         const ROLES_MULTI_NUCLEO = ["owner_supremo", "director_nacional", "director_regional"];
@@ -153,12 +153,12 @@
 
             function esMultiNucleo() { return ROLES_MULTI_NUCLEO.includes(session.role); }
 
-            async function cargarSelectorNucleos() {
+            async function cargarSelectorNucleos({ forzar = false } = {}) {
                 if (!esMultiNucleo()) return;
                 document.getElementById("barra-nucleo-piezas")?.remove();
+                const contenedor = document.querySelector(".back-link");
                 try {
-                    const snap = await getDocs(collection(db, "nucleos"));
-                    const lista = snap.docs.map(d => d.data().nombre).sort();
+                    const lista = (await cargarTodosLosNucleos({ forzar })).map(n => n.nombre);
                     if (!nucleoActivo && lista.length) nucleoActivo = lista[0];
                     const barra = document.createElement("div");
                     barra.id = "barra-nucleo-piezas";
@@ -168,7 +168,7 @@
                             ${lista.length ? lista.map(n => `<option value="${n}" ${n === nucleoActivo ? "selected" : ""}>${n}</option>`).join("") : `<option value="">(sin núcleos todavía)</option>`}
                         </select>
                         <button type="button" id="btn-gestionar-nucleos-piezas" class="btn-config-mini">⚙️ Núcleos</button>`;
-                    document.querySelector(".back-link").insertAdjacentElement("afterend", barra);
+                    contenedor.insertAdjacentElement("afterend", barra);
                     document.getElementById("nucleo-selector-piezas").addEventListener("change", (e) => {
                         nucleoActivo = e.target.value;
                         suscribirAgrupaciones();
@@ -178,12 +178,26 @@
                             nucleoInicial: nucleoActivo,
                             onConfirmar: async ({ nucleo }) => {
                                 nucleoActivo = nucleo;
-                                await cargarSelectorNucleos();
+                                await cargarSelectorNucleos({ forzar: true });
                                 suscribirAgrupaciones();
                             },
                         });
                     });
-                } catch (err) { console.error("No se pudo cargar la lista de núcleos:", err); }
+                } catch (err) {
+                    // Antes: esto solo mandaba un console.error y la barra de núcleo
+                    // desaparecía sin dejar rastro — la página "cargaba" pero no había
+                    // forma de elegir núcleo ni de saber por qué. Ahora se ve el error
+                    // y hay un botón para reintentar sin recargar toda la página.
+                    console.error("No se pudo cargar la lista de núcleos:", err);
+                    const barra = document.createElement("div");
+                    barra.id = "barra-nucleo-piezas";
+                    barra.style.cssText = "display:flex;align-items:center;gap:0.6rem;margin:0.5rem 0 1rem;color:var(--color-acento);font-weight:600;";
+                    barra.innerHTML = `<span>⚠️ No se pudieron cargar los núcleos (revisá tu conexión o permisos).</span>
+                        <button type="button" id="btn-reintentar-nucleos-piezas" class="btn-config-mini" style="background:#c1121f;">🔄 Reintentar</button>`;
+                    contenedor.insertAdjacentElement("afterend", barra);
+                    document.getElementById("btn-reintentar-nucleos-piezas").addEventListener("click", () => cargarSelectorNucleos({ forzar: true }));
+                    window._showToast?.("No se pudieron cargar los núcleos.", "error");
+                }
             }
 
             function suscribirAgrupaciones() {
@@ -213,7 +227,7 @@
                     btn.className = "btn-agrupacion";
                     btn.textContent = agrup.nombre;
                     btn.addEventListener("click", () => {
-                        window.location.href = `repertorio.html?agrup=${encodeURIComponent(agrup.nombre)}`;
+                        window.location.href = `repertorio.html?agrup=${encodeURIComponent(agrup.nombre)}&nucleo=${encodeURIComponent(agrup.nucleo || nucleoActivo)}`;
                     });
 
                     const btnEliminar = document.createElement("button");

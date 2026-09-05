@@ -3,12 +3,13 @@ import {
   collection, onSnapshot, getDocs, doc, writeBatch,
   query, where, limit, orderBy
 } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+import { subirACloudinary, abrirEditorImagen } from "./gestor-imagenes.js";
 
-// ==================== CONFIGURACIÓN DE CLOUDINARY ====================
-const CLOUD_NAME = "kjfgogu5";
-const UPLOAD_PRESET = "orquestas_unsigned";
-
-// ==================== CARRUSEL (IIFE con Cloudinary) ====================
+// ==================== CARRUSEL ====================
+// El editor de imagen (recortar/rotar/saturar) y la subida a Cloudinary ya
+// no viven acá — se movieron a gestor-imagenes.js para poder compartirlos
+// con Flyers en panel.html, en vez de tener el mismo código duplicado dos
+// veces con distinta calidad.
 (function () {
   const carruselCol = collection(db, "carrusel");
   let carouselData = [], currentIndex = 0, autoInterval;
@@ -36,15 +37,6 @@ const UPLOAD_PRESET = "orquestas_unsigned";
   function autoRotacionStart() { clearInterval(autoInterval); autoInterval = setInterval(siguienteSlide, 4000); }
   function autoRotacionStop() { clearInterval(autoInterval); }
 
-  // Subir a Cloudinary
-  async function subirACloudinary(blob, carpeta = "carrusel") {
-    const fd = new FormData(); fd.append("file", blob); fd.append("upload_preset", UPLOAD_PRESET); fd.append("folder", carpeta);
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, { method: "POST", body: fd });
-    if (!res.ok) throw new Error("Error al subir");
-    const data = await res.json();
-    return data.secure_url;
-  }
-
   // Migración inicial de localStorage
   async function migrarSiExiste() {
     const old = localStorage.getItem("sistemaOrquestas_carousel");
@@ -70,279 +62,6 @@ const UPLOAD_PRESET = "orquestas_unsigned";
     snap.docs.forEach(d => batch.delete(doc(db, "carrusel", d.id)));
     nuevos.forEach((item, i) => batch.set(doc(carruselCol), { url: item.url, alt: item.alt || "", text: item.text || "", orden: i }));
     await batch.commit();
-  }
-
-  // ==================== EDITOR DE IMAGEN (Recortar / Rotar / Saturar) ====================
-  let editorCallback = null;
-
-  function crearCropModal() {
-    if (document.getElementById("crop-modal")) return;
-    const div = document.createElement("div");
-    div.id = "crop-modal";
-    div.className = "modal-overlay crop-modal";
-    div.innerHTML = `
-      <div class="modal-content crop-content">
-        <button class="modal-close-btn" id="crop-close-btn">&times;</button>
-        <h2>Editor de Imagen</h2>
-        <div class="editor-tools">
-          <button type="button" class="tool-btn active" data-tool="recortar"><i class="fa-solid fa-crop"></i> Recortar</button>
-          <button type="button" class="tool-btn" data-tool="rotar"><i class="fa-solid fa-rotate"></i> Rotar</button>
-          <button type="button" class="tool-btn" data-tool="saturar"><i class="fa-solid fa-droplet"></i> Saturar</button>
-        </div>
-        <div class="crop-container">
-          <img id="crop-source"/>
-          <div id="crop-area" class="crop-area">
-            <div class="resize-handle rh-nw" data-pos="nw"></div>
-            <div class="resize-handle rh-n" data-pos="n"></div>
-            <div class="resize-handle rh-ne" data-pos="ne"></div>
-            <div class="resize-handle rh-e" data-pos="e"></div>
-            <div class="resize-handle rh-se" data-pos="se"></div>
-            <div class="resize-handle rh-s" data-pos="s"></div>
-            <div class="resize-handle rh-sw" data-pos="sw"></div>
-            <div class="resize-handle rh-w" data-pos="w"></div>
-          </div>
-        </div>
-        <div class="tool-panel" id="panel-rotar" style="display:none;">
-          <button type="button" id="rotar-btn" class="btn btn-submit"><i class="fa-solid fa-rotate-right"></i> Rotar 90°</button>
-        </div>
-        <div class="tool-panel" id="panel-saturar" style="display:none;">
-          <label for="sat-range">Saturación: <span id="sat-value">100</span>%</label>
-          <input type="range" id="sat-range" min="0" max="200" value="100"/>
-        </div>
-        <canvas id="crop-canvas" style="display:none;"></canvas>
-        <div class="crop-buttons">
-          <button id="crop-confirm" class="btn btn-submit">Aplicar y usar</button>
-          <button id="crop-cancel" class="btn btn-cerrar">Cancelar</button>
-        </div>
-      </div>`;
-    document.body.appendChild(div);
-
-    // Cambiar de herramienta (solo cambia qué panel se ve; todo se aplica junto al confirmar)
-    div.querySelectorAll(".tool-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        div.querySelectorAll(".tool-btn").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        div.querySelectorAll(".tool-panel").forEach(p => p.style.display = "none");
-        const panel = document.getElementById(`panel-${btn.dataset.tool}`);
-        if (panel) panel.style.display = "block";
-      });
-    });
-
-    // Saturación: previsualización en vivo con filtro CSS
-    const satRange = document.getElementById("sat-range");
-    const satValue = document.getElementById("sat-value");
-    satRange.addEventListener("input", () => {
-      satValue.textContent = satRange.value;
-      document.getElementById("crop-source").style.filter = `saturate(${satRange.value}%)`;
-    });
-
-    // Rotar: rota los píxeles reales de la imagen (no solo la vista) y reinicia el recorte
-    document.getElementById("rotar-btn").addEventListener("click", () => {
-      const img = document.getElementById("crop-source");
-      const tmp = document.createElement("canvas");
-      const w = img.naturalWidth, h = img.naturalHeight;
-      tmp.width = h; tmp.height = w;
-      const ctx = tmp.getContext("2d");
-      ctx.translate(h / 2, w / 2);
-      ctx.rotate(90 * Math.PI / 180);
-      ctx.drawImage(img, -w / 2, -h / 2);
-      img.src = tmp.toDataURL("image/jpeg", 0.92); // dispara onload y reinicia el área de recorte
-    });
-  }
-
-  function inicializarAreaDeRecorte() {
-    const img = document.getElementById("crop-source");
-    let area = document.getElementById("crop-area");
-    const dW = img.width, dH = img.height;
-    let cW = Math.min(dW, dH * 16 / 9), cH = cW * 9 / 16, cX = (dW - cW) / 2, cY = (dH - cH) / 2;
-    const MIN = 40;
-    const clamp = (v, min, max) => Math.max(min, Math.min(v, max));
-    const upd = () => { area.style.left = cX + "px"; area.style.top = cY + "px"; area.style.width = cW + "px"; area.style.height = cH + "px"; };
-
-    // Clonamos el área para eliminar TODOS los listeners de una rotación/carga anterior
-    // (si no, cada rotación iba dejando listeners de arrastre "fantasma" acumulados).
-    const nuevaArea = area.cloneNode(true);
-    area.parentNode.replaceChild(nuevaArea, area);
-    area = nuevaArea;
-    upd();
-
-    let modo = null; // "mover" | "redimensionar" — nunca los dos a la vez
-    let sx, sy, startBox, posHandle;
-
-    const moverMove = (ev) => {
-      const dx = ev.clientX - sx, dy = ev.clientY - sy;
-      cX = clamp(startBox.cX + dx, 0, dW - cW);
-      cY = clamp(startBox.cY + dy, 0, dH - cH);
-      upd();
-    };
-
-    // Redimensiona LIBRE: cada manija mueve SOLO su(s) propio(s) borde(s).
-    // Ya no fuerza relación de aspecto durante el arrastre (por eso antes,
-    // por ejemplo, arrastrar el borde de abajo también movía el cuadro para
-    // los costados — quedó corregido). El ajuste a 16:9 final se hace al
-    // exportar, sin distorsionar la imagen (ver más abajo).
-    const redimensionarMove = (ev) => {
-      const dx = ev.clientX - sx, dy = ev.clientY - sy;
-      const { cX: x0, cY: y0, cW: w0, cH: h0 } = startBox;
-      let izq = x0, arr = y0, der = x0 + w0, aba = y0 + h0;
-
-      if (posHandle.includes("w")) izq = clamp(x0 + dx, 0, der - MIN);
-      if (posHandle.includes("e")) der = clamp(x0 + w0 + dx, izq + MIN, dW);
-      if (posHandle.includes("n")) arr = clamp(y0 + dy, 0, aba - MIN);
-      if (posHandle.includes("s")) aba = clamp(y0 + h0 + dy, arr + MIN, dH);
-
-      cX = izq; cY = arr; cW = der - izq; cH = aba - arr;
-      upd();
-    };
-
-    const onMove = (ev) => {
-      if (modo === "mover") moverMove(ev);
-      else if (modo === "redimensionar") redimensionarMove(ev);
-    };
-    const onUp = () => {
-      modo = null;
-      document.removeEventListener("pointermove", onMove);
-      document.removeEventListener("pointerup", onUp);
-    };
-
-    // Cada manija gana siempre: detiene la propagación para que el mismo
-    // clic no dispare también el "mover" del área contenedora.
-    area.querySelectorAll(".resize-handle").forEach(handle => {
-      handle.addEventListener("pointerdown", (ev) => {
-        ev.preventDefault();
-        ev.stopPropagation();
-        modo = "redimensionar";
-        posHandle = handle.dataset.pos;
-        sx = ev.clientX; sy = ev.clientY;
-        startBox = { cX, cY, cW, cH };
-        document.addEventListener("pointermove", onMove);
-        document.addEventListener("pointerup", onUp);
-      });
-    });
-
-    // El área solo mueve el cuadro completo si el clic no empezó en una manija.
-    area.addEventListener("pointerdown", (ev) => {
-      if (ev.target.classList.contains("resize-handle")) return;
-      ev.preventDefault();
-      modo = "mover";
-      sx = ev.clientX; sy = ev.clientY;
-      startBox = { cX, cY };
-      document.addEventListener("pointermove", onMove);
-      document.addEventListener("pointerup", onUp);
-    });
-
-    // Guardamos los valores actuales para leerlos al confirmar
-    area._getCropBox = () => ({ cX, cY, cW, cH, dW, dH });
-    // Limpieza explícita por si el modal se cierra a mitad de un arrastre
-    area._destruir = () => onUp();
-  }
-
-  // Aplica saturación píxel por píxel sobre un ImageData. Es más código que
-  // usar ctx.filter, pero garantiza el mismo resultado en TODOS los navegadores
-  // (ctx.filter + drawImage no se comporta igual en Safari/versiones viejas).
-  function aplicarSaturacionManual(imageData, satPercent) {
-    const factor = satPercent / 100; // 1 = normal, 0 = blanco y negro, >1 = más saturado
-    const d = imageData.data;
-    for (let i = 0; i < d.length; i += 4) {
-      const r = d[i], g = d[i + 1], b = d[i + 2];
-      const gris = 0.2989 * r + 0.5870 * g + 0.1140 * b;
-      d[i] = Math.max(0, Math.min(255, gris + (r - gris) * factor));
-      d[i + 1] = Math.max(0, Math.min(255, gris + (g - gris) * factor));
-      d[i + 2] = Math.max(0, Math.min(255, gris + (b - gris) * factor));
-    }
-    return imageData;
-  }
-
-  function abrirEditorImagen(file, cb) {
-    editorCallback = cb;
-    const modal = document.getElementById("crop-modal");
-    const img = document.getElementById("crop-source");
-    const confirmBtn = document.getElementById("crop-confirm");
-    const origText = confirmBtn.textContent;
-
-    // Reset de herramientas y estado visual
-    modal.querySelectorAll(".tool-btn").forEach((b, i) => b.classList.toggle("active", i === 0));
-    modal.querySelectorAll(".tool-panel").forEach(p => p.style.display = "none");
-    const satRange = document.getElementById("sat-range");
-    satRange.value = 100;
-    document.getElementById("sat-value").textContent = "100";
-    img.style.filter = "saturate(100%)";
-
-    img.onload = () => { inicializarAreaDeRecorte(); };
-
-    const reader = new FileReader();
-    reader.onload = e => { img.src = e.target.result; };
-    reader.readAsDataURL(file);
-
-    confirmBtn.onclick = async () => {
-      confirmBtn.disabled = true; confirmBtn.textContent = "⏳ Subiendo...";
-      try {
-        const area = document.getElementById("crop-area");
-        const box = area._getCropBox ? area._getCropBox() : null;
-        const canvas = document.getElementById("crop-canvas");
-        const ctx = canvas.getContext("2d");
-        const escala = img.naturalWidth / img.width;
-        const finalW = 960, finalH = 540; // 16:9
-        canvas.width = finalW; canvas.height = finalH; // esto también limpia el canvas
-        ctx.clearRect(0, 0, finalW, finalH); // explícito, por claridad y por si el canvas se reutiliza
-        ctx.filter = "none"; // sin filtro CSS: la saturación se aplica manualmente abajo
-
-        let usaTransparencia = false;
-
-        if (box) {
-          const anchoReal = box.cW * escala, altoReal = box.cH * escala;
-          const aspectCanvas = finalW / finalH;
-          const aspectRecorte = box.cW / box.cH;
-          // Ahora se puede recortar libre desde cualquier lado, así que el recorte
-          // no siempre termina siendo exactamente 16:9. Cuando no lo es, la imagen
-          // se "encaja" completa sin deformarla (nunca se estira ni se recorta de
-          // más), con margen transparente alrededor en vez de negro o estiramiento.
-          const necesitaAjuste = Math.abs(aspectRecorte - aspectCanvas) > 0.02;
-          if (necesitaAjuste) {
-            usaTransparencia = true;
-            const escalaFit = Math.min(finalW / anchoReal, finalH / altoReal);
-            const wDibujo = anchoReal * escalaFit, hDibujo = altoReal * escalaFit;
-            const offX = (finalW - wDibujo) / 2, offY = (finalH - hDibujo) / 2;
-            ctx.drawImage(img, box.cX * escala, box.cY * escala, anchoReal, altoReal, offX, offY, wDibujo, hDibujo);
-          } else {
-            ctx.drawImage(img, box.cX * escala, box.cY * escala, box.cW * escala, box.cH * escala, 0, 0, finalW, finalH);
-          }
-        } else {
-          ctx.drawImage(img, 0, 0, finalW, finalH);
-        }
-        const sat = Number(satRange.value);
-        if (sat !== 100) {
-          const datos = ctx.getImageData(0, 0, finalW, finalH);
-          aplicarSaturacionManual(datos, sat);
-          ctx.putImageData(datos, 0, 0);
-        }
-        const blob = await new Promise(res =>
-          canvas.toBlob(res, usaTransparencia ? "image/png" : "image/jpeg", usaTransparencia ? undefined : 0.85)
-        );
-        if (!blob) throw new Error("No se pudo generar la imagen");
-        const url = await subirACloudinary(blob, "carrusel");
-        modal.style.display = "none";
-        editorCallback(url);
-      } catch (err) {
-        console.error(err);
-        window._showToast?.("No se pudo procesar la imagen: " + err.message, "error");
-        document.getElementById("crop-area")._destruir?.();
-        modal.style.display = "none";
-        editorCallback(null);
-      } finally {
-        confirmBtn.disabled = false; confirmBtn.textContent = origText;
-      }
-    };
-    document.getElementById("crop-cancel").onclick = () => {
-      document.getElementById("crop-area")._destruir?.();
-      modal.style.display = "none"; editorCallback(null);
-    };
-    document.getElementById("crop-close-btn").onclick = () => {
-      document.getElementById("crop-area")._destruir?.();
-      modal.style.display = "none"; editorCallback(null);
-    };
-
-    modal.style.display = "flex";
   }
 
   // ==================== MENÚ "GESTIÓN DEL CARRUSEL" (galería con miniaturas) ====================
@@ -392,12 +111,13 @@ const UPLOAD_PRESET = "orquestas_unsigned";
         </div>
       </div>`;
     document.body.appendChild(modal);
-    crearCropModal();
+
+    const OPCIONES_EDITOR = { carpeta: "carrusel", aspecto: 16 / 9, ancho: 960, alto: 540 };
 
     const fileInput = document.getElementById("carousel-file-input");
     fileInput.addEventListener("change", (e) => {
       const file = e.target.files[0];
-      if (file) abrirEditorImagen(file, url => { if (url) window._agregarImagenAlCarrusel(url); });
+      if (file) abrirEditorImagen(file, OPCIONES_EDITOR, url => { if (url) window._agregarImagenAlCarrusel(url); });
       e.target.value = "";
     });
 
@@ -458,7 +178,7 @@ const UPLOAD_PRESET = "orquestas_unsigned";
     document.getElementById("carousel-empty-state").addEventListener("drop", e => {
       document.getElementById("carousel-empty-state").classList.remove("active");
       const files = e.dataTransfer.files;
-      if (files.length) abrirEditorImagen(files[0], url => { if (url) window._agregarImagenAlCarrusel(url); });
+      if (files.length) abrirEditorImagen(files[0], OPCIONES_EDITOR, url => { if (url) window._agregarImagenAlCarrusel(url); });
     });
     document.getElementById("carousel-empty-state").addEventListener("click", () => fileInput.click());
 
@@ -470,7 +190,7 @@ const UPLOAD_PRESET = "orquestas_unsigned";
       if (!item || !item.url) return;
       fetch(item.url).then(r => r.blob()).then(blob => {
         const file = new File([blob], "imagen.jpg", { type: blob.type || "image/jpeg" });
-        abrirEditorImagen(file, url => { if (url) { working[seleccionActual].url = url; renderTodo(); } });
+        abrirEditorImagen(file, OPCIONES_EDITOR, url => { if (url) { working[seleccionActual].url = url; renderTodo(); } });
       });
     });
 

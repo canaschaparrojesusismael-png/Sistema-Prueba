@@ -39,7 +39,7 @@
         </section>
     </main>
 
-    <script src="check-entorno.js"></script>
+    <script src="check-entorno.js" defer></script>
 
     <script type="module" src="auth.js?v=10.0"></script>
     <script>
@@ -67,11 +67,10 @@
                 const resultado = await window.Auth.login(username, password, remember);
 
                 if (resultado.success) {
-                    if (resultado.requiresPasswordChange) {
-                        window.location.href = "cambiar-clave.html";
-                    } else {
-                        window.location.href = "index.html";
-                    }
+                    // El cambio de contraseña ya NO es obligatorio al iniciar sesión:
+                    // cualquiera puede cambiarla cuando quiera desde Configuración
+                    // (el engranaje junto a su usuario, arriba a la derecha).
+                    window.location.href = "index.html";
                 } else {
                     alert("Error al iniciar sesión: " + (resultado.error || "Error desconocido"));
                 }
