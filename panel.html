@@ -12,14 +12,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel – Sistema de Orquestas</title>
-        <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=16.0">
-    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=16.0">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=16.0">
+        <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=17.0">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=17.0">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=17.0">
     <meta property="og:title" content="Panel — Sistema de Orquestas">
     <meta property="og:description" content="Flyers, calendario y accesos rápidos del núcleo.">
     <meta property="og:type" content="website">
     <meta property="og:image" content="icon-512.png">
-<link rel="stylesheet" href="estilos.css?v=16.0">
+<link rel="stylesheet" href="estilos.css?v=17.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* ---- Flyers: franja completa, pegada arriba, de punta a punta ---- */
@@ -447,8 +447,8 @@
 
     <script src="check-entorno.js" defer></script>
 
-    <script type="module" src="auth.js?v=16.0"></script>
-    <script type="module" src="ui-manager.js?v=16.0"></script>
+    <script type="module" src="auth.js?v=17.0"></script>
+    <script type="module" src="ui-manager.js?v=17.0"></script>
     <script type="module">
         import { db } from "./firebase-init.js";
         import { abrirSelectorUbicacion, cargarTodosLosNucleos } from "./ubicaciones.js";
@@ -618,7 +618,7 @@
                     <div class="loader-puntos sobre-claro centrado"><span></span><span></span><span></span></div>
                     <img class="flyer-card" src="${window._escapeHtml(f.url)}" alt="Flyer" loading="lazy" tabindex="0"
                          onload="this.previousElementSibling.style.display='none'"
-                         onerror="this.previousElementSibling.style.display='none'" />
+                         onerror="this.style.display='none'; this.previousElementSibling.innerHTML='<span style=&quot;font-size:1.3rem;&quot;>🖼️</span><p style=&quot;font-size:0.7rem;color:#888;margin:0.3rem 0 0;&quot;>No se pudo cargar</p>'; this.previousElementSibling.style.flexDirection='column';" />
                 </div>`;
             }).join("");
             // v3.0 (G-15): click (o Enter con teclado) abre el flyer a

@@ -12,17 +12,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Repertorio – Sistema de Orquestas</title>
-        <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=16.0">
-    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=16.0">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=16.0">
+        <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=17.0">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=17.0">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=17.0">
     <meta property="og:title" content="Repertorio — Sistema de Orquestas">
     <meta property="og:description" content="Piezas, partituras e instrumentación de la agrupación.">
     <meta property="og:type" content="website">
     <meta property="og:image" content="icon-512.png">
-<link rel="stylesheet" href="estilos.css?v=16.0">
+<link rel="stylesheet" href="estilos.css?v=17.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .back-link { display: inline-block; margin: 1.5rem 0; color: var(--color-primario); font-weight: 600; text-decoration: none; }
+        .back-link { display: inline-block; margin: 1.5rem 0; color: var(--color-primario); font-weight: 600; text-decoration: none; align-self: flex-start; width: fit-content; text-align: left; }
         .back-link:hover { text-decoration: underline; }
 
         .pieza-card {
@@ -121,8 +121,8 @@
 
     <script src="check-entorno.js" defer></script>
 
-    <script type="module" src="auth.js?v=16.0"></script>
-    <script type="module" src="ui-manager.js?v=16.0"></script>
+    <script type="module" src="auth.js?v=17.0"></script>
+    <script type="module" src="ui-manager.js?v=17.0"></script>
     <script type="module">
         import { db } from "./firebase-init.js";
         import { collection, query, where, onSnapshot, addDoc, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";

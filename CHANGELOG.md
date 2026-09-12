@@ -242,5 +242,46 @@ puntual, decime cuál y lo encaro directamente ahí.
   probar con recarga forzada (Ctrl+Shift+R / Cmd+Shift+R) después de
   desplegar este zip para descartarlo del todo.
 
+## v3.5 — El bug grande: media app entera de botones sin estilo (2026-09)
+
+- **Corregido — EL BUG MÁS GRANDE ENCONTRADO HASTA AHORA:** `.btn`,
+  `.btn-submit` y `.btn-cerrar` solo tenían estilo definido dentro de
+  `.modal-content ...` (es decir, únicamente para botones DENTRO de un
+  modal). Pero estas mismas clases se usan en ~30 botones que están en la
+  página, no en un modal: "+ Nuevo Registro" y "Exportar CSV" en Miembros,
+  "+ Nueva pieza" en Repertorio, entre otros. Todos esos botones se veían
+  con el estilo crudo del navegador (gris, sin bordes redondeados, sin
+  sombra) — exactamente lo que se veía en las capturas que mandaste. Se
+  generalizaron las reglas para que apliquen en cualquier parte del sitio,
+  estén o no dentro de un modal.
+- **Corregido — "← Volver" se veía centrado:** en Miembros, Piezas,
+  Formación, Repertorio y el detalle de un recurso, el link para volver
+  atrás quedaba centrado horizontalmente en vez de pegado a la izquierda
+  como el resto del contenido de la página. Se le puso alineación
+  explícita en los 5 archivos, para que no dependa de cómo se comporte el
+  contenedor flex que lo rodea.
+- **Corregido — los puntitos de posición del carrusel** (los que muestran
+  en qué imagen de 14 estás, abajo del carrusel) **solo se veían en modo
+  oscuro:** usaban un blanco translúcido fijo, que se pierde contra el
+  fondo casi blanco del modo claro. Ahora usan los mismos colores del
+  sistema de diseño que ya funcionan en los dos modos, con una transición
+  más suave y una reacción al pasar el mouse (antes no tenían ninguna).
+- **Ajustado — el giro del botón ⚙️/✏️ para configurar carrusel/flyers/
+  calendario:** se había hecho más notorio en la ronda anterior (90° →
+  180°), pero el pedido explícito fue lo contrario: un giro chico (12°,
+  antes 90-180°) con una curva de easing más lenta, para que se sienta
+  como una animación real y no como un salto brusco.
+- **Corregido — un flyer con una URL de imagen rota mostraba el ícono
+  nativo del navegador ("imagen rota") en vez de algo prolijo:** el manejo
+  de error solo escondía el esqueleto de carga sin reemplazar la imagen
+  rota. Ahora, si una imagen falla, se oculta el `<img>` roto y el
+  esqueleto pasa a mostrar un ícono + "No se pudo cargar" en su lugar.
+
+**Nota sobre el giro del botón:** si en tu prueba anterior viste 90° "de
+golpe" en vez de la versión más suave que se había mandado, es una señal
+más de que el navegador puede estar sirviendo una versión vieja desde
+caché — conviene recargar forzado (Ctrl+Shift+R / Cmd+Shift+R) después de
+subir este zip antes de evaluar si algo sigue mal.
+
 ## v2.x y anteriores
 Ver comentarios `CORREGIDO`/`AGREGADO` fechados dentro de cada archivo — quedaron intactos, este changelog empieza a partir de v3.0.

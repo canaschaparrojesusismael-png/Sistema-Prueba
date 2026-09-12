@@ -11,7 +11,7 @@
    compartido, hay que subir este mismo número en TODOS los archivos que
    lo referencian (búsqueda y reemplazo de "?v=14.0" por la versión
    siguiente alcanza, ya que es idéntico en todos lados).
-   (Hoy: 16.0)
+   (Hoy: 17.0)
    ================================================================ */
 /* v3.2: antes esto era 'Segoe UI', system-ui... — la fuente por defecto de
    Windows, sin ninguna identidad propia (en Mac/Linux/celular cada quien
@@ -500,12 +500,15 @@ img {
   cursor: pointer;
   z-index: 10;
   box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s;
+  transition: transform 0.45s ease, filter 0.2s;
 }
 .carousel-edit-btn:hover,
 .carousel-edit-btn:focus,
 .carousel-edit-btn:active {
-  transform: rotate(180deg) scale(1.08);
+  /* v3.4: antes esto giraba 90°/180° de golpe -- se sentía como un salto,
+     no una animación. Un giro chico (12°) con una curva de easing más
+     lenta se nota como movimiento real en vez de un salto instantáneo. */
+  transform: rotate(12deg) scale(1.05);
   filter: brightness(1.15);
   outline: none;
 }
@@ -1120,8 +1123,16 @@ img {
   box-shadow: 0 0 0 3px rgba(65,56,169,0.1);
   background: #fff;
 }
-.modal-content button,
-.modal-content .btn {
+/* v3.4: BUG grande encontrado — estas reglas de .btn/.btn-submit/.btn-cerrar
+   estaban escritas SOLO para adentro de .modal-content. Pero esas mismas
+   clases se usan en ~30 botones de página (no de modal): "+ Nuevo Registro"
+   y "Exportar CSV" en Miembros, "+Nueva pieza" en Repertorio, etc. Esos
+   botones no heredaban ningún estilo y se veían con el botón crudo del
+   navegador (gris, sin redondeo, sin sombra) — exactamente lo que se veía
+   en las capturas. Se generalizan para que apliquen en cualquier lado,
+   estén o no dentro de un modal. */
+button.btn,
+.btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1134,30 +1145,31 @@ img {
   letter-spacing: 0.02em;
   gap: 0.4rem;
   border: none;
+  font-family: var(--font-family);
 }
-.modal-content .btn-submit,
-.modal-content button.btn-submit {
+.btn-submit,
+button.btn-submit {
   background: #0a0a0a;
   color: #ffffff;
   box-shadow: 0 6px 18px rgba(0,0,0,0.4);
 }
-.modal-content .btn-submit:hover {
+.btn-submit:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 24px rgba(0,0,0,0.5);
   background: #000000;
   filter: brightness(1.2);
 }
-.modal-content .btn-submit:disabled {
+.btn-submit:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
 }
-.modal-content .btn-cerrar,
-.modal-content button.btn-cerrar {
+.btn-cerrar,
+button.btn-cerrar {
   background: var(--color-acento);
   color: white;
 }
-.modal-content .btn-cerrar:hover { background: #d40404; }
+.btn-cerrar:hover { background: #d40404; }
 .modal-content label {
   font-size: 0.8rem;
   font-weight: 600;
@@ -1494,9 +1506,18 @@ body, .carrusel-caja, .modal-content, .config-panel, header.barra-superior {
 }
 .carrusel-posicion button {
   width: 9px; height: 9px; border-radius: 50%; border: none; padding: 0;
-  background: rgba(255,255,255,0.4); cursor: pointer; transition: var(--transition-fast);
+  /* v3.4: antes era rgba(255,255,255,0.4) -- un blanco translúcido que
+     solo se distingue sobre el fondo oscuro de modo oscuro; en modo
+     claro (fondo casi blanco) era prácticamente invisible. Con
+     --color-borde (ya corregido en v3.3 para valer en ambos modos) se ve
+     en los dos. */
+  background: var(--color-borde);
+  cursor: pointer;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.25s ease, transform 0.2s ease;
 }
-.carrusel-posicion button.activo { background: #fff; width: 22px; border-radius: 5px; }
+.carrusel-posicion button:hover { background: var(--color-primario-claro); transform: scale(1.2); }
+.carrusel-posicion button.activo { background: var(--color-primario); width: 22px; border-radius: 5px; }
+.carrusel-posicion button.activo:hover { transform: none; }
 
 /* ================================================================
    v3.0 — BREADCRUMB (P-18)
