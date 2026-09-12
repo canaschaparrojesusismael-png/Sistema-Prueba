@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<script>if(localStorage.getItem("darkMode")==="true")document.documentElement.classList.add("dark-mode");</script>
+
 <script>
   if (!sessionStorage.getItem("sistemaOrquestas_session") && !localStorage.getItem("sistemaOrquestas_session")) {
     window.location.href = "login.html";
@@ -10,7 +12,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Piezas – Sistema de Orquestas</title>
-    <link rel="stylesheet" href="estilos.css?v=9.0">
+        <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=16.0">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=16.0">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=16.0">
+    <meta property="og:title" content="Piezas y Agrupaciones — Sistema de Orquestas">
+    <meta property="og:description" content="Agrupaciones y piezas del repertorio.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="icon-512.png">
+<link rel="stylesheet" href="estilos.css?v=16.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .back-link {
@@ -131,13 +140,13 @@
 
     <script src="check-entorno.js" defer></script>
 
-    <script type="module" src="auth.js?v=10.0"></script>
-    <script type="module" src="ui-manager.js?v=10.0"></script>
+    <script type="module" src="auth.js?v=16.0"></script>
+    <script type="module" src="ui-manager.js?v=16.0"></script>
     <script type="module">
         import { db } from "./firebase-init.js";
         import { abrirSelectorUbicacion, cargarTodosLosNucleos } from "./ubicaciones.js";
         import {
-            collection, query, where, onSnapshot, addDoc, deleteDoc, doc
+            collection, query, where, onSnapshot, addDoc, deleteDoc, doc, getDocs
         } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
 
         const ROLES_MULTI_NUCLEO = ["owner_supremo", "director_nacional", "director_regional"];
@@ -147,7 +156,12 @@
             if (!session) { window.location.href = "index.html"; return; }
 
             const agrupacionesCol = collection(db, "agrupaciones");
+            const piezasCol = collection(db, "piezas");
             let agrupaciones = [];
+            // v3.0 (P-53): cantidad de piezas por agrupación, para mostrarla
+            // en la tarjeta sin tener que entrar a Repertorio.
+            let conteoPiezasPorAgrupacion = new Map();
+            let unsubPiezas = null;
             let unsub = null;
             let nucleoActivo = ROLES_MULTI_NUCLEO.includes(session.role) ? "" : (session.nucleus || "");
 
@@ -164,7 +178,7 @@
                     barra.id = "barra-nucleo-piezas";
                     barra.style.cssText = "display:flex;align-items:center;gap:0.6rem;margin:0.5rem 0 1rem;";
                     barra.innerHTML = `<label style="font-weight:700;color:var(--color-primario);">Núcleo:</label>
-                        <select id="nucleo-selector-piezas" style="padding:0.4rem 0.7rem;border-radius:8px;border:1px solid #e0e4f0;">
+                        <select id="nucleo-selector-piezas" style="padding:0.4rem 0.7rem;border-radius:8px;border:1px solid var(--color-borde);">
                             ${lista.length ? lista.map(n => `<option value="${n}" ${n === nucleoActivo ? "selected" : ""}>${n}</option>`).join("") : `<option value="">(sin núcleos todavía)</option>`}
                         </select>
                         <button type="button" id="btn-gestionar-nucleos-piezas" class="btn-config-mini">⚙️ Núcleos</button>`;
@@ -202,9 +216,12 @@
 
             function suscribirAgrupaciones() {
                 if (unsub) unsub();
+                if (unsubPiezas) unsubPiezas();
                 const grid = document.getElementById("grid-agrupaciones");
                 if (!nucleoActivo) { agrupaciones = []; renderizarAgrupaciones(); return; }
-                grid.innerHTML = `<p style="grid-column:1/-1;text-align:center;color:var(--color-texto-claro);">Cargando…</p>`;
+                // v3.0 (P-09): mismos puntitos de carga del resto del sitio,
+                // en vez de un texto plano "Cargando…".
+                grid.innerHTML = `<div style="grid-column:1/-1;display:flex;justify-content:center;padding:1.5rem 0;">${window._loaderPuntosHTML ? window._loaderPuntosHTML(true, true) : "Cargando…"}</div>`;
                 unsub = onSnapshot(
                     query(agrupacionesCol, where("nucleo", "==", nucleoActivo)),
                     (snap) => { agrupaciones = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderizarAgrupaciones(); },
@@ -212,6 +229,19 @@
                         console.error("No se pudieron leer las agrupaciones:", err);
                         grid.innerHTML = `<p style="grid-column:1/-1;text-align:center;color:var(--color-acento);">No se pudieron cargar (revisá permisos/consola).</p>`;
                     }
+                );
+                // v3.0 (P-53): conteo de piezas por agrupación de este núcleo
+                unsubPiezas = onSnapshot(
+                    query(piezasCol, where("nucleo", "==", nucleoActivo)),
+                    (snap) => {
+                        conteoPiezasPorAgrupacion = new Map();
+                        snap.docs.forEach(d => {
+                            const agId = d.data().agrupacionId;
+                            conteoPiezasPorAgrupacion.set(agId, (conteoPiezasPorAgrupacion.get(agId) || 0) + 1);
+                        });
+                        renderizarAgrupaciones();
+                    },
+                    (err) => console.error("No se pudo contar piezas por agrupación:", err)
                 );
             }
 
@@ -225,7 +255,9 @@
 
                     const btn = document.createElement("button");
                     btn.className = "btn-agrupacion";
-                    btn.textContent = agrup.nombre;
+                    // v3.0 (P-53): cantidad de piezas visible en la tarjeta
+                    const cantidad = conteoPiezasPorAgrupacion.get(agrup.nombre) || 0;
+                    btn.innerHTML = `${window._escapeHtml(agrup.nombre)} <span class="badge-pill" style="background:rgba(255,255,255,0.25);color:inherit;margin-left:0.4rem;">${cantidad} pieza${cantidad === 1 ? "" : "s"}</span>`;
                     btn.addEventListener("click", () => {
                         window.location.href = `repertorio.html?agrup=${encodeURIComponent(agrup.nombre)}&nucleo=${encodeURIComponent(agrup.nucleo || nucleoActivo)}`;
                     });
@@ -233,11 +265,18 @@
                     const btnEliminar = document.createElement("button");
                     btnEliminar.className = "btn-eliminar-agrupacion";
                     btnEliminar.innerHTML = "✖";
+                    btnEliminar.setAttribute("aria-label", `Eliminar ${agrup.nombre}`);
                     btnEliminar.addEventListener("click", async (e) => {
                         e.stopPropagation();
-                        if (!confirm(`¿Eliminar "${agrup.nombre}"?`)) return;
+                        // v3.0 (G-02): reemplaza el confirm() nativo
+                        const ok = await window._confirmDialog(
+                            `Vas a eliminar la agrupación <strong>"${window._escapeHtml(agrup.nombre)}"</strong>.${cantidad ? ` Tiene ${cantidad} pieza${cantidad === 1 ? "" : "s"} cargada${cantidad === 1 ? "" : "s"} — no se borran, pero quedarán sin agrupación asociada visible.` : ""}`,
+                            { titulo: "¿Eliminar agrupación?", peligroso: true, textoOk: "Sí, eliminar" }
+                        );
+                        if (!ok) return;
                         try {
                             await deleteDoc(doc(db, "agrupaciones", agrup.id));
+                            window._showToast?.("Agrupación eliminada", "success");
                         } catch (err) {
                             window._showToast?.("No se pudo eliminar: " + err.message, "error");
                         }
@@ -269,11 +308,30 @@
                 const nombre = document.getElementById("input-nombre-agrupacion").value.trim();
                 if (!nombre) return window._showToast?.("Nombre obligatorio.", "error");
                 if (!nucleoActivo) return window._showToast?.("Elegí un núcleo primero", "error");
+                const btnGuardar = document.getElementById("btn-guardar-agrupacion");
+                btnGuardar.disabled = true;
                 try {
+                    // AGREGADO 2026-09-06 (Fase 4): las piezas se buscan por el
+                    // NOMBRE de la agrupación (no por un ID), en toda la app —
+                    // ver repertorio.html. Si dos agrupaciones (aunque sean de
+                    // núcleos distintos) tuvieran el mismo nombre, sus piezas
+                    // se mezclarían entre sí al consultar por nombre. Se
+                    // valida ACÁ, antes de guardar, en vez de arriesgar una
+                    // migración de datos reales que no se puede probar en vivo.
+                    const todas = await getDocs(agrupacionesCol);
+                    const yaExiste = todas.docs.some(
+                        (d) => (d.data().nombre || "").trim().toLowerCase() === nombre.toLowerCase()
+                    );
+                    if (yaExiste) {
+                        window._showToast?.(`Ya existe una agrupación llamada "${nombre}" (puede ser en otro núcleo). Elegí un nombre distinto para que no se mezcle su repertorio.`, "error");
+                        return;
+                    }
                     await addDoc(agrupacionesCol, { nombre, nucleo: nucleoActivo });
                     document.getElementById("modal-agrupacion").style.display = "none";
                 } catch (err) {
                     window._showToast?.("No se pudo guardar: " + err.message, "error");
+                } finally {
+                    btnGuardar.disabled = false;
                 }
             });
 

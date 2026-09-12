@@ -75,6 +75,14 @@ service cloud.firestore {
       allow write: if request.auth != null && (esOwner() || esDirectorNacional());
     }
 
+    // ---------- CITAS DE LA PORTADA (v3.0 — G-07) ----------
+    // Mismo criterio que el carrusel nacional: son contenido público de
+    // index.html, editable solo por Owner Supremo / Director Nacional.
+    match /contenido/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null && (esOwner() || esDirectorNacional());
+    }
+
     // ---------- FLYERS y EVENTOS (por núcleo, en panel.html) ----------
     match /flyers/{docId} {
       allow read: if request.auth != null && (
@@ -103,20 +111,30 @@ service cloud.firestore {
     }
 
     // ---------- AGRUPACIONES: orquestas/coros (por núcleo) ----------
+    // CORREGIDO 2026-09-05: la lectura exigía resource.data.nucleo ==
+    // getRequester().nucleo, pero repertorio.html busca la agrupación por
+    // NOMBRE (where("nombre","==",...)), sin filtrar también por nucleo en
+    // la propia consulta. Firestore rechaza una consulta de LISTA completa
+    // si no puede garantizar, mirando solo los where() de la consulta
+    // misma, que todo lo que devolvería cumple la regla — como el filtro de
+    // nucleo no está en la consulta, no puede probarlo, y la rechaza
+    // ENTERA con "Missing or insufficient permissions", aunque el
+    // documento real sí sea del núcleo correcto. Le pasaba a cualquiera
+    // que no fuera director nacional/regional/owner (para esos tres la
+    // regla no depende de resource.data, así que Firestore sí puede
+    // probarla sin filtro adicional). Arreglo: lectura abierta a cualquier
+    // usuario con sesión (mismo criterio que ya se usa abajo para
+    // /nucleos/ y /formacion_modulos/ — es información de referencia, no
+    // datos personales). La escritura sigue exactamente igual de
+    // restringida por rol y núcleo.
     match /agrupaciones/{docId} {
-      allow read: if request.auth != null && (
-        getRequester().rango in ['owner_supremo','director_nacional','director_regional'] ||
-        resource.data.nucleo == getRequester().nucleo
-      );
+      allow read: if request.auth != null;
       allow write: if request.auth != null &&
         getRequester().rango in ['owner_supremo','director_nacional','director_regional','director_nucleo','admin'];
 
       // Propagación de reglas para proteger subcolecciones, si alguna vez se usan
       match /{document=**} {
-        allow read: if request.auth != null && (
-          getRequester().rango in ['owner_supremo','director_nacional','director_regional'] ||
-          get(/databases/$(database)/documents/agrupaciones/$(docId)).data.nucleo == getRequester().nucleo
-        );
+        allow read: if request.auth != null;
         allow write: if request.auth != null &&
           getRequester().rango in ['owner_supremo','director_nacional','director_regional','director_nucleo','admin'];
       }
@@ -124,22 +142,20 @@ service cloud.firestore {
 
     // ---------- PIEZAS: repertorio de cada agrupación (colección raíz,
     // enlazada por el campo agrupacionId = nombre de la agrupación).
-    // AGREGADO: antes no existía ninguna regla para esta colección, así que
-    // Firestore la denegaba por completo (ni lectura ni escritura), aunque
-    // el código de repertorio.html ya intentaba leerla. Sigue el mismo
-    // criterio "por núcleo" que ya usan flyers/eventos/agrupaciones. ----------
-    // CORREGIDO 2026-09-01: el repertorio es responsabilidad del núcleo, y
-    // quienes lo mantienen día a día son profesor / director_nucleo / admin
-    // de ESE núcleo (además de la directiva nacional/regional, que ve todo).
-    // Antes 'profesor' no estaba en NINGUNA de las tres reglas, así que
-    // Firestore rechazaba con "Missing or insufficient permissions" apenas
-    // un profesor intentaba crear, editar o borrar una pieza — coincide con
-    // el reporte de "no deja crear piezas".
+    // CORREGIDO 2026-09-05: mismo problema que en agrupaciones. repertorio.html
+    // busca las piezas con where("agrupacionId","==",...) — SIN filtrar
+    // también por nucleo — así que la regla anterior (resource.data.nucleo
+    // == getRequester().nucleo) rechazaba la lista COMPLETA para
+    // cualquiera que no fuera director nacional/regional/owner. Esta es
+    // la causa real de "No se pudieron cargar las piezas: Missing or
+    // insufficient permissions" — no tiene que ver con quién puede CREAR
+    // piezas (esa parte ya estaba bien, ver más abajo). Arreglo: lectura
+    // abierta a cualquier usuario con sesión; creación/edición/borrado
+    // siguen exigiendo el rol correcto Y el núcleo correcto — profesor,
+    // admin, director_nucleo (de su propio núcleo), director_regional,
+    // director_nacional y owner_supremo pueden modificar piezas.
     match /piezas/{docId} {
-      allow read: if request.auth != null && (
-        getRequester().rango in ['owner_supremo','director_nacional','director_regional'] ||
-        resource.data.nucleo == getRequester().nucleo
-      );
+      allow read: if request.auth != null;
       allow create: if request.auth != null && (
         getRequester().rango in ['owner_supremo','director_nacional','director_regional'] ||
         (getRequester().rango in ['director_nucleo','admin','profesor'] && request.resource.data.nucleo == getRequester().nucleo)
@@ -151,16 +167,14 @@ service cloud.firestore {
     }
 
     // ---------- PARTITURAS: PDFs subidos por pieza/instrumento.
-    // Igual que piezas: colección raíz sin regla previa. El mismo criterio
-    // de "quién mantiene el repertorio del núcleo" aplica acá: profesor,
-    // director_nucleo y admin del núcleo pueden subir Y reemplazar/borrar
-    // partituras (antes update/delete no incluía a profesor, aunque sea
-    // quien más las sube y las corrige en la práctica). ----------
+    // Mismo criterio que piezas: lectura abierta (repertorio.html también
+    // consulta esta colección con where("agrupacionId","==",...), sin
+    // filtro de nucleo — mismo problema de lista que arriba). Escritura:
+    // profesor, admin y director_nucleo (de su propio núcleo), además de
+    // la directiva nacional/regional, pueden subir, reemplazar y borrar
+    // partituras — son quienes las mantienen día a día.
     match /partituras/{docId} {
-      allow read: if request.auth != null && (
-        getRequester().rango in ['owner_supremo','director_nacional','director_regional'] ||
-        resource.data.nucleo == getRequester().nucleo
-      );
+      allow read: if request.auth != null;
       allow create: if request.auth != null && (
         getRequester().rango in ['owner_supremo','director_nacional','director_regional'] ||
         (getRequester().rango in ['director_nucleo','admin','profesor'] && request.resource.data.nucleo == getRequester().nucleo)
@@ -178,6 +192,22 @@ service cloud.firestore {
       // Escritura exclusiva para directiva y administración
       allow write: if request.auth != null &&
         getRequester().rango in ['owner_supremo','director_nacional','director_regional','director_nucleo','admin'];
+    }
+
+    // ---------- v3.0 (P-58) ----------
+    // _limites_uso (límite de pedidos al chat de IA) y _meta (caché del
+    // diagnóstico) las usa ÚNICAMENTE el backend con el Admin SDK, que
+    // ignora estas reglas por completo — hoy ya están seguras "por
+    // accidente" gracias a que Firestore deniega por defecto cualquier
+    // colección no declarada acá. Se declaran igual, de forma explícita,
+    // para que la intención quede documentada en el propio archivo de
+    // reglas y no dependa de que ese comportamiento por defecto no cambie
+    // el día de mañana.
+    match /_limites_uso/{docId} {
+      allow read, write: if false;
+    }
+    match /_meta/{docId} {
+      allow read, write: if false;
     }
   }
 }

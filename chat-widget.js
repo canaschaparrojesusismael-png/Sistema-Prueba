@@ -14,30 +14,84 @@ export function montarChatEmbebido(contenedorEl) {
   if (!contenedorEl || contenedorEl.dataset.chatMontado) return;
   contenedorEl.dataset.chatMontado = "1";
 
+  // v3.0 (P-40): saludo un poco más personal si el perfil ya tiene
+  // agrupación asignada (sin inventar nada si no la tiene).
+  const session = window.Auth?.getSession();
+  const agrupacion = session?.group || session?.nucleus;
+  const saludo = agrupacion
+    ? `¡Hola! Preguntame sobre teoría, instrumentos, historia de El Sistema, o dónde
+      encontrar un tema acá en Formación 🎵 Vi que sos de <strong>${window._escapeHtml ? window._escapeHtml(agrupacion) : agrupacion}</strong> — ¡vamos!`
+    : `¡Hola! Preguntame sobre teoría, instrumentos, historia de El Sistema, o dónde
+      encontrar un tema acá en Formación 🎵`;
+
   contenedorEl.innerHTML = `
     <div class="chat-ia-header">
       <span><i class="fa-solid fa-music"></i> Tutor Musical IA</span>
     </div>
     <div class="chat-ia-mensajes" id="chat-ia-mensajes">
-      <div class="chat-ia-msg chat-ia-msg-bot">
-        ¡Hola! Preguntame sobre teoría, instrumentos, historia de El Sistema, o dónde
-        encontrar un tema acá en Formación 🎵
-      </div>
+      <div class="chat-ia-msg chat-ia-msg-bot">${saludo}</div>
+    </div>
+    <!-- v3.0 (G-27): preguntas sugeridas para quien no sabe por dónde arrancar -->
+    <div class="chips-fila" id="chat-ia-chips">
+      <button type="button" class="chip-sugerida">¿Qué es el solfeo?</button>
+      <button type="button" class="chip-sugerida">¿Dónde está mi partitura?</button>
+      <button type="button" class="chip-sugerida">¿Cuándo es el próximo ensayo?</button>
     </div>
     <div class="chat-ia-input-row">
-      <input type="text" id="chat-ia-input" placeholder="Preguntá algo de música…" />
+      <input type="text" id="chat-ia-input" placeholder="Preguntá algo de música…" maxlength="1000" />
       <button type="button" id="chat-ia-enviar"><i class="fa-solid fa-paper-plane"></i></button>
     </div>
+    <!-- v3.0 (P-39): contador de caracteres — el backend limita a 1000 y
+         antes la persona solo se enteraba cuando el pedido ya fallaba. -->
+    <div class="chat-ia-contador" id="chat-ia-contador">0/1000</div>
   `;
 
   const input = contenedorEl.querySelector("#chat-ia-input");
   const mensajes = contenedorEl.querySelector("#chat-ia-mensajes");
+  const chipsFila = contenedorEl.querySelector("#chat-ia-chips");
+  const contador = contenedorEl.querySelector("#chat-ia-contador");
+
+  input.addEventListener("input", () => { contador.textContent = `${input.value.length}/1000`; });
+
+  // v3.0 (G-27): las chips mandan la pregunta directo y desaparecen (para
+  // no ocupar espacio permanentemente en una ventana de chat chica).
+  chipsFila.querySelectorAll(".chip-sugerida").forEach(chip => {
+    chip.addEventListener("click", () => {
+      input.value = chip.textContent;
+      chipsFila.remove();
+      enviar();
+    });
+  });
+
+  // v3.3: se sacó el botón de descargar la conversación (y su manejador)
+  // por pedido explícito.
+
+  // v3.0 (G-26): detecta cuando la respuesta cita una ubicación del sitio
+  // ("Esto lo encontrás en Formación → Nivel → nombre", "Piezas → ...",
+  // "Panel → Calendario") y agrega un botón para ir directo, en vez de
+  // dejarlo solo como texto plano.
+  function agregarBotonIrSiCorresponde(contenedorMsg, texto) {
+    if (/Formación\s*→/i.test(texto) || /Piezas\s*→/i.test(texto)) {
+      const btn = document.createElement("a");
+      btn.className = "chat-ia-ir-btn";
+      btn.href = /Piezas\s*→/i.test(texto) ? "piezas.html" : "formacion.html";
+      btn.innerHTML = '<i class="fa-solid fa-arrow-right"></i> Ir a ' + (btn.href === "piezas.html" ? "Piezas" : "Formación");
+      contenedorMsg.appendChild(btn);
+    } else if (/Calendario/i.test(texto) && /Panel/i.test(texto)) {
+      const btn = document.createElement("a");
+      btn.className = "chat-ia-ir-btn";
+      btn.href = "panel.html";
+      btn.innerHTML = '<i class="fa-solid fa-arrow-right"></i> Ir al Calendario';
+      contenedorMsg.appendChild(btn);
+    }
+  }
 
   function agregarMensaje(texto, esBot) {
     const div = document.createElement("div");
     div.className = "chat-ia-msg " + (esBot ? "chat-ia-msg-bot" : "chat-ia-msg-user");
     div.textContent = texto;
     mensajes.appendChild(div);
+    if (esBot) agregarBotonIrSiCorresponde(div, texto);
     mensajes.scrollTop = mensajes.scrollHeight;
   }
 
@@ -145,7 +199,10 @@ export function montarChatEmbebido(contenedorEl) {
 
     const cargando = document.createElement("div");
     cargando.className = "chat-ia-msg chat-ia-msg-bot chat-ia-cargando";
-    cargando.textContent = "Pensando…";
+    // v3.0 (P-38): mismos puntitos de carga del resto del sitio en vez de
+    // solo el texto "Pensando…", para que se sienta parte de la misma
+    // familia visual (carrusel, flyers, calendario).
+    cargando.innerHTML = (window._loaderPuntosHTML ? window._loaderPuntosHTML(true, true) : "Pensando…") + `<span class="chat-ia-cargando-texto">Pensando…</span>`;
     mensajes.appendChild(cargando);
     mensajes.scrollTop = mensajes.scrollHeight;
 

@@ -12,14 +12,50 @@
 
 const CLOUD_NAME = "kjfgogu5";
 const UPLOAD_PRESET = "orquestas_unsigned";
+// v3.1: el preset "orquestas_unsigned" en Cloudinary tiene un límite de
+// tamaño configurado (hoy 10 MB). Si algún día se sube ese límite desde el
+// panel de Cloudinary, este número también hay que actualizarlo — es solo
+// para poder avisar ACÁ, al toque, en vez de esperar a que Cloudinary
+// rechace la subida y devuelva un mensaje técnico en inglés.
+const TAMANO_MAXIMO_MB = 10;
+
+function formatoMB(bytes) {
+  return (bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, "");
+}
 
 export async function subirACloudinary(blob, carpeta = "general") {
+  const limiteBytes = TAMANO_MAXIMO_MB * 1024 * 1024;
+  if (blob.size > limiteBytes) {
+    // v3.1: antes esto ni se chequeaba acá — se mandaba igual, Cloudinary
+    // lo rechazaba, y el error que llegaba a la pantalla era el mensaje
+    // técnico de Cloudinary tal cual ("File size too large. Got 11980848.
+    // Maximum is 10485760."), que no dice nada útil para alguien que no
+    // sabe qué es Cloudinary. Ahora se avisa antes de mandar nada, en
+    // español y en MB.
+    throw new Error(`El archivo pesa ${formatoMB(blob.size)} MB y el máximo permitido es ${TAMANO_MAXIMO_MB} MB. Probá con un archivo más liviano (por ejemplo, escaneando en menor resolución o comprimiendo el PDF).`);
+  }
   const fd = new FormData();
   fd.append("file", blob);
   fd.append("upload_preset", UPLOAD_PRESET);
   fd.append("folder", carpeta);
   const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, { method: "POST", body: fd });
-  if (!res.ok) throw new Error("No se pudo subir la imagen a Cloudinary");
+  if (!res.ok) {
+    // v3.0: antes de esto, un fallo devolvía siempre el mismo mensaje
+    // genérico ("No se pudo subir la imagen"); ahora se intenta leer el
+    // motivo real que da Cloudinary (ej. "tipo de archivo no permitido
+    // por el preset"), que ayuda mucho más al diagnosticar un problema.
+    let detalle = "";
+    try { detalle = (await res.json())?.error?.message || ""; } catch {}
+    // v3.1: si de todas formas Cloudinary contesta con su propio error de
+    // tamaño (por ejemplo, si el límite cambió del lado de Cloudinary y
+    // quedó más bajo que TAMANO_MAXIMO_MB de acá arriba), lo traducimos
+    // igual en vez de mostrar el bytes crudo en inglés.
+    const coincideTamano = detalle.match(/File size too large\.\s*Got\s*(\d+)\.\s*Maximum is\s*(\d+)/i);
+    if (coincideTamano) {
+      detalle = `El archivo pesa ${formatoMB(Number(coincideTamano[1]))} MB y el máximo permitido es ${formatoMB(Number(coincideTamano[2]))} MB. Probá con un archivo más liviano.`;
+    }
+    throw new Error(detalle || "No se pudo subir el archivo a Cloudinary");
+  }
   const data = await res.json();
   return data.secure_url;
 }
@@ -86,6 +122,14 @@ function crearModalEditor() {
       div.querySelectorAll(".tool-panel").forEach((p) => (p.style.display = "none"));
       const panel = document.getElementById(`img-editor-panel-${btn.dataset.tool}`);
       if (panel) panel.style.display = "block";
+      // CORREGIDO 2026-09-06: el recuadro de recorte oscurece TODO lo que
+      // queda afuera suyo con una sombra gigante (para que se vea qué se va
+      // a cortar) — pero antes se quedaba ahí, tapando la imagen entera con
+      // esa sombra, aunque la persona cambiara a "Rotar" o "Saturar", donde
+      // no hay ningún recorte que mostrar. Por eso se veía "todo oscuro" en
+      // esas pestañas: solo el recuadrito de recorte se veía claro. Ahora el
+      // recuadro solo se muestra mientras la pestaña activa es "Recortar".
+      document.getElementById("img-editor-area").style.display = btn.dataset.tool === "recortar" ? "block" : "none";
     });
   });
 
@@ -102,6 +146,17 @@ function crearModalEditor() {
     const w = img.naturalWidth, h = img.naturalHeight;
     tmp.width = h; tmp.height = w;
     const ctx = tmp.getContext("2d");
+    // CORREGIDO 2026-09-05: un canvas nuevo empieza totalmente transparente
+    // por dentro. Si algún borde queda sin cubrir por la imagen rotada —por
+    // redondeo de subpíxeles cuando el ancho/alto original es impar, algo
+    // habitual en fotos reales— esa franja transparente se exporta como
+    // NEGRO al convertir a JPEG (los navegadores no tienen de otra: JPEG no
+    // admite transparencia). Eso es exactamente el "fondo oscuro" que
+    // aparecía al girar una imagen. Solución: pintamos el canvas de blanco
+    // ANTES de dibujar nada, así cualquier borde que quede sin cubrir se ve
+    // blanco (un margen casi imperceptible) en vez de una franja negra.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, tmp.width, tmp.height);
     ctx.translate(h / 2, w / 2);
     ctx.rotate((90 * Math.PI) / 180);
     ctx.drawImage(img, -w / 2, -h / 2);
@@ -137,12 +192,53 @@ function inicializarAreaDeRecorte(aspecto) {
   const redimensionarMove = (ev) => {
     const dx = ev.clientX - sx, dy = ev.clientY - sy;
     const { cX: x0, cY: y0, cW: w0, cH: h0 } = startBox;
-    let izq = x0, arr = y0, der = x0 + w0, aba = y0 + h0;
-    if (posHandle.includes("w")) izq = clamp(x0 + dx, 0, der - MIN);
-    if (posHandle.includes("e")) der = clamp(x0 + w0 + dx, izq + MIN, dW);
-    if (posHandle.includes("n")) arr = clamp(y0 + dy, 0, aba - MIN);
-    if (posHandle.includes("s")) aba = clamp(y0 + h0 + dy, arr + MIN, dH);
-    cX = izq; cY = arr; cW = der - izq; cH = aba - arr;
+    // CORREGIDO 2026-09-05: antes cada manija movía SU lado de forma
+    // independiente (izq/der/arriba/abajo por separado), así que se podía
+    // estirar el recuadro a cualquier forma, sin respetar la proporción del
+    // flyer/carrusel (16:9, 20:13, etc.). Cuando la proporción del recorte
+    // no coincidía con la de destino, el paso final rellenaba los bordes
+    // sobrantes con transparencia — que sobre el fondo oscuro del sitio se
+    // veía como esas líneas/franjas raras que reportaron. Ahora el ancho es
+    // el único número que se calcula a partir del arrastre; el alto SIEMPRE
+    // sale de dividir por aspectoActual, así que la proporción correcta es
+    // imposible de romper, se arrastre lo que se arrastre.
+    const MIN_W = MIN * aspectoActual;
+    let anclaX, anclaY, signoX, signoY, deltaW;
+
+    if (posHandle === "e") { anclaX = x0; signoX = 1; anclaY = y0 + h0 / 2; signoY = 0; deltaW = dx; }
+    else if (posHandle === "w") { anclaX = x0 + w0; signoX = -1; anclaY = y0 + h0 / 2; signoY = 0; deltaW = -dx; }
+    else if (posHandle === "s") { anclaX = x0 + w0 / 2; signoX = 0; anclaY = y0; signoY = 1; deltaW = dy * aspectoActual; }
+    else if (posHandle === "n") { anclaX = x0 + w0 / 2; signoX = 0; anclaY = y0 + h0; signoY = -1; deltaW = -dy * aspectoActual; }
+    else {
+      // Esquinas (nw/ne/sw/se): la esquina OPUESTA queda fija (ancla). De
+      // los dos ejes que el arrastre mueve, usamos el que implique el
+      // cambio de ancho más grande — así el recorte responde al gesto
+      // dominante del dedo/mouse, sin perder nunca la proporción.
+      const esteOeste = posHandle.includes("e") ? 1 : -1;
+      const norteSur = posHandle.includes("s") ? 1 : -1;
+      anclaX = posHandle.includes("e") ? x0 : x0 + w0;
+      anclaY = posHandle.includes("s") ? y0 : y0 + h0;
+      signoX = esteOeste; signoY = norteSur;
+      const porX = esteOeste * dx;
+      const porY = norteSur * dy * aspectoActual;
+      deltaW = Math.abs(porX) >= Math.abs(porY) ? porX : porY;
+    }
+
+    // Topamos el ANCHO (un solo número) contra los bordes de la imagen ANTES
+    // de armar el recuadro final — así nunca hace falta "corregir" un
+    // recuadro que ya se salió, que es lo que rompía la proporción antes.
+    let nuevoW = Math.max(w0 + deltaW, MIN_W);
+    if (signoX > 0) nuevoW = Math.min(nuevoW, dW - anclaX);
+    if (signoX < 0) nuevoW = Math.min(nuevoW, anclaX);
+    if (signoY > 0) nuevoW = Math.min(nuevoW, (dH - anclaY) * aspectoActual);
+    if (signoY < 0) nuevoW = Math.min(nuevoW, anclaY * aspectoActual);
+    if (signoX === 0) nuevoW = Math.min(nuevoW, 2 * Math.min(anclaX, dW - anclaX));
+    if (signoY === 0) nuevoW = Math.min(nuevoW, 2 * Math.min(anclaY, dH - anclaY) * aspectoActual);
+    nuevoW = Math.max(nuevoW, MIN_W);
+
+    cW = nuevoW; cH = nuevoW / aspectoActual;
+    cX = signoX > 0 ? anclaX : signoX < 0 ? anclaX - cW : anclaX - cW / 2;
+    cY = signoY > 0 ? anclaY : signoY < 0 ? anclaY - cH : anclaY - cH / 2;
     upd();
   };
   const onMove = (ev) => { if (modo === "mover") moverMove(ev); else if (modo === "redimensionar") redimensionarMove(ev); };
@@ -208,6 +304,10 @@ export function abrirEditorImagen(file, opciones, callback) {
 
   modal.querySelectorAll(".tool-btn").forEach((b, i) => b.classList.toggle("active", i === 0));
   modal.querySelectorAll(".tool-panel").forEach((p) => (p.style.display = "none"));
+  // El tool por defecto siempre es "Recortar" (línea de arriba), así que el
+  // recuadro de recorte también arranca visible — si la última vez se cerró
+  // el editor estando en "Rotar", quedaría oculto por el fix de arriba.
+  document.getElementById("img-editor-area").style.display = "block";
   const satRange = document.getElementById("img-editor-sat-range");
   satRange.value = 100;
   document.getElementById("img-editor-sat-value").textContent = "100";

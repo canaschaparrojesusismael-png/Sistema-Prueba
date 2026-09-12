@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<script>if(localStorage.getItem("darkMode")==="true")document.documentElement.classList.add("dark-mode");</script>
+
 <script>
   if (!sessionStorage.getItem("sistemaOrquestas_session") && !localStorage.getItem("sistemaOrquestas_session")) {
     window.location.href = "login.html";
@@ -10,7 +12,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel – Sistema de Orquestas</title>
-    <link rel="stylesheet" href="estilos.css?v=9.0">
+        <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=16.0">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=16.0">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=16.0">
+    <meta property="og:title" content="Panel — Sistema de Orquestas">
+    <meta property="og:description" content="Flyers, calendario y accesos rápidos del núcleo.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="icon-512.png">
+<link rel="stylesheet" href="estilos.css?v=16.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* ---- Flyers: franja completa, pegada arriba, de punta a punta ---- */
@@ -39,15 +48,29 @@
             cursor: pointer;
         }
         .flyer-card {
-            width: 200px;
-            height: 130px;
+            width: 100%;
+            height: 100%;
+            display: block;
             object-fit: cover;
-            border-radius: var(--border-radius-sm);
-            border: 2px solid transparent;
-            box-shadow: var(--shadow-card);
             transition: var(--transition-normal);
         }
-        .flyer-card:hover {
+        /* AGREGADO 2026-09-06/07: envuelve cada flyer para poder mostrarle sus
+           propios puntitos de carga centrados encima mientras la imagen
+           todavía está bajando — el tamaño fijo (200x130) que antes tenía
+           .flyer-card directo ahora vive acá, y la imagen de adentro llena
+           el 100%. La sombra/borde de hover se pasan a este contenedor (en
+           vez de la imagen) para que no se recorten con overflow:hidden. */
+        .flyer-card-wrap {
+            position: relative; width: 200px; height: 130px; flex-shrink: 0;
+            border-radius: var(--border-radius-sm); overflow: hidden;
+            border: 2px solid transparent;
+            box-shadow: var(--shadow-card);
+            /* Color "de esqueleto" — se ve mientras la imagen todavía no bajó
+               del todo; una vez que carga, la imagen (100% del bloque) lo tapa. */
+            background: #e4e8f5;
+            transition: transform 0.3s ease, box-shadow var(--transition-normal), border-color var(--transition-normal);
+        }
+        .flyer-card-wrap:hover {
             border-color: #fff;
             box-shadow: var(--shadow-hover);
         }
@@ -66,8 +89,12 @@
             gap: 20px;
             flex-grow: 1;
             justify-content: center;
-            overflow: hidden;
-            min-height: 130px;
+            align-items: flex-start;
+            overflow: visible;
+            /* AGREGADO 2026-09-07: 130px de la tarjeta + margen para que el
+               corrimiento "tipo menú" del flyer del medio no se recorte. */
+            min-height: 155px;
+            padding-top: 4px;
         }
         .flyers-viewport:empty::after {
             content: "Sin flyers todavía para este núcleo";
@@ -75,6 +102,12 @@
             font-size: 0.9rem;
             align-self: center;
         }
+        /* v3.0 (P-27): estado vacío con botón de acción para quien puede editar */
+        .flyers-vacio-cta {
+            display: flex; flex-direction: column; align-items: center; gap: 0.7rem;
+            align-self: center; padding: 0.5rem 0;
+        }
+        .flyers-vacio-cta p { color: rgba(255,255,255,0.8); font-size: 0.9rem; margin: 0; }
         .flecha-btn {
             background: #0a0a0a;
             color: white;
@@ -89,6 +122,14 @@
         .flecha-btn:hover { filter: brightness(1.3); }
 
         /* ---- Calendario + accesos: pegados arriba, misma altura, sin huecos ---- */
+        /* v3.3: la sección de flyers de arriba (.flyers-encabezado,
+           .carrusel-flyers) usa max-width:1200px, pero .contenido-web.container
+           (compartida con index.html) es de 1050px — dos anchos distintos
+           centrados por separado en la misma página hacen que sus bordes
+           izquierdo/derecho no coincidan, y el calendario se ve "corrido" /
+           descuadrado respecto a los flyers de arriba. Acá, solo en Panel,
+           se iguala a 1200px; index.html sigue usando 1050px sin tocarse. */
+        .contenido-web.container { max-width: 1200px; }
         .dashboard-grid {
             display: grid;
             /* Aumentamos de 2.2fr a 2.4fr para que el calendario ocupe un poco más y empuje la derecha */
@@ -100,7 +141,7 @@
         }
         .calendario-container {
             background: var(--color-blanco);
-            border: 1px solid #e0e4f0;
+            border: 1px solid var(--color-borde);
             border-radius: var(--border-radius);
             padding: 20px;
             box-shadow: var(--shadow-card);
@@ -116,13 +157,15 @@
             margin-bottom: 15px;
         }
         .calendario-header button {
-            background: #0a0a0a;
+            background: var(--color-primario);
             color: white;
             border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
+            padding: 6px 12px;
+            border-radius: 8px;
             cursor: pointer;
+            transition: var(--transition-fast);
         }
+        .calendario-header button:hover { background: var(--color-primario-oscuro); }
         .calendario-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
@@ -133,29 +176,60 @@
             font-weight: bold;
             color: var(--color-texto);
             padding: 6px 0;
-            background: #f4f5f9;
-            border-radius: 4px;
+            background: var(--color-superficie-suave);
+            border-radius: 8px;
             font-size: 0.85rem;
         }
         .dia-numero {
             padding: 6px 0;
-            border: 1px solid #e0e4f0;
-            border-radius: 4px;
+            border: 1px solid var(--color-borde);
+            border-radius: 8px;
             min-height: 52px;
             cursor: pointer;
             transition: var(--transition-fast);
             font-size: 0.85rem;
             position: relative;
         }
-        .dia-numero:hover { background: var(--color-primario); color: white; }
-        .dia-numero.otro-mes { color: #ccc; }
+        .dia-numero:hover { background: var(--color-primario); color: white; border-color: var(--color-primario); }
+        .dia-numero.otro-mes { color: var(--color-texto-claro); opacity: 0.55; }
         .evento {
             font-size: 0.65rem;
-            padding: 1px 3px;
-            border-radius: 4px;
+            padding: 1px 5px;
+            border-radius: 6px;
             margin-top: 2px;
             display: block;
             cursor: pointer;
+        }
+        /* v3.0 (G-17): botón de mes/año + botón "Hoy" + popover rápido */
+        .mes-anio-btn {
+            background: none; border: none; color: var(--color-texto);
+            font-size: 1.15rem; font-weight: 800; cursor: pointer;
+            padding: 4px 10px; border-radius: 8px; font-family: var(--font-family);
+        }
+        .mes-anio-btn:hover { background: var(--color-superficie-suave); }
+        .btn-hoy-calendario {
+            background: var(--color-secundario) !important; color: var(--color-primario) !important;
+            font-weight: 700; font-size: 0.75rem !important; padding: 5px 12px !important;
+        }
+        .mes-anio-popover {
+            display: flex; gap: 0.5rem; align-items: center; justify-content: center;
+            background: var(--color-superficie-suave); border: 1px solid var(--color-borde);
+            border-radius: 10px; padding: 0.6rem; margin-bottom: 0.8rem;
+        }
+        .mes-anio-popover select {
+            padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid var(--color-borde);
+            background: var(--color-blanco); color: var(--color-texto); font-family: var(--font-family);
+        }
+        /* v3.0 (P-25): resalta el día de hoy en la grilla */
+        .dia-numero.es-hoy { border: 2px solid var(--color-acento); font-weight: 800; }
+        .badge-hoy-punto {
+            position: absolute; top: 3px; right: 3px; width: 6px; height: 6px;
+            border-radius: 50%; background: var(--color-acento);
+        }
+        /* v3.0 (P-28): "+N más" cuando un día tiene muchos eventos */
+        .evento-mas {
+            font-size: 0.63rem; color: var(--color-texto-claro); text-decoration: underline;
+            display: block; cursor: pointer; margin-top: 2px;
         }
         /* Botones de acceso: tamaño compacto normal, NO estirados a la altura
            del calendario (eso dejaba cajas enormes casi vacías). */
@@ -165,9 +239,9 @@
             gap: 15px;
         }
         .dropdown-btn {
-            padding: 16px 20px;
+            padding: 20px 22px;
             background: var(--color-blanco);
-            border: 1px solid #e0e4f0;
+            border: 1px solid var(--color-borde);
             border-radius: var(--border-radius);
             font-size: 1.05rem;
             font-weight: 700;
@@ -177,8 +251,11 @@
             box-shadow: var(--shadow-card);
             transition: var(--transition-normal);
             text-decoration: none;
-            display: block;
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
         }
+        .dropdown-btn i { color: var(--color-primario); font-size: 1.15rem; width: 1.2em; text-align: center; }
         .dropdown-btn:hover { border-color: var(--color-primario); transform: translateY(-2px); }
         .form-control {
             width: 100%; padding: 0.55rem 0.7rem; margin-top: 0.3rem;
@@ -210,7 +287,7 @@
         @media (max-width: 768px) {
             .dashboard-grid { grid-template-columns: 1fr; }
             .flyers-encabezado { flex-wrap: wrap; }
-            .flyer-card { width: 150px; height: 105px; }
+            .flyer-card-wrap { width: 150px; height: 105px; }
         }
     </style>
 </head>
@@ -242,10 +319,22 @@
     <main class="contenido-web container">
         <div class="dashboard-grid">
             <div class="calendario-container" id="calendario">
+                <div class="loader-puntos sobre-claro" id="calendario-loader" style="top:14px; left:16px;"><span></span><span></span><span></span></div>
                 <div class="calendario-header">
-                    <button id="prev-month">&lt;</button>
-                    <h2 id="month-year"></h2>
-                    <button id="next-month">&gt;</button>
+                    <button id="prev-month" aria-label="Mes anterior">&lt;</button>
+                    <!-- v3.0 (G-17): el título del mes ahora es un botón que
+                         abre un selector rápido de mes/año, en vez de tener
+                         que hacer clic 11 veces en "siguiente" para llegar
+                         a diciembre desde enero. -->
+                    <button type="button" id="month-year" class="mes-anio-btn"></button>
+                    <button id="next-month" aria-label="Mes siguiente">&gt;</button>
+                    <button type="button" id="btn-hoy-calendario" class="btn-hoy-calendario" title="Ir al mes de hoy">Hoy</button>
+                </div>
+                <!-- v3.0 (G-17): selector rápido de mes/año, oculto hasta que se abre -->
+                <div class="mes-anio-popover" id="mes-anio-popover" style="display:none;">
+                    <select id="select-mes-rapido"></select>
+                    <select id="select-anio-rapido"></select>
+                    <button type="button" id="btn-ir-mes-rapido" class="btn btn-submit">Ir</button>
                 </div>
                 <div class="calendario-grid" id="calendario-grid">
                     <div class="dia-semana">Lun</div><div class="dia-semana">Mar</div><div class="dia-semana">Mié</div>
@@ -255,9 +344,13 @@
             </div>
 
             <aside class="sidebar">
-                <a href="piezas.html" class="dropdown-btn">Piezas</a>
-                <a href="formacion.html" class="dropdown-btn">Formación</a>
-                <a href="miembros.html" class="dropdown-btn">Miembros</a>
+                <a href="piezas.html" class="dropdown-btn"><i class="fa-solid fa-music"></i> Piezas</a>
+                <a href="formacion.html" class="dropdown-btn"><i class="fa-solid fa-graduation-cap"></i> Formación</a>
+                <a href="miembros.html" class="dropdown-btn"><i class="fa-solid fa-users"></i> Miembros</a>
+                <!-- v3.1: se sacó el link directo a "Repertorio" del menú — no es
+                     una sección aparte, es la pantalla de detalle de una agrupación
+                     (se llega ahí SIEMPRE desde Piezas → [agrupación]). Puesta acá
+                     suelta, sin "?agrup=" en la URL, no mostraba nada útil. -->
             </aside>
         </div>
     </main>
@@ -281,14 +374,10 @@
                 <div class="preview-grande">
                     <img id="flyer-preview-img" src="" alt="Vista previa"/>
                 </div>
-                <div class="editor-row">
-                    <label>Título:</label>
-                    <input type="text" id="flyer-preview-alt" class="form-control" placeholder="Título del flyer"/>
-                </div>
-                <div class="editor-row">
-                    <label>Texto:</label>
-                    <input type="text" id="flyer-preview-text" class="form-control" placeholder="Texto descriptivo (opcional)"/>
-                </div>
+                <!-- v3.1: se sacó el vínculo flyer↔evento del calendario que
+                     había acá (G-16) — quedó descartado a propósito: mezclar
+                     dos secciones que ya funcionan bien por separado (Flyers y
+                     Calendario) sumaba un paso extra sin necesidad real. -->
                 <div class="editor-row acciones-item">
                     <button type="button" id="btn-editar-flyer" class="btn btn-submit"><i class="fa-solid fa-pen"></i> Editar imagen</button>
                     <button type="button" id="btn-eliminar-flyer" class="btn btn-cerrar"><i class="fa-solid fa-trash"></i> Eliminar</button>
@@ -328,12 +417,12 @@
             <div class="editor-row" id="event-color-row">
                 <label>Color:</label>
                 <div class="color-swatches" id="event-color-swatches">
-                    <div class="color-swatch" data-color="#ffeaa7" style="background:#ffeaa7;"></div>
-                    <div class="color-swatch" data-color="#a7d8ff" style="background:#a7d8ff;"></div>
-                    <div class="color-swatch" data-color="#b7f0ad" style="background:#b7f0ad;"></div>
-                    <div class="color-swatch" data-color="#ffb3b3" style="background:#ffb3b3;"></div>
-                    <div class="color-swatch" data-color="#d9b8ff" style="background:#d9b8ff;"></div>
-                    <div class="color-swatch" data-color="#ffcf9e" style="background:#ffcf9e;"></div>
+                    <div class="color-swatch" data-color="#ffeaa7" style="background:#ffeaa7;" title="Amarillo" role="button" tabindex="0" aria-label="Color amarillo"></div>
+                    <div class="color-swatch" data-color="#a7d8ff" style="background:#a7d8ff;" title="Celeste" role="button" tabindex="0" aria-label="Color celeste"></div>
+                    <div class="color-swatch" data-color="#b7f0ad" style="background:#b7f0ad;" title="Verde" role="button" tabindex="0" aria-label="Color verde"></div>
+                    <div class="color-swatch" data-color="#ffb3b3" style="background:#ffb3b3;" title="Rojo claro" role="button" tabindex="0" aria-label="Color rojo claro"></div>
+                    <div class="color-swatch" data-color="#d9b8ff" style="background:#d9b8ff;" title="Violeta" role="button" tabindex="0" aria-label="Color violeta"></div>
+                    <div class="color-swatch" data-color="#ffcf9e" style="background:#ffcf9e;" title="Naranja" role="button" tabindex="0" aria-label="Color naranja"></div>
                 </div>
                 <input type="hidden" id="event-color" value="#ffeaa7" />
             </div>
@@ -358,8 +447,8 @@
 
     <script src="check-entorno.js" defer></script>
 
-    <script type="module" src="auth.js?v=10.0"></script>
-    <script type="module" src="ui-manager.js?v=10.0"></script>
+    <script type="module" src="auth.js?v=16.0"></script>
+    <script type="module" src="ui-manager.js?v=16.0"></script>
     <script type="module">
         import { db } from "./firebase-init.js";
         import { abrirSelectorUbicacion, cargarTodosLosNucleos } from "./ubicaciones.js";
@@ -372,7 +461,16 @@
         const flyersCol = collection(db, "flyers");
         const eventosCol = collection(db, "eventos");
         let flyerData = [];
-        let flyerStartIndex = 0;
+        // v3.3: antes, mientras Firestore todavía no contestaba la primera
+        // vez, flyerData estaba vacío y renderFlyers() ya mostraba "Sin
+        // flyers todavía" — indistinguible de un núcleo que de verdad no
+        // tiene flyers. Con esta bandera, mientras carga se ve el mismo
+        // esqueleto con puntitos que ya usa el carrusel.
+        let flyersCargados = false;
+        // v3.0 (P-26): restaura la posición del carrusel de flyers de la
+        // visita anterior en esta misma pestaña (se recorta automáticamente
+        // si la cantidad de flyers cambió, ver renderFlyers()).
+        let flyerStartIndex = parseInt(sessionStorage.getItem("panel_flyer_pos") || "0", 10) || 0;
         const MAX_VISIBLE = 4;
         let events = [];
         let currentMonth = new Date().getMonth();
@@ -442,25 +540,38 @@
             if (unsubEventos) unsubEventos();
 
             if (!nucleoActivo) {
+                flyersCargados = true;
                 flyerData = []; renderFlyers();
                 events = []; renderCalendar();
                 return;
             }
 
+            flyersCargados = false;
             const flyersQuery = query(flyersCol, where("nucleo", "==", nucleoActivo));
             unsubFlyers = onSnapshot(flyersQuery, (snapshot) => {
+                flyersCargados = true;
                 flyerData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 flyerData.sort((a, b) => (a.orden || 0) - (b.orden || 0));
                 if (flyerStartIndex >= flyerData.length) flyerStartIndex = 0;
                 renderFlyers();
+                if (flyerEditorEsperando) {
+                    flyerEditorEsperando = false;
+                    workingFlyers = flyerData.map(f => ({ ...f }));
+                    renderFlyerTodoRef?.();
+                }
             }, (err) => {
+                flyersCargados = true;
                 console.error("No se pudieron leer los flyers de este núcleo:", err);
                 window._showToast?.("No se pudieron cargar los flyers (revisá permisos/consola)", "error");
+                renderFlyers();
             });
 
             const eventosQuery = query(eventosCol, where("nucleo", "==", nucleoActivo));
             unsubEventos = onSnapshot(eventosQuery, (snapshot) => {
                 events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // AGREGADO 2026-09-06: apenas llegan los eventos reales de este
+                // núcleo (aunque sean cero), se oculta el indicador de carga.
+                document.getElementById("calendario-loader")?.style.setProperty("display", "none");
                 renderCalendar();
             }, (err) => {
                 console.error("No se pudieron leer los eventos de este núcleo:", err);
@@ -471,8 +582,70 @@
         // ====================== FLYERS (galería con miniaturas, igual que el Carrusel Nacional) ======================
         function renderFlyers() {
             const container = document.getElementById("flyers-viewport");
+            if (!flyersCargados) {
+                container.innerHTML = `<div class="flyer-card-wrap"><div class="loader-puntos sobre-claro centrado"><span></span><span></span><span></span></div></div>`;
+                return;
+            }
             const visible = flyerData.slice(flyerStartIndex, flyerStartIndex + MAX_VISIBLE);
-            container.innerHTML = visible.map(f => `<img class="flyer-card" src="${f.url}" alt="${window._escapeHtml(f.alt)}" title="${window._escapeHtml(f.text)}" />`).join("");
+            // v3.0 (P-27): si no hay flyers Y la persona puede editarlos, se
+            // muestra un botón de acción directa en vez de solo un texto
+            // (antes había que notar el engranaje que solo aparece al pasar
+            // el mouse por encima del módulo).
+            if (!flyerData.length) {
+                const puedeEditar = window.Auth?.checkPermission && window.Auth.checkPermission("manage_users");
+                container.innerHTML = puedeEditar
+                    ? `<div class="flyers-vacio-cta">
+                         <p>📌 Sin flyers todavía para este núcleo</p>
+                         <button type="button" id="btn-primer-flyer" class="btn btn-submit"><i class="fa-solid fa-plus"></i> Subir el primer flyer</button>
+                       </div>`
+                    : "";
+                document.getElementById("btn-primer-flyer")?.addEventListener("click", abrirFlyerModal);
+                return;
+            }
+            // El "alt" queda fijo para accesibilidad (lectores de pantalla) —
+            // ya no depende de ningún campo de texto que nadie llenaba.
+            // AGREGADO 2026-09-06/07: cada flyer tiene su propio bloque tipo
+            // "esqueleto" con los puntitos CENTRADOS (no en la esquina) hasta
+            // que ESA imagen en particular termine de bajar. Además, el
+            // conjunto se acomoda como un menú/abanico: el flyer del medio
+            // queda un poco más abajo que los de los costados.
+            const mid = (visible.length - 1) / 2;
+            container.innerHTML = visible.map((f, i) => {
+                const distanciaAlCentro = Math.abs(i - mid);
+                const corrimiento = Math.round((mid - distanciaAlCentro) * 9); // el centro baja, los costados suben
+                return `
+                <div class="flyer-card-wrap" style="transform:translateY(${corrimiento}px)">
+                    <div class="loader-puntos sobre-claro centrado"><span></span><span></span><span></span></div>
+                    <img class="flyer-card" src="${window._escapeHtml(f.url)}" alt="Flyer" loading="lazy" tabindex="0"
+                         onload="this.previousElementSibling.style.display='none'"
+                         onerror="this.previousElementSibling.style.display='none'" />
+                </div>`;
+            }).join("");
+            // v3.0 (G-15): click (o Enter con teclado) abre el flyer a
+            // pantalla completa en vez de quedarse puramente decorativo.
+            container.querySelectorAll(".flyer-card").forEach(img => {
+                const abrir = () => abrirLightboxFlyer(img.src);
+                img.addEventListener("click", abrir);
+                img.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); abrir(); } });
+            });
+        }
+
+        // v3.0 (G-15): lightbox a pantalla completa al tocar un flyer.
+        // v3.1: se sacó el botón "Ver evento" (G-16) junto con el resto del
+        // vínculo flyer↔calendario — ver nota más arriba, en el editor.
+        function abrirLightboxFlyer(url) {
+            const overlay = document.createElement("div");
+            overlay.className = "lightbox-overlay";
+            overlay.innerHTML = `
+                <button type="button" class="lightbox-cerrar" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+                <img src="${window._escapeHtml(url)}" alt="Flyer ampliado"/>
+            `;
+            document.body.appendChild(overlay);
+            const cerrar = () => overlay.remove();
+            overlay.addEventListener("click", (e) => { if (e.target === overlay) cerrar(); });
+            overlay.querySelector(".lightbox-cerrar").addEventListener("click", cerrar);
+            const onEsc = (e) => { if (e.key === "Escape") { cerrar(); document.removeEventListener("keydown", onEsc); } };
+            document.addEventListener("keydown", onEsc);
         }
         // La suscripción real (con filtro por núcleo) la arma cambiarNucleoActivo(),
         // más abajo en la inicialización — así cambia en vivo si el usuario elige otro núcleo.
@@ -481,11 +654,15 @@
             if (flyerData.length <= MAX_VISIBLE) return;
             flyerStartIndex = (flyerStartIndex - 1 + flyerData.length) % flyerData.length;
             renderFlyers();
+            try { sessionStorage.setItem("panel_flyer_pos", String(flyerStartIndex)); } catch {}
         });
         document.getElementById("next-flyer").addEventListener("click", () => {
             if (flyerData.length <= MAX_VISIBLE) return;
             flyerStartIndex = (flyerStartIndex + 1) % flyerData.length;
             renderFlyers();
+            // v3.0 (P-26): recuerda en qué flyer se estaba parado al volver
+            // a la página (antes siempre reiniciaba desde el primero).
+            try { sessionStorage.setItem("panel_flyer_pos", String(flyerStartIndex)); } catch {}
         });
 
         // Igual que el .flyer-card en pantalla (200x130 ≈ 20:13), para que lo
@@ -502,24 +679,59 @@
         // que ya usan el Carrusel y los Flyers: reduce la imagen a un tamaño
         // fijo y la sube a Cloudinary, guardando solo la URL (unos 80
         // caracteres) en el documento.
-        const OPCIONES_EDITOR_EVENTO = { carpeta: "eventos", aspecto: 16 / 9, ancho: 900, alto: 506 };
+        const OPCIONES_EDITOR_EVENTO = { carpeta: "eventos", aspecto: 16 / 9, ancho: 960, alto: 540 };
 
         let workingFlyers = [];
         let flyerSeleccionActual = 0;
         let flyerModalListo = false;
+        // v3.3: mismo patrón que el editor del carrusel — si se abre el
+        // editor de flyers antes de que llegue la primera respuesta de
+        // Firestore, no copiamos flyerData (todavía vacío) a workingFlyers;
+        // esperamos, y cuando llega de verdad, completamos el editor ya
+        // abierto en vez de dejarlo vacío para siempre.
+        let flyerEditorEsperando = false;
+        let renderFlyerTodoRef = null;
 
         function abrirFlyerModal() {
             if (!nucleoActivo) { window._showToast?.("Elegí un núcleo primero", "error"); return; }
-            workingFlyers = flyerData.map(f => ({ ...f }));
+            if (!flyersCargados) {
+                flyerEditorEsperando = true;
+                workingFlyers = [];
+            } else {
+                flyerEditorEsperando = false;
+                workingFlyers = flyerData.map(f => ({ ...f }));
+            }
             flyerSeleccionActual = 0;
             const modal = document.getElementById("flyer-modal");
             const fileInput = document.getElementById("flyer-file-input");
 
-            function sync() {
-                if (!workingFlyers[flyerSeleccionActual]) return;
-                workingFlyers[flyerSeleccionActual].alt = document.getElementById("flyer-preview-alt").value;
-                workingFlyers[flyerSeleccionActual].text = document.getElementById("flyer-preview-text").value;
-            }
+            // CORREGIDO 2026-09-05: antes había campos de "Título" y "Texto"
+            // para cada flyer, copiados del mismo patrón que usa el Carrusel
+            // Nacional — pero a diferencia del carrusel (donde SÍ se muestran
+            // como título/descripción sobre la imagen, ver main.js), acá esos
+            // dos campos nunca se mostraban en ningún lado visible: quedaban
+            // guardados solo como el atributo HTML "alt" (invisible, solo
+            // para lectores de pantalla) y "title" (un tooltip que solo
+            // aparece pasando el mouse por encima unos segundos — inútil en
+            // celular, que es como la mayoría va a ver esto). Un flyer es un
+            // afiche ya diseñado con su propio texto adentro de la imagen,
+            // así que pedir un título aparte solo hacía más lento subir uno
+            // sin ningún beneficio real. Se quitaron los dos campos; ahora
+            // es más rápido: elegís la imagen y listo.
+            // CORREGIDO 2026-09-05: antes había campos de "Título" y "Texto"
+            // para cada flyer, copiados del mismo patrón que usa el Carrusel
+            // Nacional — pero a diferencia del carrusel (donde SÍ se muestran
+            // como título/descripción sobre la imagen, ver main.js), acá esos
+            // dos campos nunca se mostraban en ningún lado visible: quedaban
+            // guardados solo como el atributo HTML "alt" (invisible, solo
+            // para lectores de pantalla) y "title" (un tooltip que solo
+            // aparece pasando el mouse por encima unos segundos — inútil en
+            // celular, que es como la mayoría va a ver esto). Un flyer es un
+            // afiche ya diseñado con su propio texto adentro de la imagen,
+            // así que pedir un título aparte solo hacía más lento subir uno
+            // sin ningún beneficio real. Se quitaron los dos campos del
+            // formulario (y toda la función que los sincronizaba); ahora es
+            // más rápido: elegís la imagen y listo.
 
             function renderThumbs() {
                 const strip = document.getElementById("flyer-thumb-strip");
@@ -538,12 +750,26 @@
                 strip.appendChild(addBtn);
             }
 
+            renderFlyerTodoRef = renderTodo;
+
             function renderTodo() {
                 const empty = document.getElementById("flyer-empty-state");
                 const body = document.getElementById("flyer-editor-body");
                 const strip = document.getElementById("flyer-thumb-strip");
+                const saveBtnEl = document.getElementById("save-flyers-btn");
+                if (flyerEditorEsperando) {
+                    empty.style.display = "block";
+                    empty.innerHTML = `<div style="display:flex;justify-content:center;padding:1rem 0;">${window._loaderPuntosHTML ? window._loaderPuntosHTML(true, true) : "Cargando…"}</div><p style="font-size:0.85rem;color:#888;text-align:center;">Cargando los flyers actuales…</p>`;
+                    body.style.display = "none";
+                    strip.style.display = "none"; strip.innerHTML = "";
+                    if (saveBtnEl) saveBtnEl.disabled = true;
+                    return;
+                }
+                if (saveBtnEl) saveBtnEl.disabled = false;
                 if (!workingFlyers.length) {
-                    empty.style.display = "block"; body.style.display = "none";
+                    empty.style.display = "block";
+                    empty.innerHTML = `<p>📌 Ingresá una imagen para comenzar</p><p style="font-size:0.8rem;color:#888;">Arrastrá un archivo o hacé clic acá</p>`;
+                    body.style.display = "none";
                     strip.style.display = "none"; strip.innerHTML = "";
                     return;
                 }
@@ -551,13 +777,10 @@
                 if (flyerSeleccionActual >= workingFlyers.length) flyerSeleccionActual = workingFlyers.length - 1;
                 const item = workingFlyers[flyerSeleccionActual];
                 document.getElementById("flyer-preview-img").src = item.url || "";
-                document.getElementById("flyer-preview-alt").value = item.alt || "";
-                document.getElementById("flyer-preview-text").value = item.text || "";
                 renderThumbs();
             }
 
             const agregarFlyer = (url) => {
-                sync();
                 workingFlyers.push({ url, alt: "", text: "" });
                 flyerSeleccionActual = workingFlyers.length - 1;
                 renderTodo();
@@ -582,8 +805,6 @@
                     if (files.length) abrirEditorImagen(files[0], OPCIONES_EDITOR_FLYER, url => { if (url) agregarFlyer(url); });
                 });
                 empty.addEventListener("click", () => fileInput.click());
-                document.getElementById("flyer-preview-alt").addEventListener("input", sync);
-                document.getElementById("flyer-preview-text").addEventListener("input", sync);
                 document.getElementById("btn-editar-flyer").addEventListener("click", () => {
                     const item = workingFlyers[flyerSeleccionActual];
                     if (!item || !item.url) return;
@@ -597,14 +818,13 @@
                     flyerSeleccionActual = Math.max(0, flyerSeleccionActual - 1);
                     renderTodo();
                 });
-                document.getElementById("close-flyer-modal").onclick = () => modal.style.display = "none";
-                document.getElementById("flyer-close-btn").onclick = () => modal.style.display = "none";
+                document.getElementById("close-flyer-modal").onclick = () => { flyerEditorEsperando = false; modal.style.display = "none"; };
+                document.getElementById("flyer-close-btn").onclick = () => { flyerEditorEsperando = false; modal.style.display = "none"; };
             }
 
             const saveBtn = document.getElementById("save-flyers-btn");
             const saveBtnTextoOriginal = saveBtn.textContent;
             saveBtn.onclick = async () => {
-                sync();
                 saveBtn.disabled = true;
                 saveBtn.textContent = "Guardando...";
                 try {
@@ -674,15 +894,25 @@
             for (let i = firstDay-1; i > 0; i--) {
                 html += `<div class="dia-numero otro-mes">${daysInPrevMonth - i + 1}</div>`;
             }
+            // v3.0 (P-25): marca visualmente el día de HOY dentro de la
+            // grilla del mes, para ubicarse más rápido de un vistazo.
+            const hoyStr = new Date().toISOString().slice(0, 10);
             for (let d = 1; d <= daysInMonth; d++) {
                 const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 const dayEvents = eventosVisibles.filter(ev => ev.date === dateStr);
-                let eventoHtml = dayEvents.map(ev => {
+                // v3.0 (P-28): si hay muchos eventos el mismo día, se muestran
+                // los primeros 3 y un "+N más" en vez de una celda gigante.
+                const MAX_VISIBLES_POR_DIA = 3;
+                let eventoHtml = dayEvents.slice(0, MAX_VISIBLES_POR_DIA).map(ev => {
                     let icon = ev.photo?.trim() ? `<img src="${ev.photo}" style="width:16px;height:16px;border-radius:50%;vertical-align:middle;" />` :
                         ({"todos":"👥","Profesores":"👩‍🏫","Estudiantes":"👦","Orquesta Infantil":"🎻","Orquesta Juvenil":"🎺"}[ev.groups[0]] || "👥");
                     return `<span class="evento" style="background:${ev.color}" data-eventid="${ev.id}">${icon} ${ev.title}</span>`;
                 }).join("");
-                html += `<div class="dia-numero" data-date="${dateStr}">${d}${eventoHtml}</div>`;
+                if (dayEvents.length > MAX_VISIBLES_POR_DIA) {
+                    eventoHtml += `<span class="evento-mas" data-date="${dateStr}">+${dayEvents.length - MAX_VISIBLES_POR_DIA} más</span>`;
+                }
+                const esHoy = dateStr === hoyStr ? " es-hoy" : "";
+                html += `<div class="dia-numero${esHoy}" data-date="${dateStr}">${d}${esHoy ? '<span class="badge-hoy-punto" title="Hoy"></span>' : ""}${eventoHtml}</div>`;
             }
             const totalCells = firstDay-1 + daysInMonth;
             const nextDays = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
@@ -700,8 +930,40 @@
                 const eventId = eventoEl.dataset.eventid;
                 const esAdmin = window.Auth?.checkPermission && window.Auth.checkPermission("manage_users");
                 abrirModalEvento(eventId, esAdmin);
+                return;
             }
+            // v3.0 (P-28): "+N más" abre la lista completa de eventos de ese día
+            const masEl = e.target.closest(".evento-mas");
+            if (masEl) mostrarEventosDelDia(masEl.dataset.date);
         });
+
+        function mostrarEventosDelDia(dateStr) {
+            const esAdmin = window.Auth?.checkPermission && window.Auth.checkPermission("manage_users");
+            const delDia = events.filter(ev => ev.date === dateStr);
+            const [y, m, d] = dateStr.split("-");
+            const fechaLegible = `${d}/${m}/${y}`;
+            const overlay = document.createElement("div");
+            overlay.className = "modal-overlay dialogo-overlay";
+            overlay.style.cssText = "display:flex;z-index:10500;";
+            overlay.innerHTML = `
+                <div class="modal-content dialogo-content" style="text-align:left;max-width:380px;">
+                    <h3 style="text-align:center;"><i class="fa-solid fa-calendar-day"></i> Eventos del ${fechaLegible}</h3>
+                    <div style="display:flex;flex-direction:column;gap:0.5rem;margin:1rem 0;">
+                        ${delDia.map(ev => `
+                            <button type="button" class="btn-config-mini evento-del-dia-item" data-id="${ev.id}" style="justify-content:flex-start;background:${ev.color};color:#1a1a1a;">
+                                ${window._escapeHtml(ev.title)}${ev.time ? " · " + ev.time : ""}
+                            </button>`).join("")}
+                    </div>
+                    <div class="dialogo-botones"><button type="button" class="btn btn-cerrar" id="cerrar-eventos-dia">Cerrar</button></div>
+                </div>`;
+            document.body.appendChild(overlay);
+            const cerrar = () => overlay.remove();
+            overlay.addEventListener("click", (e) => { if (e.target === overlay) cerrar(); });
+            overlay.querySelector("#cerrar-eventos-dia").addEventListener("click", cerrar);
+            overlay.querySelectorAll(".evento-del-dia-item").forEach(btn => {
+                btn.addEventListener("click", () => { cerrar(); abrirModalEvento(btn.dataset.id, esAdmin); });
+            });
+        }
 
         function abrirNuevoEvento() {
             if (!nucleoActivo) { window._showToast?.("Elegí un núcleo primero", "error"); return; }
@@ -709,11 +971,14 @@
         }
 
         document.querySelectorAll("#event-color-swatches .color-swatch").forEach(sw => {
-            sw.addEventListener("click", () => {
+            const elegir = () => {
                 document.getElementById("event-color").value = sw.dataset.color;
                 document.querySelectorAll("#event-color-swatches .color-swatch").forEach(s => s.classList.remove("activo"));
                 sw.classList.add("activo");
-            });
+            };
+            sw.addEventListener("click", elegir);
+            // v3.0 (P-31/accesibilidad): operable con teclado (Enter/Espacio)
+            sw.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); elegir(); } });
         });
 
         // Trae las agrupaciones REALES del núcleo activo (las mismas que se
@@ -822,7 +1087,10 @@
                 groups: [...document.getElementById("event-group").selectedOptions].map(o => o.value),
                 nucleo: nucleoActivo
             };
-            if (!evento.date || !evento.title) { alert("Fecha y título son obligatorios."); return; }
+            // v3.0 (G-02/P-29): reemplaza el alert() nativo por un toast, y
+            // ahora también avisa cuando SÍ se guarda bien (antes el modal
+            // se cerraba en silencio y no quedaba claro si había funcionado).
+            if (!evento.date || !evento.title) { window._showToast?.("Fecha y título son obligatorios.", "error"); return; }
             try {
                 if (id) {
                     await updateDoc(doc(eventosCol, id), evento);
@@ -830,18 +1098,24 @@
                     await addDoc(eventosCol, evento);
                 }
                 document.getElementById("event-modal").style.display = "none";
-            } catch (err) { alert("Error: " + err.message); }
+                window._showToast?.("Evento guardado correctamente", "success");
+            } catch (err) { window._showToast?.("Error: " + err.message, "error"); }
         });
 
         document.getElementById("delete-event-btn").addEventListener("click", async () => {
             if (!window.Auth?.checkPermission || !window.Auth.checkPermission("manage_users")) return;
             const id = document.getElementById("event-id").value;
             if (!id) return;
-            if (confirm("¿Eliminar evento?")) {
+            // v3.0 (G-02): reemplaza el confirm() nativo por el diálogo
+            // estilizado del sitio.
+            const tituloEvento = document.getElementById("event-title").value || "este evento";
+            const ok = await window._confirmDialog(`Vas a eliminar <strong>"${tituloEvento}"</strong>. Esta acción no se puede deshacer.`, { titulo: "¿Eliminar evento?", peligroso: true, textoOk: "Sí, eliminar" });
+            if (ok) {
                 try {
                     await deleteDoc(doc(eventosCol, id));
                     document.getElementById("event-modal").style.display = "none";
-                } catch (err) { alert("Error: " + err.message); }
+                    window._showToast?.("Evento eliminado", "success");
+                } catch (err) { window._showToast?.("Error: " + err.message, "error"); }
             }
         });
 
@@ -852,11 +1126,55 @@
             if (currentMonth === 0) { currentMonth = 11; currentYear--; }
             else currentMonth--;
             renderCalendar();
+            guardarPosicionCalendario();
         });
         document.getElementById("next-month").addEventListener("click", () => {
             if (currentMonth === 11) { currentMonth = 0; currentYear++; }
             else currentMonth++;
             renderCalendar();
+            guardarPosicionCalendario();
+        });
+
+        // v3.0 (P-26): recuerda el mes que se estaba viendo al volver a la
+        // página (antes siempre reiniciaba al mes actual).
+        function guardarPosicionCalendario() {
+            try { sessionStorage.setItem("panel_calendario_pos", JSON.stringify({ m: currentMonth, y: currentYear })); } catch {}
+        }
+        (function restaurarPosicionCalendario() {
+            try {
+                const guardado = JSON.parse(sessionStorage.getItem("panel_calendario_pos") || "null");
+                if (guardado && Number.isInteger(guardado.m) && Number.isInteger(guardado.y)) {
+                    currentMonth = guardado.m; currentYear = guardado.y;
+                }
+            } catch {}
+        })();
+
+        // v3.0 (G-17): botón "Hoy" + selector rápido de mes/año.
+        document.getElementById("btn-hoy-calendario").addEventListener("click", () => {
+            currentMonth = new Date().getMonth();
+            currentYear = new Date().getFullYear();
+            renderCalendar();
+            guardarPosicionCalendario();
+        });
+        const popoverMesAnio = document.getElementById("mes-anio-popover");
+        document.getElementById("month-year").addEventListener("click", () => {
+            const abierto = popoverMesAnio.style.display === "flex";
+            if (abierto) { popoverMesAnio.style.display = "none"; return; }
+            const months = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+            const selMes = document.getElementById("select-mes-rapido");
+            const selAnio = document.getElementById("select-anio-rapido");
+            selMes.innerHTML = months.map((m, i) => `<option value="${i}" ${i === currentMonth ? "selected" : ""}>${m}</option>`).join("");
+            const anioActual = new Date().getFullYear();
+            const anios = []; for (let a = anioActual - 3; a <= anioActual + 2; a++) anios.push(a);
+            selAnio.innerHTML = anios.map(a => `<option value="${a}" ${a === currentYear ? "selected" : ""}>${a}</option>`).join("");
+            popoverMesAnio.style.display = "flex";
+        });
+        document.getElementById("btn-ir-mes-rapido").addEventListener("click", () => {
+            currentMonth = parseInt(document.getElementById("select-mes-rapido").value, 10);
+            currentYear = parseInt(document.getElementById("select-anio-rapido").value, 10);
+            renderCalendar();
+            guardarPosicionCalendario();
+            popoverMesAnio.style.display = "none";
         });
 
         document.getElementById("edit-calendar-btn").addEventListener("click", abrirNuevoEvento);

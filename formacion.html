@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<script>if(localStorage.getItem("darkMode")==="true")document.documentElement.classList.add("dark-mode");</script>
+
 <script>
   if (!sessionStorage.getItem("sistemaOrquestas_session") && !localStorage.getItem("sistemaOrquestas_session")) {
     window.location.href = "login.html";
@@ -10,7 +12,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Formación – Sistema de Orquestas</title>
-    <link rel="stylesheet" href="estilos.css?v=9.0">
+        <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=16.0">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=16.0">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=16.0">
+    <meta property="og:title" content="Formación — Sistema de Orquestas">
+    <meta property="og:description" content="Biblioteca de material de estudio y Tutor Musical con IA.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="icon-512.png">
+<link rel="stylesheet" href="estilos.css?v=16.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .back-link { display: inline-block; margin: 1.5rem 0; color: var(--color-primario); font-weight: 600; text-decoration: none; }
@@ -35,7 +44,7 @@
         .grid-recursos { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
 
         .card-recurso {
-            background: var(--color-blanco); border: 1px solid #e0e4f0; border-radius: var(--border-radius);
+            background: var(--color-blanco); border: 1px solid var(--color-borde); border-radius: var(--border-radius);
             padding: 1.2rem; box-shadow: var(--shadow-card); transition: var(--transition-normal);
             display: flex; flex-direction: column; gap: 0.5rem; text-align: left; cursor: pointer; position: relative;
         }
@@ -68,8 +77,8 @@
 
         #modal-recurso .editor-row { margin-bottom: 0.9rem; }
         #modal-recurso textarea.modal-input { min-height: 140px; resize: vertical; }
-        #lector-contenido { white-space: pre-wrap; line-height: 1.7; font-size: 0.95rem; }
-
+        /* v3.0: la regla de #lector-contenido se sacó de acá — ese modal
+           ya no existe (ver recurso-detalle.html). */
         .formacion-layout { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
         .formacion-principal { flex: 1 1 480px; min-width: 0; }
         .formacion-chat-col { flex: 0 1 340px; min-width: 280px; }
@@ -106,6 +115,8 @@
         <div class="formacion-layout">
             <div class="formacion-principal">
                 <div class="niveles-tabs" id="niveles-tabs"></div>
+                <!-- v3.1: se sacó el buscador que había acá — se navega solo
+                     por las pestañas de nivel. -->
                 <div class="grid-recursos" id="grid-recursos"></div>
             </div>
 
@@ -122,25 +133,31 @@
             <h2 id="modal-recurso-title">Nuevo recurso</h2>
             <input type="hidden" id="recurso-id" />
             <div class="editor-row">
-                <label>Nivel</label>
+                <label><i class="fa-solid fa-layer-group"></i> Nivel</label>
                 <input type="text" id="recurso-nivel" class="modal-input" placeholder="Ej: Nivel 1 — Iniciación" />
             </div>
             <div class="editor-row">
-                <label>Tipo</label>
+                <label><i class="fa-solid fa-shapes"></i> Tipo</label>
                 <select id="recurso-tipo" class="modal-input">
-                    <option value="Método">Método</option>
-                    <option value="Libro">Libro</option>
-                    <option value="Corrección">Corrección</option>
-                    <option value="Aclaración">Aclaración</option>
-                    <option value="Recurso">Recurso</option>
-                    <option value="Otro">Otro</option>
+                    <option value="Método">📘 Método</option>
+                    <option value="Libro">📖 Libro</option>
+                    <option value="Corrección">✏️ Corrección</option>
+                    <option value="Aclaración">💡 Aclaración</option>
+                    <option value="Video">🎬 Video</option>
+                    <option value="Recurso">📎 Recurso</option>
+                    <option value="Otro">🗂️ Otro</option>
                 </select>
             </div>
-            <div class="editor-row"><label>Nombre</label><input type="text" id="recurso-nombre" class="modal-input" placeholder="Ej: Método Dan Hauser Vol. 1" /></div>
-            <div class="editor-row"><label>Icono (emoji)</label><input type="text" id="recurso-icono" class="modal-input" placeholder="📘" /></div>
-            <div class="editor-row"><label>Descripción breve</label><input type="text" id="recurso-descripcion" class="modal-input" placeholder="De qué trata este recurso" /></div>
+            <div class="editor-row"><label><i class="fa-solid fa-tag"></i> Nombre</label><input type="text" id="recurso-nombre" class="modal-input" placeholder="Ej: Método Dan Hauser Vol. 1" /></div>
+            <div class="editor-row"><label><i class="fa-solid fa-icons"></i> Icono (emoji)</label><input type="text" id="recurso-icono" class="modal-input" placeholder="Se sugiere uno solo según el tipo — podés cambiarlo" /></div>
+            <div class="editor-row"><label><i class="fa-solid fa-align-left"></i> Descripción breve</label><input type="text" id="recurso-descripcion" class="modal-input" placeholder="De qué trata este recurso" /></div>
             <div class="editor-row">
-                <label>Enlace externo (opcional — PDF, sitio, etc.)</label>
+                <label><i class="fa-solid fa-file-pdf"></i> Subir un PDF</label>
+                <input type="file" id="recurso-pdf-file" class="modal-input" accept="application/pdf" />
+                <p class="config-hint" id="recurso-pdf-estado" style="margin:0.4rem 0 0; color:var(--color-texto-claro);"></p>
+            </div>
+            <div class="editor-row">
+                <label><i class="fa-solid fa-link"></i> O pegá un enlace (si ya subiste un PDF arriba, no hace falta)</label>
                 <input type="url" id="recurso-url" class="modal-input" placeholder="https://..." />
             </div>
             <div class="editor-row">
@@ -161,24 +178,30 @@
         </div>
     </div>
 
-    <div class="modal-overlay" id="modal-lector">
-        <div class="modal-content">
-            <button class="modal-close-btn" id="lector-close-btn">&times;</button>
-            <h2 id="lector-titulo">Recurso</h2>
-            <div id="lector-contenido"></div>
-        </div>
-    </div>
+    <!-- v3.0 (G-20): el modal simple de lectura se reemplazó por una
+         página propia (recurso-detalle.html) con visor de PDF embebido,
+         autor/fecha e info completa — así que #modal-lector ya no hace
+         falta acá. -->
 
     <script src="check-entorno.js" defer></script>
 
-    <script type="module" src="auth.js?v=10.0"></script>
-    <script type="module" src="ui-manager.js?v=10.0"></script>
+    <script type="module" src="auth.js?v=16.0"></script>
+    <script type="module" src="ui-manager.js?v=16.0"></script>
     <script type="module">
         import { db } from "./firebase-init.js";
         import {
             collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc
         } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
         import { montarChatEmbebido } from "./chat-widget.js";
+        import { subirACloudinary } from "./gestor-imagenes.js";
+
+        // Ícono sugerido según el tipo — se usa como valor por defecto del
+        // campo "Icono" cuando alguien crea un recurso nuevo, para que no
+        // haga falta escribir un emoji a mano cada vez (se puede cambiar).
+        const ICONO_POR_TIPO = {
+            "Método": "📘", "Libro": "📖", "Corrección": "✏️",
+            "Aclaración": "💡", "Video": "🎬", "Recurso": "📎", "Otro": "🗂️"
+        };
 
         function initFormacion() {
             const session = window.Auth?.getSession();
@@ -203,9 +226,11 @@
             function renderizarTodo() {
                 const niveles = [...new Set(recursos.map(r => r.nivel))].filter(Boolean).sort();
                 const tabsEl = document.getElementById("niveles-tabs");
-                tabsEl.innerHTML = niveles.map(n =>
-                    `<button type="button" class="nivel-tab ${n === nivelActivo ? "activo" : ""}" data-nivel="${window._escapeHtml(n)}">${window._escapeHtml(n)}</button>`
-                ).join("") + (puedeEditar ? `<button type="button" class="nivel-tab-add" id="btn-nuevo-nivel">+ Nivel</button>` : "");
+                // v3.0 (P-32): cantidad de recursos junto al nombre del nivel
+                tabsEl.innerHTML = niveles.map(n => {
+                    const cantidad = recursos.filter(r => r.nivel === n).length;
+                    return `<button type="button" class="nivel-tab ${n === nivelActivo ? "activo" : ""}" data-nivel="${window._escapeHtml(n)}">${window._escapeHtml(n)} <span style="opacity:0.7;">(${cantidad})</span></button>`;
+                }).join("") + (puedeEditar ? `<button type="button" class="nivel-tab-add" id="btn-nuevo-nivel">+ Nivel</button>` : "");
 
                 tabsEl.querySelectorAll(".nivel-tab").forEach(btn => {
                     btn.addEventListener("click", () => { nivelActivo = btn.dataset.nivel; renderizarTodo(); });
@@ -217,7 +242,12 @@
 
                 const grid = document.getElementById("grid-recursos");
                 grid.innerHTML = "";
-                const items = recursos.filter(r => r.nivel === nivelActivo);
+                // v3.1: antes el buscador solo filtraba DENTRO del nivel activo —
+                // si lo que se buscaba estaba en otro nivel no aparecía nada,
+                // lo cual lo hacía sentir roto/inútil. Ahora, apenas hay texto,
+                // busca en TODOS los niveles a la vez (cada tarjeta muestra de
+                // qué nivel es); sin texto, sigue mostrando solo el nivel activo.
+                let items = recursos.filter(r => r.nivel === nivelActivo);
 
                 if (!niveles.length) {
                     grid.innerHTML = `<p class="vacio-nivel">Todavía no hay recursos cargados${puedeEditar ? ". Usá el botón de abajo para agregar el primero." : "."}</p>`;
@@ -227,23 +257,35 @@
                     items.forEach(r => {
                         const card = document.createElement("div");
                         card.className = "card-recurso";
+                        // v3.0 (P-37): badge "Nuevo" si se agregó hace 7 días o menos
+                        const esNuevo = r.fechaCreacion && (Date.now() - new Date(r.fechaCreacion).getTime()) < 7 * 24 * 60 * 60 * 1000;
                         card.innerHTML = `
                             <span class="tipo-badge">${window._escapeHtml(r.tipo) || "Recurso"}</span>
+                            ${esNuevo ? `<span class="badge-pill badge-nuevo" style="position:absolute;top:8px;right:8px;">Nuevo</span>` : ""}
                             <div class="icono-nombre"><span class="icono">${window._escapeHtml(r.icono) || "📄"}</span> ${window._escapeHtml(r.nombre)}</div>
                             ${r.descripcion ? `<p>${window._escapeHtml(r.descripcion)}</p>` : ""}
-                            <span class="fuente">${r.url ? '<i class="fa-solid fa-up-right-from-square"></i> Abrir enlace' : (r.contenido ? '<i class="fa-solid fa-book-open"></i> Leer aquí' : "")}</span>
+                            <span class="fuente">${
+                                r.url
+                                    ? (/\.pdf(\?|$)/i.test(r.url)
+                                        ? '<i class="fa-solid fa-file-pdf"></i> Ver PDF'
+                                        : '<i class="fa-solid fa-up-right-from-square"></i> Ver enlace')
+                                    : (r.contenido ? '<i class="fa-solid fa-book-open"></i> Leer aquí' : "")
+                            }</span>
+                            <!-- v3.0 (G-23): autor + fecha, antes se guardaban pero no se mostraban -->
+                            ${(r.autor || r.fechaCreacion) ? `<p style="font-size:0.68rem;opacity:0.65;margin-top:-0.2rem;">
+                                ${r.autor ? `<i class="fa-solid fa-user-pen"></i> ${window._escapeHtml(r.autor)}` : ""}
+                                ${r.fechaCreacion ? ` · ${new Date(r.fechaCreacion).toLocaleDateString("es-VE")}` : ""}
+                            </p>` : ""}
                             ${puedeEditar ? `<div class="card-recurso-admin-acciones">
                                 <button type="button" class="btn-editar-recurso" title="Editar"><i class="fa-solid fa-pen"></i></button>
                                 <button type="button" class="btn-borrar-recurso" title="Eliminar"><i class="fa-solid fa-xmark"></i></button>
                             </div>` : ""}
                         `;
+                        // v3.0 (G-19/G-20): en vez de abrir el PDF en una pestaña
+                        // nueva o un modal simple, ahora navega a una página
+                        // propia del recurso (visor embebido + info completa).
                         card.addEventListener("click", () => {
-                            if (r.url) { window.open(r.url, "_blank", "noopener"); return; }
-                            if (r.contenido) {
-                                document.getElementById("lector-titulo").textContent = r.nombre;
-                                document.getElementById("lector-contenido").textContent = r.contenido;
-                                document.getElementById("modal-lector").style.display = "flex";
-                            }
+                            window.location.href = `recurso-detalle.html?id=${encodeURIComponent(r.id)}`;
                         });
                         card.querySelector(".btn-editar-recurso")?.addEventListener("click", (e) => {
                             e.stopPropagation();
@@ -251,8 +293,10 @@
                         });
                         card.querySelector(".btn-borrar-recurso")?.addEventListener("click", async (e) => {
                             e.stopPropagation();
-                            if (!confirm(`¿Eliminar "${r.nombre}"?`)) return;
-                            try { await deleteDoc(doc(db, "formacion_modulos", r.id)); }
+                            // v3.0 (G-02): reemplaza el confirm() nativo
+                            const ok = await window._confirmDialog(`Vas a eliminar <strong>"${window._escapeHtml(r.nombre)}"</strong>. Esta acción no se puede deshacer.`, { titulo: "¿Eliminar recurso?", peligroso: true, textoOk: "Sí, eliminar" });
+                            if (!ok) return;
+                            try { await deleteDoc(doc(db, "formacion_modulos", r.id)); window._showToast?.("Recurso eliminado", "success"); }
                             catch (err) { window._showToast?.("No se pudo eliminar: " + err.message, "error"); }
                         });
                         grid.appendChild(card);
@@ -278,34 +322,103 @@
                 document.getElementById("recurso-descripcion").value = r?.descripcion || "";
                 document.getElementById("recurso-url").value = r?.url || "";
                 document.getElementById("recurso-contenido").value = r?.contenido || "";
+                document.getElementById("recurso-pdf-file").value = "";
+                // CORREGIDO 2026-09-06: antes de subir/editar un recurso solo se
+                // podía pegar un enlace ya existente (ej. un PDF alojado en otro
+                // lado) — no había forma de subir el archivo directo desde acá.
+                // Este mensaje avisa si ya hay algo cargado, para que no genere
+                // dudas al reabrir para editar.
+                document.getElementById("recurso-pdf-estado").textContent = r?.url
+                    ? "Ya tiene un enlace/PDF cargado. Subí uno nuevo acá solo si querés reemplazarlo."
+                    : "";
                 document.getElementById("modal-recurso").style.display = "flex";
             }
+
+            // Sugiere un ícono acorde al tipo elegido, pero solo si el campo de
+            // ícono todavía está vacío — nunca pisa uno que la persona ya puso.
+            document.getElementById("recurso-tipo").addEventListener("change", (e) => {
+                const campoIcono = document.getElementById("recurso-icono");
+                if (!campoIcono.value.trim()) campoIcono.value = ICONO_POR_TIPO[e.target.value] || "";
+            });
+
+            document.getElementById("recurso-pdf-file").addEventListener("change", (e) => {
+                const f = e.target.files[0];
+                // v3.0 (P-36): tamaño del archivo visible antes de subir
+                document.getElementById("recurso-pdf-estado").textContent = f
+                    ? `Se subirá "${f.name}" (${(f.size / 1024 / 1024).toFixed(1)} MB) al guardar (reemplaza el enlace de abajo).`
+                    : "";
+            });
 
             document.getElementById("btn-guardar-recurso").addEventListener("click", async () => {
                 const id = document.getElementById("recurso-id").value;
                 const nivel = document.getElementById("recurso-nivel").value.trim();
                 const nombre = document.getElementById("recurso-nombre").value.trim();
                 if (!nivel || !nombre) { window._showToast?.("Nivel y nombre son obligatorios.", "error"); return; }
+
+                const existente = id ? recursos.find(x => x.id === id) : null;
+                // v3.0 (P-35): confirmación explícita antes de reemplazar un
+                // PDF/link que ya tenía cargado (antes solo había un texto
+                // informativo, sin bloquear el guardado por error).
+                const nuevoUrlPegado = document.getElementById("recurso-url").value.trim();
+                const archivoNuevo = document.getElementById("recurso-pdf-file").files[0];
+                if (existente?.url && (archivoNuevo || (nuevoUrlPegado && nuevoUrlPegado !== existente.url))) {
+                    const ok = await window._confirmDialog(
+                        `Este recurso ya tiene un PDF/enlace cargado. Si continuás, se reemplaza por el nuevo.`,
+                        { titulo: "¿Reemplazar el archivo actual?", textoOk: "Sí, reemplazar" }
+                    );
+                    if (!ok) return;
+                }
+
+                const btn = document.getElementById("btn-guardar-recurso");
+                const textoOriginal = btn.textContent;
+                btn.disabled = true;
+
+                // CORREGIDO 2026-09-06: antes esto era obligatoriamente un enlace
+                // pegado a mano — ahora, si se eligió un archivo PDF, se sube acá
+                // (mismo Cloudinary que ya usan las imágenes del sitio) y su URL
+                // final se guarda en el mismo campo "url" de siempre — la IA y el
+                // resto del sitio no necesitan saber si el enlace vino de un PDF
+                // subido o de un link pegado, es exactamente el mismo campo.
+                let url = nuevoUrlPegado;
+                const archivo = archivoNuevo;
+                if (archivo) {
+                    btn.textContent = "⏳ Subiendo PDF...";
+                    try {
+                        url = await subirACloudinary(archivo, "formacion");
+                    } catch (err) {
+                        // Si esto falla, probablemente el preset de Cloudinary no
+                        // tenga habilitada la subida de archivos que no sean
+                        // imágenes — se avisa claro en vez de fallar en silencio,
+                        // y no se pierde nada: el resto del formulario queda intacto.
+                        window._showToast?.("No se pudo subir el PDF: " + err.message + ". Probá pegando un enlace en vez de subir el archivo.", "error");
+                        btn.disabled = false;
+                        btn.textContent = textoOriginal;
+                        return;
+                    }
+                }
+
                 const datos = {
                     nivel,
                     tipo: document.getElementById("recurso-tipo").value,
                     nombre,
                     icono: document.getElementById("recurso-icono").value.trim() || "📄",
                     descripcion: document.getElementById("recurso-descripcion").value.trim(),
-                    url: document.getElementById("recurso-url").value.trim(),
+                    url,
                     contenido: document.getElementById("recurso-contenido").value.trim(),
                     autor: session.nombre || session.firstName || "",
+                    // v3.0 (G-23/P-37): fecha de creación real — se conserva la
+                    // original al editar, y se fija a "ahora" solo al crear.
+                    fechaCreacion: existente?.fechaCreacion || new Date().toISOString(),
                 };
-                const btn = document.getElementById("btn-guardar-recurso");
-                btn.disabled = true;
                 try {
                     if (id) await updateDoc(doc(db, "formacion_modulos", id), datos);
                     else await addDoc(modulosCol, datos);
                     nivelActivo = nivel;
                     document.getElementById("modal-recurso").style.display = "none";
+                    window._showToast?.("Recurso guardado", "success");
                 } catch (err) {
                     window._showToast?.("No se pudo guardar: " + err.message, "error");
-                } finally { btn.disabled = false; }
+                } finally { btn.disabled = false; btn.textContent = textoOriginal; }
             });
 
             document.getElementById("btn-crear-nivel").addEventListener("click", () => {
@@ -319,10 +432,23 @@
             document.getElementById("recurso-close-btn").addEventListener("click", () => document.getElementById("modal-recurso").style.display = "none");
             document.getElementById("btn-cerrar-modal-recurso").addEventListener("click", () => document.getElementById("modal-recurso").style.display = "none");
             document.getElementById("nivel-close-btn").addEventListener("click", () => document.getElementById("modal-nivel").style.display = "none");
-            document.getElementById("lector-close-btn").addEventListener("click", () => document.getElementById("modal-lector").style.display = "none");
 
             window.UI?.render();
             montarChatEmbebido(document.getElementById("chat-ia-embebido"));
+
+            // v3.0: si se llegó desde el botón "Editar" de la página de
+            // detalle de un recurso (recurso-detalle.html?editar=ID),
+            // abre directo el modal de edición de ese recurso.
+            const idAEditar = new URLSearchParams(window.location.search).get("editar");
+            if (idAEditar && puedeEditar) {
+                let intentos = 0;
+                const intentarAbrir = () => {
+                    const r = recursos.find(x => x.id === idAEditar);
+                    if (r) { nivelActivo = r.nivel; renderizarTodo(); abrirModalRecurso(r); }
+                    else if (intentos++ < 15) setTimeout(intentarAbrir, 300); // por si el snapshot todavía no llegó
+                };
+                intentarAbrir();
+            }
         }
 
         window.addEventListener("auth-ready", initFormacion);

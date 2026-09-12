@@ -86,7 +86,25 @@ export async function cargarNucleosPorEstado(estado, opts) {
 }
 
 export async function crearNucleo(nombre, estado) {
-  await addDoc(collection(db, "nucleos"), { nombre: nombre.trim(), estado });
+  const nombreLimpio = nombre.trim();
+  // AGREGADO 2026-09-06 (Fase 4): como todo el sistema usa el NOMBRE del
+  // núcleo como clave (usuarios, agrupaciones, piezas, partituras, flyers,
+  // eventos — ver COLECCIONES_CON_NUCLEO más abajo), dos núcleos con el
+  // mismo nombre serían indistinguibles entre sí para el resto del sitio:
+  // sus usuarios y su repertorio se mezclarían en cualquier consulta que
+  // filtre por "nucleo". No hay forma de arreglar eso después sin migrar
+  // datos reales — mejor no dejar que pase. Se compara sin importar
+  // mayúsculas/tildes de más, para agarrar también "Caracas " vs "caracas".
+  const existentes = await getDocs(collection(db, "nucleos"));
+  const yaExiste = existentes.docs.some(
+    (d) => (d.data().nombre || "").trim().toLowerCase() === nombreLimpio.toLowerCase()
+  );
+  if (yaExiste) {
+    const err = new Error(`Ya existe un núcleo llamado "${nombreLimpio}" (puede ser en otro estado). Elegí un nombre distinto para evitar que se mezclen sus datos.`);
+    err.categoria = "nombre_duplicado";
+    throw err;
+  }
+  await addDoc(collection(db, "nucleos"), { nombre: nombreLimpio, estado });
   cacheNucleosPorEstado.delete(estado); // refrescar el caché de ese estado
   invalidarCacheSesionNucleos();
 }
@@ -292,16 +310,18 @@ export function abrirSelectorUbicacion(options = {}) {
     const opt = selNucleo.selectedOptions[0];
     const id = opt?.dataset.id;
     if (!id) { window._showToast?.("Elegí un núcleo primero", "error"); return; }
-    const nuevoNombre = prompt("Nuevo nombre para este núcleo:", opt.value);
+    // v3.0 (G-02): reemplaza el prompt() nativo del navegador
+    const nuevoNombre = await window._promptDialog("Nuevo nombre para este núcleo:", opt.value, { titulo: "Renombrar núcleo" });
     if (!nuevoNombre || !nuevoNombre.trim() || nuevoNombre.trim() === opt.value) return;
     // CORREGIDO 2026-09-01: avisamos cuántos registros (usuarios, piezas,
     // eventos, etc.) se van a actualizar, para que quien renombra sepa el
     // alcance real de la acción antes de confirmarla.
     const cantidad = await contarDocumentosDeNucleo(opt.value).catch(() => null);
     const aviso = cantidad
-      ? `Esto va a actualizar ${cantidad} registro(s) que ya pertenecen a "${opt.value}" (usuarios, agrupaciones, piezas, partituras, flyers y eventos) para que pasen a "${nuevoNombre.trim()}". ¿Confirmar?`
+      ? `Esto va a actualizar ${cantidad} registro(s) que ya pertenecen a "${opt.value}" (usuarios, agrupaciones, piezas, partituras, flyers y eventos) para que pasen a "${nuevoNombre.trim()}".`
       : `¿Renombrar "${opt.value}" a "${nuevoNombre.trim()}"?`;
-    if (!confirm(aviso)) return;
+    const ok = await window._confirmDialog(aviso, { titulo: "¿Confirmar renombre?" });
+    if (!ok) return;
     try {
       const { actualizados } = await renombrarNucleo(id, nuevoNombre, selEstado.value);
       window._showToast?.(`Núcleo renombrado (${actualizados} registro(s) actualizados)`, "success");
@@ -320,7 +340,9 @@ export function abrirSelectorUbicacion(options = {}) {
     const aviso = cantidad > 0
       ? `Este núcleo tiene ${cantidad} usuario(s) asignados. Borrarlo NO los borra a ellos ni sus datos, pero el nombre dejará de aparecer en los selectores. ¿Eliminar igual "${opt.value}"?`
       : `¿Eliminar el núcleo "${opt.value}"? Esta acción no se puede deshacer.`;
-    if (!confirm(aviso)) return;
+    // v3.0 (G-02): reemplaza el confirm() nativo del navegador
+    const ok = await window._confirmDialog(aviso, { titulo: "¿Eliminar núcleo?", peligroso: true, textoOk: "Sí, eliminar" });
+    if (!ok) return;
     try {
       await eliminarNucleo(id, selEstado.value);
       window._showToast?.("Núcleo eliminado", "success");

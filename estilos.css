@@ -1,6 +1,31 @@
 /* ================================================================
    SISTEMA DE DISEÑO PREMIUM – VARIABLES CSS UNIFICADAS + DASHBOARD
+
+   v3.0 (G-35): el sitio no tiene un empaquetador/build, así que el
+   "cache-busting" de estilos.css y de los .js se hace a mano con un
+   ?v=X.Y en cada <link>/<script>. Antes ese número estaba desincronizado
+   entre archivos (9.0 en unos, 10.0 en otros, 11.0 en login.html), lo
+   que podía dejar a alguna página sirviendo CSS viejo cacheado después
+   de un deploy. Ahora es UN SOLO número (hoy 14.0) repetido en todos
+   los archivos: la próxima vez que se edite estilos.css o cualquier .js
+   compartido, hay que subir este mismo número en TODOS los archivos que
+   lo referencian (búsqueda y reemplazo de "?v=14.0" por la versión
+   siguiente alcanza, ya que es idéntico en todos lados).
+   (Hoy: 16.0)
    ================================================================ */
+/* v3.2: antes esto era 'Segoe UI', system-ui... — la fuente por defecto de
+   Windows, sin ninguna identidad propia (en Mac/Linux/celular cada quien
+   veía una tipografía distinta). Lexend se eligió a propósito: está
+   diseñada para mejorar la fluidez de lectura (estudio de la Universidad
+   de California) — tiene sentido para un sitio que usan estudiantes,
+   profesores y directores de edades muy distintas, no es un capricho
+   estético. Se carga con @import acá (en vez de un <link> en cada HTML)
+   para no tener que tocar los 9 archivos; el costo es una vuelta de red
+   extra antes de poder pintar texto — si se nota lento, conviene mover
+   esto a <link rel="preconnect"> + <link rel="stylesheet"> en el <head>
+   de cada página. */
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&display=swap');
+
 :root {
   --color-primario: #4138A9;
   --color-primario-claro: #4a42b3;
@@ -15,6 +40,35 @@
   --color-sombra-fuerte: rgba(0, 0, 0, 0.15);
   --color-exito: #10b981;
   --color-alerta: #f59e0b;
+  /* v3.3: BUG encontrado — 5 lugares usaban var(--color-blanco) para el
+     COLOR DE TEXTO sobre el degradado moreno/violeta (header, footer,
+     título/parrafo del carrusel, tarjetas de citas). --color-blanco
+     también se usa en otros lados para FONDOS de tarjeta, y ESE uso sí
+     cambia a azul oscuro en modo oscuro (abajo) — pero el degradado
+     morado de fondo NO cambia entre modos. Resultado: en modo oscuro, ese
+     texto pasaba a pintarse casi del mismo color que el fondo violeta
+     (azul oscuro sobre violeta oscuro) y se volvía casi ilegible. Este
+     token es SIEMPRE blanco, sin importar el modo, porque el degradado
+     sobre el que va tampoco cambia. */
+  --color-texto-sobre-primario: #ffffff;
+  /* v3.0: tokens nuevos para no repetir colores "a mano" en cada página
+     — permite que el modo oscuro cubra bordes/fondos que antes quedaban
+     fijos en claro sin importar el modo.
+     v3.2: ACA HABÍA UN BUG GRANDE -- estas dos variables valían
+     "var(--color-borde)" / "var(--color-superficie-suave)" (una
+     referencia a sí mismas), que CSS trata como inválido. En modo
+     oscuro se pisaban más abajo con valores reales, pero en modo
+     CLARO -- el que ve todo el mundo por defecto -- nunca tenían un
+     valor real. Resultado: todos los bordes y fondos suaves que los
+     usan (celdas del calendario, separadores de Miembros, inputs del
+     login, tarjetas de Piezas/Formación/Repertorio) se veían sin
+     borde ni fondo en modo claro, aunque el CSS "estuviera ahí". Esto
+     explica buena parte de que el sitio se viera plano/viejo
+     comparado con Configuración (que nunca usó estas dos variables --
+     tiene sus bordes en rgba(...) puestos a mano, por eso a esa sí se
+     le veía el borde). */
+  --color-borde: #e1e5f2;
+  --color-superficie-suave: #f4f6fc;
   --border-radius: 16px;
   --border-radius-sm: 10px;
   --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.06);
@@ -23,7 +77,7 @@
   --transition-fast: all 0.2s ease;
   --transition-normal: all 0.3s ease;
   --transition-premium: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  --font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-family: 'Lexend', 'Segoe UI', system-ui, -apple-system, sans-serif;
 
   /* Dashboard extra */
   --bg-sidebar: #1e1b4b;
@@ -34,7 +88,12 @@
 /* Modo oscuro (toggle) — todo el texto en tonos casi blancos para que
    se lea bien sobre los fondos oscuros (antes quedaba gris medio y en
    algunas tarjetas no se distinguía). */
-body.dark-mode {
+/* v3.0: el modo oscuro ahora se aplica sobre <html> (no <body>) para
+   poder activarlo desde un script mínimo en el <head>, antes de que se
+   pinte el resto de la página — así se evita el "flash" de modo claro
+   que aparecía un instante al navegar entre páginas mientras se
+   esperaba a que se abriera Configuración para reaplicarlo. */
+html.dark-mode {
   --color-fondo: #1a1a2e;
   --color-blanco: #16213e;
   --color-texto: #f5f5f7;
@@ -43,6 +102,11 @@ body.dark-mode {
   --color-sombra: rgba(255, 255, 255, 0.05);
   --color-sombra-fuerte: rgba(255, 255, 255, 0.1);
   --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.3);
+  /* v3.0: bordes y superficies "suaves" que antes quedaban fijos en un
+     tono claro sin importar el modo (celdas del calendario, separadores
+     de tarjetas de Miembros, inputs de Login, etc.) */
+  --color-borde: #2a3358;
+  --color-superficie-suave: #22284a;
 }
 
 /* Reset */
@@ -98,7 +162,7 @@ img {
 .marca-gobierno { display: flex; align-items: center; gap: 0.7rem; min-width: 0; }
 .marca-gobierno span { 
   font-weight: 800; 
-  color: var(--color-blanco); 
+  color: var(--color-texto-sobre-primario); 
   font-size: 1.05rem; 
   white-space: nowrap; 
 }
@@ -170,7 +234,7 @@ img {
   box-shadow: 0 -2px 10px rgba(0,0,0,0.15);
 }
 .footer-contenido p {
-  color: var(--color-blanco);
+  color: var(--color-texto-sobre-primario);
   font-size: 0.85rem;
   opacity: 0.9;
 }
@@ -252,24 +316,10 @@ img {
 }
 .user-submenu-item:hover { background: var(--color-secundario); color: var(--color-primario); }
 
-/* ---- Barra de estado flotante (nombre / rol / núcleo / online) ---- */
-.status-bar {
-  position: fixed;
-  bottom: 14px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 1.2rem;
-  background: rgba(26,26,26,0.9);
-  color: #fff;
-  padding: 0.55rem 1.4rem;
-  border-radius: 999px;
-  font-size: 0.78rem;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
-  z-index: 400;
-  backdrop-filter: blur(6px);
-}
-.status-item { display: flex; align-items: center; gap: 0.4rem; opacity: 0.9; }
+/* v3.1: se saco la barra de estado flotante (nombre / rol / nucleo /
+   online fijos en pantalla) -- duplicaba el menu de la cuenta. La
+   bolita "online-dot" se mantiene: la usa el panel de Configuracion
+   para mostrar cuanta gente esta conectada ahora. */
 .online-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-exito); display: inline-block; box-shadow: 0 0 0 3px rgba(16,185,129,0.25); }
 
 /* El engrane de Configuración vive dentro del menú de usuario; el ícono de config heredado
@@ -297,7 +347,7 @@ img {
 .topbar {
   background-color: var(--color-blanco);
   padding: 16px 32px;
-  border-bottom: 1px solid #e0e4f0;
+  border-bottom: 1px solid var(--color-borde);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -330,6 +380,7 @@ img {
 }
 
 .carrusel-caja {
+  position: relative;
   flex: 3 1 0; 
   min-width: 0;
   height: 300px; /* Extendido levemente de 240px a 300px */
@@ -350,7 +401,13 @@ img {
   display: block;
   image-rendering: -webkit-optimize-contrast;
   background: rgba(0,0,0,0.08);
+  /* AGREGADO 2026-09-07: antes de que llegue la primera imagen real, esta
+     etiqueta no tiene "src" (para no mostrar nada roto) — aparece con un
+     fundido suave apenas main.js le asigna una URL real. */
+  opacity: 0;
+  transition: opacity 0.35s ease;
 }
+.imagen-carrusel[src]:not([src=""]) { opacity: 1; }
 .carousel-arrow {
   flex: 0 0 auto;
   align-self: center;
@@ -384,6 +441,7 @@ img {
 .carrusel-caja:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
 .carrusel-texto:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
 .carrusel-texto {
+  position: relative;
   flex: 7 1 0; 
   min-width: 0;
   /* Fondo adaptado con la misma dirección de degradado */
@@ -400,7 +458,7 @@ img {
   overflow: hidden;
 }
 .carrusel-texto h2 {
-  color: var(--color-blanco);
+  color: var(--color-texto-sobre-primario);
   font-size: 1.3rem;
   margin-bottom: 0.7rem;
   font-weight: 800;
@@ -442,11 +500,12 @@ img {
   cursor: pointer;
   z-index: 10;
   box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-  transition: transform 0.3s;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s;
 }
 .carousel-edit-btn:hover,
-.carousel-edit-btn:focus {
-  transform: rotate(90deg);
+.carousel-edit-btn:focus,
+.carousel-edit-btn:active {
+  transform: rotate(180deg) scale(1.08);
   filter: brightness(1.15);
   outline: none;
 }
@@ -465,7 +524,7 @@ img {
 }
 .metric-card {
   background-color: var(--color-blanco);
-  border: 1px solid #e0e4f0;
+  border: 1px solid var(--color-borde);
   border-radius: var(--border-radius);
   padding: 24px;
   display: flex;
@@ -507,7 +566,7 @@ img {
 /* Tabla */
 .card-section {
   background-color: var(--color-blanco);
-  border: 1px solid #e0e4f0;
+  border: 1px solid var(--color-borde);
   border-radius: var(--border-radius);
   padding: 24px;
   box-shadow: var(--shadow-card);
@@ -529,7 +588,7 @@ img {
 .data-table th,
 .data-table td {
   padding: 14px 16px;
-  border-bottom: 1px solid #e0e4f0;
+  border-bottom: 1px solid var(--color-borde);
 }
 .data-table th {
   color: var(--color-primario);
@@ -544,28 +603,65 @@ img {
 
 /* ================================================================
    TOAST
+   v3.0: ahora viven dentro de un contenedor en columna (#toast-stack)
+   para que, si aparece más de uno seguido, se apilen en vez de quedar
+   uno arriba del otro en el mismo punto de la pantalla.
    ================================================================ */
-.toast {
+#toast-stack {
   position: fixed;
   bottom: 20px;
   right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.6rem;
+  max-width: min(360px, calc(100vw - 40px));
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   background: var(--color-primario);
   color: white;
-  padding: 0.8rem 1.5rem;
-  border-radius: 25px;
+  padding: 0.8rem 1.2rem;
+  border-radius: 14px;
   box-shadow: var(--shadow-modal);
-  z-index: 9999;
   font-weight: 600;
   font-size: 0.9rem;
   animation: slideIn 0.3s ease;
 }
+.toast i { font-size: 1.05rem; flex-shrink: 0; }
+.toast.toast-saliendo { animation: slideOut 0.25s ease forwards; }
 .toast-error { background: var(--color-acento); }
 .toast-success { background: var(--color-exito); }
 .toast-warning { background: var(--color-alerta); color: #1a1a1a; }
 @keyframes slideIn {
-  from { transform: translateX(100%); opacity: 0; }
+  from { transform: translateX(110%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
+@keyframes slideOut {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(110%); opacity: 0; }
+}
+
+/* ================================================================
+   DIÁLOGOS ESTILIZADOS (reemplazo de alert/confirm/prompt nativos)
+   v3.0
+   ================================================================ */
+.dialogo-content { max-width: 420px; text-align: center; padding: 1.8rem; }
+.dialogo-icono {
+  width: 56px; height: 56px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 0.9rem; font-size: 1.5rem;
+  background: rgba(255,255,255,0.15); color: #fff;
+}
+.dialogo-icono-peligro { background: rgba(242,5,5,0.25); color: #ffb3b3; }
+.dialogo-icono-alerta { background: rgba(255,193,7,0.25); color: #ffe08a; }
+.dialogo-content h3 { margin-bottom: 0.5rem; }
+.dialogo-mensaje { margin-bottom: 1.1rem; line-height: 1.5; }
+.dialogo-input { margin-bottom: 1.1rem; }
+.dialogo-botones { display: flex; gap: 0.7rem; justify-content: center; }
+.dialogo-botones .btn { flex: 1 1 auto; }
 
 /* ================================================================
    MODALES, CROP, DRAG & DROP (heredados del sistema original)
@@ -684,21 +780,98 @@ img {
   text-transform: uppercase; letter-spacing: 0.03em; margin-top: 0.15rem;
 }
 
-/* ---- Campos de contraseña con botón de mostrar/ocultar ---- */
-.config-password-wrap { display: flex; align-items: stretch; gap: 0.4rem; }
-.config-password-wrap .modal-input { flex: 1 1 auto; }
-.config-toggle-clave {
-  flex-shrink: 0; width: 38px; border: 1px solid rgba(255,255,255,0.25);
-  border-radius: 8px; background: rgba(255,255,255,0.1); color: #fff;
-  cursor: pointer; transition: var(--transition-fast);
-}
-.config-toggle-clave:hover { background: rgba(255,255,255,0.2); }
 .config-toggle {
   display: flex; align-items: center; gap: 0.5rem;
   font-size: 0.88rem; color: rgba(255,255,255,0.9);
   margin-bottom: 0.5rem; cursor: pointer;
 }
 .config-toggle:has(input:disabled) { opacity: 0.5; cursor: not-allowed; }
+
+/* ---- AGREGADO 2026-09-06: switch de "Modo oscuro" más bonito que un
+   checkbox pelado, y tarjetitas para "Conectados ahora" en vez de una
+   lista con las claves internas del rol en crudo. ---- */
+.config-switch-row {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 0.9rem; color: #fff; cursor: pointer;
+}
+.config-switch-row span:first-child { display: flex; align-items: center; gap: 0.5rem; }
+.config-switch { position: relative; display: inline-block; width: 42px; height: 24px; flex-shrink: 0; }
+.config-switch input { opacity: 0; width: 0; height: 0; }
+.config-switch-slider {
+  position: absolute; inset: 0; cursor: pointer;
+  background: rgba(255,255,255,0.25); border-radius: 999px;
+  transition: var(--transition-fast);
+}
+.config-switch-slider::before {
+  content: ""; position: absolute; width: 18px; height: 18px;
+  left: 3px; top: 3px; background: #fff; border-radius: 50%;
+  transition: var(--transition-fast);
+}
+.config-switch input:checked + .config-switch-slider { background: var(--color-primario-claro); }
+.config-switch input:checked + .config-switch-slider::before { transform: translateX(18px); }
+
+.config-stat-total {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-weight: 700; color: #fff; margin-bottom: 0.6rem; font-size: 0.9rem;
+}
+.config-stat-fila {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.45rem 0.6rem; border-radius: 8px;
+  background: rgba(255,255,255,0.08); margin-bottom: 0.4rem;
+  font-size: 0.85rem; color: rgba(255,255,255,0.95);
+}
+.config-stat-rol { display: flex; align-items: center; gap: 0.5rem; }
+.config-stat-count {
+  background: rgba(255,255,255,0.18); border-radius: 999px;
+  padding: 0.1rem 0.6rem; font-weight: 700; font-size: 0.8rem;
+}
+
+/* ---------------------------------------------------------------
+   AGREGADO 2026-09-06: "puntitos de carga" reutilizables — mismo
+   componente para el carrusel, cada flyer y el calendario/eventos,
+   para que se sienta igual en todo el sitio. Tres puntos en fila; en
+   cualquier instante hay exactamente UNO oscuro (los otros dos
+   blancos), y ese oscuro se "mueve" de izquierda a derecha en bucle
+   — el clásico indicador de "cargando" de tres puntos.
+   Uso: <div class="loader-puntos"><span></span><span></span><span></span></div>
+   posicionado dentro de un contenedor con position:relative, y se
+   oculta por JS (display:none) apenas el contenido real ya está listo.
+--------------------------------------------------------------- */
+.loader-puntos {
+  position: absolute; top: 10px; left: 12px; z-index: 6;
+  display: flex; gap: 6px; align-items: center;
+}
+/* AGREGADO 2026-09-07: variante centrada — para los flyers, donde los
+   puntitos van en el medio del bloque, no en la esquina. */
+.loader-puntos.centrado {
+  top: auto; left: auto; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+/* v3.0: variante para usar la animación como contenido normal en el flujo
+   (un botón, un mensaje de chat, un div centrado), sin position:absolute. */
+.loader-puntos.inline { position: static; top: auto; left: auto; display: inline-flex; justify-content: center; }
+.loader-puntos span {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #ffffff;
+  animation: loaderPuntoOnda 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+.loader-puntos span:nth-child(1) { animation-delay: 0s; }
+.loader-puntos span:nth-child(2) { animation-delay: 0.32s; }
+.loader-puntos span:nth-child(3) { animation-delay: 0.64s; }
+@keyframes loaderPuntoOnda {
+  /* v3.0: pasos intermedios para que el punto se oscurezca y se aclare
+     de forma gradual ("pasando poco a poco"), no de golpe.
+     v3.1: se sumó el movimiento vertical ("un poco de arriba hacia
+     abajo") que faltaba -- antes solo cambiaba de color y escala. */
+  0%, 100%   { background: #ffffff; transform: translateY(0) scale(1);        opacity: 0.85; }
+  20%        { background: #ffffff; transform: translateY(0) scale(1);        opacity: 0.85; }
+  35%        { background: rgba(10,10,20,0.65); transform: translateY(-4px) scale(0.8); opacity: 1; }
+  50%        { background: rgba(10,10,20,0.65); transform: translateY(-4px) scale(0.8); opacity: 1; }
+  65%        { background: #ffffff; transform: translateY(0) scale(1);        opacity: 0.85; }
+}
+/* Sobre fondos claros (como cada flyer mientras carga) el punto "blanco"
+   necesita un borde para no desaparecer contra el fondo claro. */
+.loader-puntos.sobre-claro span { border: 1px solid rgba(0,0,0,0.15); }
 #config-stats ul { list-style: none; display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.85rem; }
 .config-preview-banner {
   display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
@@ -801,7 +974,7 @@ img {
 .tool-btn {
   flex: 1 1 auto;
   padding: 10px 14px;
-  border: 1px solid #e0e4f0;
+  border: 1px solid var(--color-borde);
   background: var(--color-secundario);
   color: var(--color-texto);
   border-radius: var(--border-radius-sm);
@@ -930,7 +1103,7 @@ img {
   padding: 0.75rem 1rem;
   font-size: 0.95rem;
   font-family: var(--font-family);
-  border: 1.5px solid #e0e4f0;
+  border: 1.5px solid var(--color-borde);
   border-radius: 10px;
   /* Fondo fijo (no sigue el modo oscuro) para que el texto escrito acá
      siempre se lea, así que el color de texto también va fijo. */
@@ -1024,7 +1197,7 @@ img {
 }
 .cita-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
 .cita-card i.fa-quote-left {
-  color: var(--color-blanco);
+  color: var(--color-texto-sobre-primario);
   opacity: 0.35;
   font-size: 1.8rem;
   margin-bottom: 0.6rem;
@@ -1033,7 +1206,7 @@ img {
 .cita-card p { 
   font-size: 0.98rem;
   line-height: 1.5;
-  color: var(--color-blanco); 
+  color: var(--color-texto-sobre-primario); 
   opacity: 0.95; 
 }
 .cita-card .cita-autor { 
@@ -1041,6 +1214,25 @@ img {
   font-weight: 700; 
   color: var(--text-sidebar); /* Tono lavanda claro para destacar el autor */
   font-size: 0.85rem; 
+}
+
+/* v3.0 (G-07): wrap de citas + botón de edición (solo visible para quien
+   puede editar el carrusel nacional) */
+.citas-grid-wrap { position: relative; }
+#btn-editar-citas {
+  margin-top: 0.8rem;
+  display: inline-flex; align-items: center; gap: 0.4rem;
+}
+
+/* v3.0 (P-12): contador discreto "2 / 5" del carrusel */
+.carrusel-contador {
+  font-size: 0.75rem; opacity: 0.7; margin-top: 0.4rem; font-weight: 600;
+}
+
+/* v3.0 (P-13): contador de caracteres bajo los campos del editor */
+.contador-caracteres {
+  display: block; text-align: right; font-size: 0.72rem;
+  color: rgba(255,255,255,0.55); margin-top: 0.15rem;
 }
 
 /* ================================================================
@@ -1074,16 +1266,6 @@ img {
   .btn-nav { padding: 0.5rem 0.8rem; font-size: 0.75rem; }
   .btn-nav.btn-user { width: 2.1rem; height: 2.1rem; font-size: 0.85rem; } /* Purgado el 34px */
   .user-submenu { min-width: 11rem; font-size: 0.8rem; } /* Purgado el 180px */
-  
-  /* Uso de porcentajes y rem para cálculo fluido */
-  .status-bar { 
-    flex-wrap: wrap; 
-    justify-content: center; 
-    gap: 0.6rem 1rem; 
-    width: 92%; 
-    bottom: 0.5rem; 
-    padding: 0.5rem 1rem; 
-  }
 
   .contenido-web.container { padding: 1.1rem; }
 
@@ -1128,7 +1310,7 @@ img {
   max-width: 500px;
   height: 420px;
   background: var(--color-blanco);
-  border: 1px solid #e0e4f0;
+  border: 1px solid var(--color-borde);
   border-radius: var(--border-radius);
   box-shadow: var(--shadow-card);
   display: flex;
@@ -1147,10 +1329,21 @@ img {
 .chat-ia-msg { max-width: 85%; padding: 0.55rem 0.8rem; border-radius: 12px; font-size: 0.83rem; line-height: 1.5; white-space: pre-wrap; }
 .chat-ia-msg-bot { align-self: flex-start; background: var(--color-blanco); border: 1px solid #e5e7eb; color: var(--color-texto); border-bottom-left-radius: 3px; }
 .chat-ia-msg-user { align-self: flex-end; background: var(--color-primario); color: #fff; border-bottom-right-radius: 3px; }
-.chat-ia-cargando { opacity: 0.6; font-style: italic; }
+.chat-ia-cargando { opacity: 0.7; display: flex; align-items: center; gap: 0.5rem; }
+.chat-ia-cargando-texto { font-style: italic; font-size: 0.8rem; }
+/* v3.3: se sacó el botón de descargar conversación (y su CSS) que iba acá. */
+/* v3.0 (G-26): botón "Ir a Formación/Piezas/Calendario" bajo una respuesta que cita el sitio */
+.chat-ia-ir-btn {
+  align-self: flex-start; margin-top: -0.2rem; font-size: 0.75rem; font-weight: 700;
+  color: var(--color-primario); text-decoration: none; display: flex; align-items: center; gap: 0.35rem;
+  background: var(--color-secundario); padding: 0.35rem 0.7rem; border-radius: 999px;
+}
+.chat-ia-ir-btn:hover { filter: brightness(1.08); }
+/* v3.0 (P-39): contador de caracteres del chat */
+.chat-ia-contador { text-align: right; font-size: 0.68rem; color: var(--color-texto-claro); padding: 0.2rem 0.9rem 0.5rem; background: var(--color-blanco); }
 .chat-ia-input-row { display: flex; gap: 0.5rem; padding: 0.7rem; border-top: 1px solid #eef0f7; background: var(--color-blanco); }
 .chat-ia-input-row input {
-  flex: 1; padding: 0.55rem 0.8rem; border-radius: 999px; border: 1px solid #e0e4f0; font-size: 0.85rem;
+  flex: 1; padding: 0.55rem 0.8rem; border-radius: 999px; border: 1px solid var(--color-borde); font-size: 0.85rem;
 }
 .chat-ia-input-row input:focus { outline: none; border-color: var(--color-primario); }
 .chat-ia-input-row input:disabled,
@@ -1162,3 +1355,184 @@ img {
 @media (max-width: 900px) {
   .chat-ia-embebido { max-width: 100%; height: 380px; }
 }
+
+/* ================================================================
+   v3.0 — ACCESIBILIDAD TRANSVERSAL
+   ================================================================ */
+/* Foco de teclado visible y consistente en TODO elemento interactivo.
+   Antes varios botones tenían outline:none sin ningún reemplazo visual,
+   lo que hacía imposible saber "dónde estás parado" navegando sin mouse. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid var(--color-acento);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.carousel-image:focus-visible,
+.flyer-card:focus-visible { outline-offset: -3px; }
+
+/* Respeta la preferencia del sistema operativo de reducir animaciones
+   (rotación automática del carrusel, puntitos de carga, transiciones de
+   hover) para quien lo pide por motivos de accesibilidad o mareo. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Transición suave (P-23) al activar/desactivar modo oscuro, en vez del
+   cambio instantáneo — se excluye de prefers-reduced-motion arriba a
+   propósito porque no es una animación en bucle, es un cambio único. */
+body, .carrusel-caja, .modal-content, .config-panel, header.barra-superior {
+  transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease;
+}
+
+/* ================================================================
+   v3.0 — LIGHTBOX (flyers a pantalla completa — G-15)
+   ================================================================ */
+.lightbox-overlay {
+  position: fixed; inset: 0; background: rgba(10,10,20,0.92);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 10600; padding: 2rem; animation: fadeIn 0.25s ease;
+  cursor: zoom-out;
+}
+.lightbox-overlay img {
+  max-width: 100%; max-height: 100%; border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5); cursor: default;
+  animation: scaleIn 0.25s ease;
+}
+.lightbox-cerrar {
+  position: absolute; top: 1.2rem; right: 1.5rem; background: rgba(255,255,255,0.12);
+  color: #fff; border: none; width: 42px; height: 42px; border-radius: 50%;
+  font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.lightbox-cerrar:hover { background: rgba(255,255,255,0.25); }
+
+/* ================================================================
+   v3.0 — BADGES, CHIPS, BUSCADOR (reutilizables en varias páginas)
+   ================================================================ */
+.badge-pill {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  font-size: 0.72rem; font-weight: 700; padding: 0.22rem 0.65rem;
+  border-radius: 999px; white-space: nowrap;
+}
+.badge-nuevo { background: var(--color-exito); color: #fff; }
+.badge-temporal { background: var(--color-alerta); color: #1a1a1a; }
+.badge-hoy { background: var(--color-acento); color: #fff; }
+
+.buscador-caja {
+  display: flex; align-items: center; gap: 0.6rem;
+  background: var(--color-blanco); border: 1.5px solid var(--color-borde);
+  border-radius: 999px; padding: 0.55rem 1.1rem; margin-bottom: 1.2rem;
+  transition: var(--transition-fast); max-width: 420px;
+}
+.buscador-caja:focus-within { border-color: var(--color-primario); box-shadow: 0 0 0 3px rgba(65,56,169,0.1); }
+.buscador-caja i { color: var(--color-texto-claro); }
+.buscador-caja input {
+  border: none; outline: none; background: transparent; flex: 1;
+  font-family: var(--font-family); font-size: 0.92rem; color: var(--color-texto);
+}
+.buscador-caja .buscador-limpiar {
+  border: none; background: none; cursor: pointer; color: var(--color-texto-claro);
+  font-size: 0.9rem; display: none; padding: 0.2rem;
+}
+.buscador-caja.con-texto .buscador-limpiar { display: block; }
+
+.chip-sugerida {
+  background: var(--color-secundario); color: var(--color-primario);
+  border: 1px solid rgba(65,56,169,0.18); border-radius: 999px;
+  padding: 0.4rem 0.9rem; font-size: 0.78rem; font-weight: 600;
+  cursor: pointer; transition: var(--transition-fast); white-space: nowrap;
+}
+.chip-sugerida:hover { background: var(--color-primario); color: #fff; transform: translateY(-1px); }
+.chips-fila { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0 0.9rem 0.7rem; }
+
+/* ================================================================
+   v3.0 — PESTAÑAS DE CONFIGURACIÓN (G-13)
+   ================================================================ */
+.config-tabs {
+  display: flex; gap: 0.4rem; margin-bottom: 1.3rem; border-bottom: 1px solid rgba(255,255,255,0.15);
+  overflow-x: auto;
+}
+.config-tab {
+  background: none; border: none; color: rgba(255,255,255,0.65);
+  padding: 0.6rem 1rem; font-weight: 600; font-size: 0.85rem; cursor: pointer;
+  border-bottom: 3px solid transparent; display: flex; align-items: center; gap: 0.4rem;
+  white-space: nowrap; transition: var(--transition-fast);
+}
+.config-tab:hover { color: #fff; }
+.config-tab.activo { color: #fff; border-bottom-color: var(--color-acento); }
+.config-panel-seccion { display: none; }
+.config-panel-seccion.activa { display: block; animation: fadeIn 0.25s ease; }
+
+/* ================================================================
+   v3.0 — MENÚ MÓVIL DE LA BARRA SUPERIOR (G-11)
+   ================================================================ */
+.btn-menu-movil { display: none; background: none; border: none; font-size: 1.3rem; color: var(--color-primario); cursor: pointer; padding: 0.4rem; }
+@media (max-width: 640px) {
+  .btn-menu-movil { display: block; }
+  #user-nav.menu-movil-cerrado { display: none !important; }
+  #user-nav.menu-movil-abierto {
+    display: flex !important; position: absolute; top: 100%; left: 0; right: 0;
+    flex-direction: column; background: var(--color-blanco); padding: 1rem;
+    box-shadow: var(--shadow-modal); z-index: 500; gap: 0.6rem;
+  }
+}
+
+/* ================================================================
+   v3.0 — INDICADOR DE POSICIÓN DEL CARRUSEL (G-08)
+   ================================================================ */
+.carrusel-posicion {
+  display: flex; gap: 0.4rem; justify-content: center; margin-top: 0.7rem;
+}
+.carrusel-posicion button {
+  width: 9px; height: 9px; border-radius: 50%; border: none; padding: 0;
+  background: rgba(255,255,255,0.4); cursor: pointer; transition: var(--transition-fast);
+}
+.carrusel-posicion button.activo { background: #fff; width: 22px; border-radius: 5px; }
+
+/* ================================================================
+   v3.0 — BREADCRUMB (P-18)
+   ================================================================ */
+.breadcrumb-nav {
+  font-size: 0.82rem; color: var(--color-texto-claro); margin-bottom: 1rem;
+  display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;
+}
+.breadcrumb-nav a { color: var(--color-primario); text-decoration: none; font-weight: 600; }
+.breadcrumb-nav a:hover { text-decoration: underline; }
+.breadcrumb-nav .separador { color: var(--color-texto-claro); opacity: 0.6; }
+
+/* ================================================================
+   v3.0 — HOJA DE ESTILOS DE IMPRESIÓN (P-70)
+   ================================================================ */
+@media print {
+  header.barra-superior, .back-link, .chat-ia-embebido, .buscador-caja,
+  #toast-stack, .btn-config-mini, .flyer-card-wrap, .accesos-rapidos-panel,
+  button { display: none !important; }
+  body { background: #fff !important; color: #000 !important; }
+  .repertorio-grid, .agrupaciones-grid { display: block !important; }
+  a[href]::after { content: " (" attr(href) ")"; font-size: 0.75em; }
+}
+
+/* ================================================================
+   v3.0 — BADGE DE NÚCLEO EN LA BARRA SUPERIOR (P-17)
+   ================================================================ */
+.nucleo-header-badge {
+  display: flex; align-items: center; gap: 0.4rem;
+  font-size: 0.78rem; font-weight: 700; color: var(--color-primario);
+  background: var(--color-secundario); padding: 0.4rem 0.9rem;
+  border-radius: 999px; white-space: nowrap;
+}
+@media (max-width: 640px) { .nucleo-header-badge { display: none; } }
+
+/* Fila de switch deshabilitada (Notificaciones — G-14, "próximamente") */
+.config-switch-row-disabled { opacity: 0.5; cursor: not-allowed; }
+.config-switch-row-disabled .config-switch input { cursor: not-allowed; }
+

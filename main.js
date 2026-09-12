@@ -1,6 +1,6 @@
 import { db } from "./firebase-init.js";
 import {
-  collection, onSnapshot, getDocs, doc, writeBatch,
+  collection, onSnapshot, getDocs, doc, writeBatch, setDoc,
   query, where, limit, orderBy
 } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
 import { subirACloudinary, abrirEditorImagen } from "./gestor-imagenes.js";
@@ -13,16 +13,69 @@ import { subirACloudinary, abrirEditorImagen } from "./gestor-imagenes.js";
 (function () {
   const carruselCol = collection(db, "carrusel");
   let carouselData = [], currentIndex = 0, autoInterval;
+  // v3.1: antes, si se abría el editor del carrusel justo antes de que
+  // llegara la primera respuesta de Firestore, "working" (más abajo) se
+  // copiaba de un "carouselData" todavía vacío y se quedaba así para
+  // siempre — el carrusel público sí se actualizaba, pero el editor no.
+  // Esta bandera distingue "todavía no llegó nada" de "llegó y está vacío".
+  let carouselCargado = false;
+
+  // v3.0 (P-11): precarga la SIGUIENTE imagen del carrusel un paso antes de
+  // que le toque mostrarse, para que la rotación automática no tenga ni un
+  // parpadeo mientras el navegador todavía está bajando la imagen.
+  function precargarSiguiente() {
+    if (carouselData.length < 2) return;
+    const siguiente = carouselData[(currentIndex + 1) % carouselData.length];
+    if (siguiente?.url) { const pre = new Image(); pre.src = siguiente.url; }
+  }
+
+  // v3.0 (G-08): puntos de POSICIÓN (distintos de los de carga) para saber
+  // cuántas imágenes hay y cuál se está viendo, navegables con un clic.
+  function renderPosicionDots() {
+    const cont = document.getElementById("carousel-posicion");
+    if (!cont) return;
+    if (carouselData.length < 2) { cont.innerHTML = ""; return; }
+    cont.innerHTML = "";
+    carouselData.forEach((_, idx) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = idx === currentIndex ? "activo" : "";
+      b.setAttribute("aria-label", `Ir a la imagen ${idx + 1} de ${carouselData.length}`);
+      b.addEventListener("click", () => { currentIndex = idx; renderizarCarrusel(carouselData); autoRotacionStop(); autoRotacionStart(); });
+      cont.appendChild(b);
+    });
+  }
 
   function renderizarCarrusel(imagenes) {
     carouselData = imagenes;
+    if (!carouselCargado) {
+      carouselCargado = true;
+      if (modalEsperandoCarga) {
+        // El editor se abrió antes de esta primera respuesta y quedó
+        // esperando (ver showCarouselModal): ahora sí hay datos reales,
+        // así que lo completamos sin que el usuario tenga que cerrar y
+        // volver a abrir el modal.
+        modalEsperandoCarga = false;
+        working = imagenes.map(item => ({ ...item }));
+        renderTodoRef?.();
+      }
+    }
     const imgEl = document.getElementById("carousel-image");
     const tituloEl = document.getElementById("carousel-title");
     const descEl = document.getElementById("carousel-desc");
+    const contadorEl = document.getElementById("carousel-contador");
+    // AGREGADO 2026-09-06/07: apenas hay un dato REAL (aunque sea "está
+    // vacío"), se ocultan los DOS indicadores de carga (imagen y texto) —
+    // antes solo había uno, y encima la persona veía el escudo del colegio
+    // (images.jpg) de relleno en vez de un estado de carga neutro.
+    document.getElementById("carousel-loader")?.style.setProperty("display", "none");
+    document.getElementById("carousel-loader-texto")?.style.setProperty("display", "none");
     if (!carouselData.length) {
       if (imgEl) imgEl.src = "";
       if (tituloEl) tituloEl.textContent = "Sin imágenes";
       if (descEl) descEl.textContent = "El carrusel está vacío.";
+      if (contadorEl) contadorEl.textContent = "";
+      renderPosicionDots();
       return;
     }
     if (currentIndex >= carouselData.length) currentIndex = 0;
@@ -30,6 +83,9 @@ import { subirACloudinary, abrirEditorImagen } from "./gestor-imagenes.js";
     if (imgEl) { imgEl.src = item.url || ""; imgEl.alt = item.alt || ""; }
     if (tituloEl) tituloEl.textContent = item.alt || "Sin título";
     if (descEl) descEl.textContent = item.text || "";
+    if (contadorEl) contadorEl.textContent = carouselData.length > 1 ? `${currentIndex + 1} / ${carouselData.length}` : "";
+    renderPosicionDots();
+    precargarSiguiente();
   }
 
   function siguienteSlide() { if (carouselData.length) { currentIndex = (currentIndex + 1) % carouselData.length; renderizarCarrusel(carouselData); } }
@@ -68,6 +124,8 @@ import { subirACloudinary, abrirEditorImagen } from "./gestor-imagenes.js";
   let modalReady = false;
   let working = [];
   let seleccionActual = 0;
+  let modalEsperandoCarga = false;
+  let renderTodoRef = null;
 
   function initCarouselModal() {
     if (modalReady) return; modalReady = true;
@@ -90,11 +148,13 @@ import { subirACloudinary, abrirEditorImagen } from "./gestor-imagenes.js";
           </div>
           <div class="editor-row">
             <label>Título:</label>
-            <input type="text" id="preview-titulo" class="form-control" placeholder="Título de la imagen"/>
+            <input type="text" id="preview-titulo" class="form-control" placeholder="Título de la imagen" maxlength="80"/>
+            <small class="contador-caracteres" id="contador-titulo">0/80</small>
           </div>
           <div class="editor-row">
             <label>Texto:</label>
-            <input type="text" id="preview-texto" class="form-control" placeholder="Texto descriptivo"/>
+            <input type="text" id="preview-texto" class="form-control" placeholder="Texto descriptivo" maxlength="200"/>
+            <small class="contador-caracteres" id="contador-texto">0/200</small>
           </div>
           <div class="editor-row acciones-item">
             <button type="button" id="btn-editar-img" class="btn btn-submit"><i class="fa-solid fa-pen"></i> Editar</button>
@@ -142,17 +202,39 @@ import { subirACloudinary, abrirEditorImagen } from "./gestor-imagenes.js";
       if (!working[seleccionActual]) return;
       working[seleccionActual].alt = document.getElementById("preview-titulo").value;
       working[seleccionActual].text = document.getElementById("preview-texto").value;
+      actualizarContadores();
+    }
+    // v3.0 (P-13): contador de caracteres restantes visible en vivo.
+    function actualizarContadores() {
+      const t = document.getElementById("preview-titulo"), d = document.getElementById("preview-texto");
+      const ct = document.getElementById("contador-titulo"), cd = document.getElementById("contador-texto");
+      if (t && ct) ct.textContent = `${t.value.length}/${t.maxLength}`;
+      if (d && cd) cd.textContent = `${d.value.length}/${d.maxLength}`;
     }
 
     function renderTodo() {
       const empty = document.getElementById("carousel-empty-state");
       const body = document.getElementById("carousel-editor-body");
       const strip = document.getElementById("thumb-strip");
+      const saveBtnEl = document.getElementById("save-carousel-btn");
+      if (modalEsperandoCarga) {
+        // Todavía no sabemos qué hay: mostramos carga, no "vacío", y
+        // bloqueamos Guardar para no pisar el carrusel real con nada.
+        empty.style.display = "block";
+        empty.innerHTML = `<div style="display:flex;justify-content:center;padding:1rem 0;">${window._loaderPuntosHTML ? window._loaderPuntosHTML(true, true) : "Cargando…"}</div><p style="font-size:0.85rem;color:#888;text-align:center;">Cargando el carrusel actual…</p>`;
+        body.style.display = "none";
+        strip.style.display = "none";
+        strip.innerHTML = "";
+        if (saveBtnEl) saveBtnEl.disabled = true;
+        return;
+      }
+      if (saveBtnEl) saveBtnEl.disabled = false;
       if (!working.length) {
         // Sin imágenes: SOLO la caja grande de "Ingrese una imagen para comenzar".
         // La tira de miniaturas (con el "+") se oculta por completo para no duplicar
         // el punto de entrada.
         empty.style.display = "block";
+        empty.innerHTML = `<p>🎵 Ingrese una imagen para comenzar</p><p style="font-size:0.8rem;color:#888;">Arrastra un archivo o haz clic aquí</p>`;
         body.style.display = "none";
         strip.style.display = "none";
         strip.innerHTML = "";
@@ -167,6 +249,7 @@ import { subirACloudinary, abrirEditorImagen } from "./gestor-imagenes.js";
       document.getElementById("preview-img").src = item.url || "";
       document.getElementById("preview-titulo").value = item.alt || "";
       document.getElementById("preview-texto").value = item.text || "";
+      actualizarContadores();
       renderThumbs();
     }
 
@@ -228,12 +311,23 @@ import { subirACloudinary, abrirEditorImagen } from "./gestor-imagenes.js";
         saveBtn.textContent = saveBtnTextoOriginal;
       }
     };
-    document.getElementById("close-modal").onclick = () => { working = carouselData.map(i => ({ ...i })); modal.style.display = "none"; };
-    document.getElementById("carousel-close-btn").onclick = () => { working = carouselData.map(i => ({ ...i })); modal.style.display = "none"; };
+    document.getElementById("close-modal").onclick = () => { modalEsperandoCarga = false; working = carouselData.map(i => ({ ...i })); modal.style.display = "none"; };
+    document.getElementById("carousel-close-btn").onclick = () => { modalEsperandoCarga = false; working = carouselData.map(i => ({ ...i })); modal.style.display = "none"; };
+
+    renderTodoRef = renderTodo;
 
     window.showCarouselModal = () => {
-      working = carouselData.map(item => ({ ...item }));
       seleccionActual = 0;
+      if (!carouselCargado) {
+        // Se pidió abrir el editor antes de que Firestore contestara la
+        // primera vez: no copiamos nada todavía (ver renderizarCarrusel,
+        // que es quien completa "working" apenas llegue esa respuesta).
+        modalEsperandoCarga = true;
+        working = [];
+      } else {
+        modalEsperandoCarga = false;
+        working = carouselData.map(item => ({ ...item }));
+      }
       renderTodo();
       modal.style.display = "flex";
     };
@@ -267,6 +361,38 @@ import { subirACloudinary, abrirEditorImagen } from "./gestor-imagenes.js";
     document.getElementById("next-slide")?.addEventListener("click", () => { siguienteSlide(); autoRotacionStop(); autoRotacionStart(); });
     autoRotacionStart();
 
+    // v3.0 (P-06): pausa la rotación automática mientras el mouse está
+    // encima o el carrusel tiene foco de teclado, para que no "salte" de
+    // imagen mientras alguien está leyendo el texto.
+    const visual = document.getElementById("carrusel-visual");
+    if (visual) {
+      visual.addEventListener("mouseenter", autoRotacionStop);
+      visual.addEventListener("mouseleave", autoRotacionStart);
+      visual.addEventListener("focusin", autoRotacionStop);
+      visual.addEventListener("focusout", autoRotacionStart);
+
+      // v3.0 (G-10): navegación con flechas del teclado cuando el carrusel
+      // tiene el foco.
+      visual.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowLeft") { anteriorSlide(); autoRotacionStop(); autoRotacionStart(); }
+        else if (e.key === "ArrowRight") { siguienteSlide(); autoRotacionStop(); autoRotacionStart(); }
+      });
+
+      // v3.0 (G-09): gesto de swipe para celular (sin librerías: solo
+      // compara la posición X inicial y final del toque).
+      let touchStartX = null;
+      visual.addEventListener("touchstart", (e) => { touchStartX = e.changedTouches[0].clientX; }, { passive: true });
+      visual.addEventListener("touchend", (e) => {
+        if (touchStartX === null) return;
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        if (Math.abs(dx) > 40) { // umbral mínimo para no confundir con un toque normal
+          if (dx < 0) siguienteSlide(); else anteriorSlide();
+          autoRotacionStop(); autoRotacionStart();
+        }
+        touchStartX = null;
+      }, { passive: true });
+    }
+
     // El carrusel de index.html es el carrusel NACIONAL: solo Owner Supremo y
     // Director Nacional pueden modificarlo. (El botón visual lo crea ui-manager.js;
     // aquí solo dejamos lista la función que ese botón invoca.)
@@ -281,6 +407,98 @@ import { subirACloudinary, abrirEditorImagen } from "./gestor-imagenes.js";
 
     window.UI?.render(); // vuelve a pintar la barra de navegación para que muestre (o no) el botón de editar
   })();
+})();
+
+// ==================== CITAS DE LA PORTADA (G-07) ====================
+// Antes eran 3 tarjetas de texto fijo ("— Cita 1/2/3") escritas directo en
+// el HTML. Ahora viven en Firestore (contenido/citas) igual que el resto
+// del contenido editable del sitio, con un botón de edición visible solo
+// para quien puede editar el carrusel (mismo permiso: edit_carousel +
+// owner_supremo/director_nacional, porque es contenido del carrusel
+// nacional de la portada).
+(function () {
+  const citasRef = doc(db, "contenido", "citas");
+  const DEFAULTS = [
+    { texto: "La música transformó mi manera de ver el mundo y de relacionarme con los demás.", autor: "Testimonio de la comunidad" },
+    { texto: "Gracias al Sistema pude formarme como músico y hoy enseño a nuevas generaciones.", autor: "Testimonio de la comunidad" },
+    { texto: "Un espacio de oportunidades donde la disciplina y el arte van de la mano.", autor: "Testimonio de la comunidad" }
+  ];
+  let citasActuales = DEFAULTS;
+
+  function renderCitas(items) {
+    const cont = document.getElementById("citas-grid");
+    if (!cont) return;
+    cont.innerHTML = "";
+    items.forEach(c => {
+      const card = document.createElement("div");
+      card.className = "cita-card";
+      card.innerHTML = `
+        <i class="fa-solid fa-quote-left" aria-hidden="true"></i>
+        <p>"${window._escapeHtml ? window._escapeHtml(c.texto || "") : (c.texto || "")}"</p>
+        <div class="cita-autor">— ${window._escapeHtml ? window._escapeHtml(c.autor || "Testimonio") : (c.autor || "Testimonio")}</div>`;
+      cont.appendChild(card);
+    });
+  }
+
+  function initCitasModal() {
+    const btnEditar = document.getElementById("btn-editar-citas");
+    if (btnEditar) btnEditar.style.display = "inline-flex";
+
+    function renderCampos() {
+      const wrap = document.getElementById("citas-editor-campos");
+      if (!wrap) return;
+      wrap.innerHTML = citasActuales.map((c, i) => `
+        <div class="editor-row" style="border-top:${i ? "1px solid rgba(255,255,255,0.15)" : "none"};padding-top:${i ? "0.9rem" : "0"};margin-top:${i ? "0.9rem" : "0"};">
+          <label>Cita ${i + 1} — Texto:</label>
+          <input type="text" class="form-control cita-texto-input" data-idx="${i}" value="${window._escapeHtml ? window._escapeHtml(c.texto || "") : ""}" maxlength="220" placeholder="Texto de la cita">
+          <label style="margin-top:0.5rem;">Cita ${i + 1} — Autor:</label>
+          <input type="text" class="form-control cita-autor-input" data-idx="${i}" value="${window._escapeHtml ? window._escapeHtml(c.autor || "") : ""}" maxlength="60" placeholder="Quién lo dijo">
+        </div>`).join("");
+    }
+
+    btnEditar?.addEventListener("click", () => {
+      renderCampos();
+      document.getElementById("modal-citas").style.display = "flex";
+    });
+    const cerrar = () => { document.getElementById("modal-citas").style.display = "none"; };
+    document.getElementById("citas-close-btn")?.addEventListener("click", cerrar);
+    document.getElementById("close-citas-modal")?.addEventListener("click", cerrar);
+    document.getElementById("modal-citas")?.addEventListener("click", (e) => { if (e.target.id === "modal-citas") cerrar(); });
+
+    document.getElementById("save-citas-btn")?.addEventListener("click", async () => {
+      const btn = document.getElementById("save-citas-btn");
+      const textoInputs = document.querySelectorAll(".cita-texto-input");
+      const autorInputs = document.querySelectorAll(".cita-autor-input");
+      const nuevas = Array.from(textoInputs).map((el, i) => ({
+        texto: el.value.trim(),
+        autor: autorInputs[i]?.value.trim() || "Testimonio de la comunidad"
+      }));
+      btn.disabled = true; const textoOriginal = btn.textContent; btn.textContent = "Guardando...";
+      try {
+        await setDoc(citasRef, { items: nuevas });
+        window._showToast?.("Citas actualizadas", "success");
+        cerrar();
+      } catch (err) {
+        console.error("No se pudieron guardar las citas:", err);
+        window._showToast?.("No se pudieron guardar las citas", "error");
+      } finally {
+        btn.disabled = false; btn.textContent = textoOriginal;
+      }
+    });
+  }
+
+  onSnapshot(citasRef, snap => {
+    citasActuales = (snap.exists() && Array.isArray(snap.data().items) && snap.data().items.length) ? snap.data().items : DEFAULTS;
+    renderCitas(citasActuales);
+  }, err => {
+    console.error("No se pudieron cargar las citas (se muestran las de por defecto):", err);
+    renderCitas(DEFAULTS);
+  });
+
+  try {
+    const rol = window.Auth?.getSession()?.role;
+    if (["owner_supremo", "director_nacional"].includes(rol)) initCitasModal();
+  } catch (err) { console.error("Error al inicializar el editor de citas:", err); }
 })();
 
 // ==================== DASHBOARD: MÉTRICAS Y RESUMEN ====================

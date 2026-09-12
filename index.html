@@ -1,10 +1,19 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<script>if(localStorage.getItem("darkMode")==="true")document.documentElement.classList.add("dark-mode");</script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema Nacional de Orquestas</title>
-    <link rel="stylesheet" href="estilos.css?v=9.0">
+        <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=16.0">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=16.0">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=16.0">
+    <meta property="og:title" content="Sistema Nacional de Orquestas">
+    <meta property="og:description" content="Sistema Nacional de Orquestas — información, agenda y comunidad.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="icon-512.png">
+<link rel="stylesheet" href="estilos.css?v=16.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -26,40 +35,73 @@
         
         <!-- MÓDULO CARRUSEL (Ahora alineado y con proporción 30/70) -->
         <div class="modulo-carrusel" id="carousel-container">
-            <div class="carrusel-visual">
+            <!-- v3.0 (G-10): tabindex para poder navegar el carrusel con las
+                 flechas del teclado una vez que tiene foco; G-09: también
+                 escucha gestos de swipe en celular (ver main.js). -->
+            <div class="carrusel-visual" id="carrusel-visual" tabindex="0" role="region" aria-label="Carrusel de imágenes, usá las flechas del teclado para navegar">
                 <button class="carousel-arrow" id="prev-slide" aria-label="Anterior">&#10094;</button>
                 <div class="carrusel-tarjeta" id="carrusel-tarjeta">
                     <div class="carrusel-caja">
-                        <img src="images.jpg" alt="Imagen del carrusel" class="imagen-carrusel" id="carousel-image" />
+                        <div class="loader-puntos" id="carousel-loader"><span></span><span></span><span></span></div>
+                        <img alt="Imagen del carrusel" class="imagen-carrusel" id="carousel-image" />
                     </div>
                     <div class="carrusel-texto">
-                        <h2 id="carousel-title">Sistema Nacional de Orquestas</h2>
-                        <p id="carousel-desc">Cargando información del carrusel…</p>
+                        <div class="loader-puntos sobre-claro" id="carousel-loader-texto"><span></span><span></span><span></span></div>
+                        <h2 id="carousel-title"></h2>
+                        <p id="carousel-desc"></p>
+                        <!-- v3.0 (P-12): contador discreto "2 / 5" -->
+                        <div class="carrusel-contador" id="carousel-contador" aria-hidden="true"></div>
                     </div>
                 </div>
                 <button class="carousel-arrow" id="next-slide" aria-label="Siguiente">&#10095;</button>
             </div>
+            <!-- v3.0 (G-08): puntos de posición (distinto de los puntitos de
+                 carga: estos indican EN QUÉ diapositiva estás, no que algo
+                 esté cargando) -->
+            <div class="carrusel-posicion" id="carousel-posicion"></div>
         </div>
 
-        <!-- CITAS: 3 tarjetas debajo del carrusel -->
-        <div class="citas-grid">
-            <div class="cita-card">
-                <i class="fa-solid fa-quote-left"></i>
-                <p>"La música transformó mi manera de ver el mundo y de relacionarme con los demás."</p>
-                <div class="cita-autor">— Cita 1</div>
+        <!-- CITAS: 3 tarjetas debajo del carrusel — v3.0 (G-07): antes eran
+             texto fijo de relleno ("— Cita 1/2/3"); ahora se cargan desde
+             Firestore igual que el carrusel, con un botón de edición para
+             quien tenga permiso (mismo permiso que edita el carrusel). -->
+        <div class="citas-grid-wrap">
+            <div class="citas-grid" id="citas-grid">
+                <div class="cita-card">
+                    <i class="fa-solid fa-quote-left"></i>
+                    <p>"La música transformó mi manera de ver el mundo y de relacionarme con los demás."</p>
+                    <div class="cita-autor">— Testimonio</div>
+                </div>
+                <div class="cita-card">
+                    <i class="fa-solid fa-quote-left"></i>
+                    <p>"Gracias al Sistema pude formarme como músico y hoy enseño a nuevas generaciones."</p>
+                    <div class="cita-autor">— Testimonio</div>
+                </div>
+                <div class="cita-card">
+                    <i class="fa-solid fa-quote-left"></i>
+                    <p>"Un espacio de oportunidades donde la disciplina y el arte van de la mano."</p>
+                    <div class="cita-autor">— Testimonio</div>
+                </div>
             </div>
-            <div class="cita-card">
-                <i class="fa-solid fa-quote-left"></i>
-                <p>"Gracias al Sistema pude formarme como músico y hoy enseño a nuevas generaciones."</p>
-                <div class="cita-autor">— Cita 2</div>
-            </div>
-            <div class="cita-card">
-                <i class="fa-solid fa-quote-left"></i>
-                <p>"Un espacio de oportunidades donde la disciplina y el arte van de la mano."</p>
-                <div class="cita-autor">— Cita 3</div>
-            </div>
+            <button type="button" id="btn-editar-citas" class="btn-config-mini" style="display:none;" title="Editar citas">
+                <i class="fa-solid fa-pen"></i> Editar citas
+            </button>
         </div>
     </main>
+
+    <!-- v3.0 (G-07): modal de edición de citas — texto simple, sin imágenes,
+         así que no necesita el editor de recorte/rotar que usan carrusel/flyers. -->
+    <div class="modal-overlay" id="modal-citas" style="display:none;">
+        <div class="modal-content premium-modal">
+            <button class="modal-close-btn" id="citas-close-btn">&times;</button>
+            <h2><i class="fa-solid fa-quote-left"></i> Editar citas de la portada</h2>
+            <div id="citas-editor-campos"></div>
+            <div class="crop-buttons">
+                <button id="save-citas-btn" class="btn btn-submit">Guardar Cambios</button>
+                <button id="close-citas-modal" class="btn btn-cerrar">Cerrar</button>
+            </div>
+        </div>
+    </div>
 
     <!-- PIE DE PÁGINA -->
     <footer class="pie-pagina">
@@ -70,9 +112,9 @@
 
     <script>document.getElementById("footer-year").textContent = new Date().getFullYear();</script>
     <script src="check-entorno.js" defer></script>
-    <script type="module" src="firebase-init.js?v=10.0"></script>
-    <script type="module" src="auth.js?v=10.0"></script>
-    <script type="module" src="ui-manager.js?v=10.0"></script>
-    <script type="module" src="main.js?v=10.0"></script>
+    <script type="module" src="firebase-init.js?v=16.0"></script>
+    <script type="module" src="auth.js?v=16.0"></script>
+    <script type="module" src="ui-manager.js?v=16.0"></script>
+    <script type="module" src="main.js?v=16.0"></script>
 </body>
 </html>

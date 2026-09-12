@@ -1,20 +1,130 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<script>if(localStorage.getItem("darkMode")==="true")document.documentElement.classList.add("dark-mode");</script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>Iniciar Sesión - Sistema de Orquestas</title>
-    <link rel="stylesheet" href="style.css?v=2.1">
+    <!-- CORREGIDO 2026-09-06: antes esta página usaba un archivo de estilos
+         propio (style.css) con otra tipografía (Montserrat, vía Google
+         Fonts) y clases que no existían en ningún otro lado del sitio. Los
+         colores YA coincidían con estilos.css (por casualidad, ambos tenían
+         el mismo morado #4138A9), pero la tipografía y los componentes no,
+         así que login se sentía "pegado de otro sitio". Ahora usa el mismo
+         estilos.css que toda la app, y la tarjeta reutiliza exactamente el
+         mismo degradé/radio/sombra que ya usa el panel de "Configuración". -->
+        <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=16.0">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=16.0">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=16.0">
+    <meta property="og:title" content="Iniciar Sesión — Sistema de Orquestas">
+    <meta property="og:description" content="Ingresá a tu cuenta del Sistema de Orquestas.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="icon-512.png">
+<link rel="stylesheet" href="estilos.css?v=16.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        /* Estilos propios de esta página (layout de dos paneles). Los
+           colores, tipografía, inputs y botón de acá adentro los toma
+           directo de estilos.css — no se redefine nada de eso. */
+        body.pagina-login {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
+        .login-wrapper {
+            display: flex;
+            width: 100%;
+            max-width: 900px;
+            min-height: 520px;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow-modal);
+        }
+        .login-visual {
+            flex: 1 1 42%;
+            background: linear-gradient(160deg, var(--color-primario-oscuro), var(--color-primario-claro));
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem 2.2rem;
+            text-align: center;
+        }
+        .login-visual h1 { font-size: 1.9rem; font-weight: 800; margin-bottom: 1.1rem; line-height: 1.25; }
+        .login-visual p { font-style: italic; opacity: 0.9; line-height: 1.6; }
+        .login-visual-icono { width: 176px; height: 176px; margin-bottom: 1.1rem; filter: drop-shadow(0 8px 20px rgba(0,0,0,0.3)); }
+        .login-panel {
+            flex: 1 1 58%;
+            background: var(--color-blanco);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2.5rem;
+        }
+        .login-form { width: 100%; max-width: 360px; }
+        .login-form h2 { text-align: center; color: var(--color-primario); margin-bottom: 1.6rem; font-size: 1.5rem; }
+        .login-form .input-group { margin-bottom: 1.1rem; display: flex; flex-direction: column; }
+        .login-form label {
+            font-size: 0.8rem; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.05em; color: var(--color-primario); margin-bottom: 0.35rem;
+        }
+        /* Mismo look que ya usan los campos dentro de cualquier modal del sitio */
+        .login-form input[type="text"],
+        .login-form input[type="password"] {
+            width: 100%; padding: 0.75rem 1rem; font-size: 0.95rem;
+            font-family: var(--font-family); border: 1.5px solid var(--color-borde);
+            border-radius: 10px; background: var(--color-superficie-suave); color: var(--color-texto);
+            transition: var(--transition-fast); outline: none; box-sizing: border-box;
+        }
+        .login-form input:focus {
+            border-color: var(--color-primario);
+            box-shadow: 0 0 0 3px rgba(65, 56, 169, 0.1);
+            background: var(--color-blanco);
+        }
+        .login-form .remember-group {
+            flex-direction: row; align-items: center; gap: 0.5rem; margin-bottom: 1.1rem;
+        }
+        .login-form .remember-group input { width: auto; margin: 0; cursor: pointer; }
+        .login-form .remember-group label {
+            text-transform: none; font-weight: 400; color: var(--color-texto);
+            margin-bottom: 0; cursor: pointer;
+        }
+        /* Mismo botón oscuro que ya usa "Guardar" en cualquier modal del sitio */
+        .login-form .btn-submit {
+            width: 100%; padding: 0.85rem; font-size: 1rem; font-weight: 700;
+            letter-spacing: 0.03em; color: #ffffff; background: #0a0a0a;
+            border: none; border-radius: 25px; cursor: pointer;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.4); transition: var(--transition-normal);
+        }
+        .login-form .btn-submit:hover {
+            transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,0.5); filter: brightness(1.2);
+        }
+        .login-form .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        @media (max-width: 768px) {
+            .login-wrapper { flex-direction: column; max-width: 480px; min-height: auto; }
+            .login-visual { padding: 2.2rem 1.8rem; }
+            .login-visual h1 { font-size: 1.6rem; }
+        }
+    </style>
 </head>
-<body>
+<body class="pagina-login">
     <main class="login-wrapper">
         <section class="login-visual">
-            <div class="visual-content">
+            <div>
+                <!-- v3.0 (G-33): antes este panel era solo texto — el más
+                     "desnudo" de todo el sitio comparado con el resto de
+                     páginas ya trabajadas.
+                     v3.1: el ícono ahora es el logo real de "El Sistema"
+                     (antes era un ícono genérico de nota musical puesto
+                     como relleno), el mismo que se usa como favicon en
+                     todo el sitio. -->
+                <img src="icon-512.png" alt="" aria-hidden="true" class="login-visual-icono" />
                 <h1>Sistema Nacional de Orquestas</h1>
                 <p>"Música para iluminar, música para salvar."</p>
             </div>
@@ -24,15 +134,21 @@
                 <h2>Iniciar Sesión</h2>
                 <div class="input-group">
                     <label for="usuario">Correo electrónico</label>
-                    <input type="text" id="usuario" placeholder="Correo electrónico" required>
+                    <!-- v3.0 (P-57): autofoco — no hace falta clickear antes de escribir -->
+                    <input type="text" id="usuario" placeholder="Correo electrónico" required autofocus autocomplete="username">
                 </div>
                 <div class="input-group">
                     <label for="password">Contraseña</label>
-                    <input type="password" id="password" placeholder="Ingresa tu contraseña" required>
+                    <input type="password" id="password" placeholder="Ingresa tu contraseña" required autocomplete="current-password">
                 </div>
                 <div class="input-group remember-group">
                     <input type="checkbox" id="remember" />
-                    <label for="remember">Recuérdame</label>
+                    <!-- v3.0 (P-55): explica qué implica, es información de
+                         seguridad relevante que antes no se explicaba en
+                         ningún lado. -->
+                    <label for="remember" title="Mantiene tu sesión iniciada en este dispositivo hasta que cierres sesión manualmente">
+                        Recuérdame <i class="fa-solid fa-circle-info" style="opacity:0.5;font-size:0.75rem;"></i>
+                    </label>
                 </div>
                 <button type="submit" class="btn-submit">Iniciar Sesión</button>
             </form>
@@ -41,7 +157,7 @@
 
     <script src="check-entorno.js" defer></script>
 
-    <script type="module" src="auth.js?v=10.0"></script>
+    <script type="module" src="auth.js?v=16.0"></script>
     <script>
         // Redirigir inmediatamente si ya hay sesión
         if (sessionStorage.getItem("sistemaOrquestas_session") || localStorage.getItem("sistemaOrquestas_session")) {
@@ -54,30 +170,37 @@
             const password = document.getElementById("password").value.trim();
             const remember = document.getElementById("remember").checked;
 
+            // CORREGIDO 2026-09-06: antes los errores acá usaban alert(),
+            // el único lugar del sitio que todavía lo hacía — ahora usa el
+            // mismo sistema de notificaciones (toast) que el resto de la app.
             if (!username || !password) {
-                alert("Complete todos los campos.");
+                window._showToast?.("Completá todos los campos.", "error");
                 return;
             }
 
             const btn = document.querySelector(".btn-submit");
-            btn.textContent = "Validando...";
+            const textoOriginalBtn = btn.innerHTML;
+            // v3.0 (P-56): mismos puntitos de carga del resto del sitio en
+            // vez de solo el texto "Validando...".
+            btn.innerHTML = (window._loaderPuntosHTML ? window._loaderPuntosHTML(true, true) : "Validando...");
             btn.disabled = true;
 
             try {
                 const resultado = await window.Auth.login(username, password, remember);
 
                 if (resultado.success) {
-                    // El cambio de contraseña ya NO es obligatorio al iniciar sesión:
-                    // cualquiera puede cambiarla cuando quiera desde Configuración
-                    // (el engranaje junto a su usuario, arriba a la derecha).
+                    // v3.0 (P-54): el comentario que había acá decía que el
+                    // cambio de contraseña seguía disponible desde
+                    // Configuración — eso se sacó del sitio por completo
+                    // (ver auth.js), así que quedaba desactualizado.
                     window.location.href = "index.html";
                 } else {
-                    alert("Error al iniciar sesión: " + (resultado.error || "Error desconocido"));
+                    window._showToast?.("Error al iniciar sesión: " + (resultado.error || "Error desconocido"), "error");
                 }
             } catch (err) {
-                alert("Error inesperado: " + err.message);
+                window._showToast?.("Error inesperado: " + err.message, "error");
             } finally {
-                btn.textContent = "Iniciar Sesión";
+                btn.innerHTML = textoOriginalBtn;
                 btn.disabled = false;
             }
         });

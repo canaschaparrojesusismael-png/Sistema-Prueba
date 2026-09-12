@@ -15,19 +15,59 @@ window.UI = {
     if (target) target.innerHTML = "";
     if (carrusel) { const old = carrusel.querySelector(".carousel-edit-btn"); if (old) old.remove(); }
 
+    // v3.0 (G-11): botón de menú "hamburguesa" para pantallas angostas —
+    // se inserta una sola vez como hermano de #user-nav (no adentro, para
+    // que sobreviva al target.innerHTML="" de arriba en cada re-render).
+    if (userNav && !userNav.parentElement.querySelector(".btn-menu-movil")) {
+      const btnMenu = document.createElement("button");
+      btnMenu.type = "button";
+      btnMenu.className = "btn-menu-movil";
+      btnMenu.setAttribute("aria-label", "Abrir menú");
+      btnMenu.innerHTML = '<i class="fa-solid fa-bars"></i>';
+      userNav.classList.add("menu-movil-cerrado");
+      btnMenu.addEventListener("click", () => {
+        const abierto = userNav.classList.toggle("menu-movil-abierto");
+        userNav.classList.toggle("menu-movil-cerrado", !abierto);
+        btnMenu.innerHTML = abierto ? '<i class="fa-solid fa-xmark"></i>' : '<i class="fa-solid fa-bars"></i>';
+      });
+      userNav.parentElement.insertBefore(btnMenu, userNav);
+    }
+
     const session = window.Auth?.getSession();
 
     if (!session) {
       if (target) target.innerHTML = `<a href="login.html" class="btn btn-nav btn-login">Iniciar Sesión</a>`;
-      this._removeStatusBar();
+      this._renderNucleoHeader(null);
     } else {
       this._renderAutenticado(session, target);
       // El carrusel de index.html es el NACIONAL: solo Owner Supremo / Director Nacional lo editan.
       const puedeEditarCarruselNacional = ["owner_supremo", "director_nacional"].includes(session.role);
       if (puedeEditarCarruselNacional) this._renderBotonEngrane(carrusel);
-      this._renderStatusBar(session);
+      // v3.1: se saco la barra flotante que mostraba nombre/rol/nucleo
+      // fijos en pantalla todo el tiempo (this._renderStatusBar) -- era
+      // el mismo dato ya disponible al abrir el menu de usuario, asi
+      // que quedaba duplicado y de mas.
       this._renderPreviewBanner();
+      this._renderNucleoHeader(session);
     }
+  },
+
+  // v3.0 (P-17): mostrar el núcleo activo directamente en la barra
+  // superior (antes solo se veía adentro del menú de usuario, así que
+  // había que abrirlo para confirmarlo).
+  _renderNucleoHeader(session) {
+    const header = document.querySelector("header.barra-superior");
+    let badge = document.getElementById("nucleo-header-badge");
+    if (!session || !session.nucleus) { if (badge) badge.remove(); return; }
+    if (!badge) {
+      badge = document.createElement("div");
+      badge.id = "nucleo-header-badge";
+      badge.className = "nucleo-header-badge";
+      const userNav = document.getElementById("user-nav");
+      if (userNav?.parentElement) userNav.parentElement.insertBefore(badge, document.querySelector(".btn-menu-movil") || userNav);
+      else if (header) header.appendChild(badge);
+    }
+    badge.innerHTML = `<i class="fa-solid fa-building-columns" aria-hidden="true"></i> ${session.nucleus}`;
   },
 
   _renderPreviewBanner() {
@@ -56,8 +96,12 @@ window.UI = {
     const enPanel = rutasProtegidas.some(r => location.pathname.includes(r));
     const btnPanel = document.createElement("a"); btnPanel.href = enPanel ? "index.html" : "panel.html"; btnPanel.className = "btn btn-nav btn-panel"; btnPanel.textContent = enPanel ? "Volver al inicio" : "Acceder a la página";
 
-    const initial = (session.firstName?.charAt(0) || session.nombre?.charAt(0) || "?").toUpperCase();
+    const initial = window._iniciales ? window._iniciales(session.nombre || session.firstName) : (session.firstName?.charAt(0) || session.nombre?.charAt(0) || "?").toUpperCase();
     const btnUser = document.createElement("div"); btnUser.className = "btn btn-nav btn-user"; btnUser.tabIndex = 0;
+    // v3.0 (G-12): color de avatar derivado del rol — mismo color en la
+    // barra superior, Configuración y Miembros, para reconocer de un
+    // vistazo con quién se está tratando.
+    if (window._colorPorRol) btnUser.style.background = window._colorPorRol(session.role);
     btnUser.innerHTML = `<span>${initial}</span>`;
 
     const nombreCompleto = session.nombre || `${session.firstName || ""} ${session.lastName || ""}`.trim() || "Usuario";
@@ -72,15 +116,18 @@ window.UI = {
       <button type="button" id="config-gear-btn" class="user-submenu-item"><i class="fa-solid fa-gear"></i> Configuración</button>
     `;
 
-    // Soporta hover (escritorio) y click/touch (móvil/tablet)
+    // v3.1: antes tambien abria/cerraba con mouseenter/mouseleave.
+    // Eso podia cerrar el submenu justo cuando el mouse pasaba del
+    // boton del avatar hacia una opcion de adentro (como "Configuracion"),
+    // por el hueco entre ambos elementos -- lo dejaba casi imposible de
+    // usar con mouse en ciertas resoluciones. Ahora es solo click/touch,
+    // igual en escritorio, tablet y celular, y se cierra con click afuera
+    // o con Escape.
     const abrir = () => submenu.classList.add("visible");
     const cerrar = () => submenu.classList.remove("visible");
-    btnUser.addEventListener("mouseenter", abrir);
-    btnUser.addEventListener("mouseleave", cerrar);
-    submenu.addEventListener("mouseenter", abrir);
-    submenu.addEventListener("mouseleave", cerrar);
     btnUser.addEventListener("click", (e) => { e.stopPropagation(); submenu.classList.toggle("visible"); });
     document.addEventListener("click", (e) => { if (!btnUser.contains(e.target)) cerrar(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") cerrar(); });
 
     btnUser.appendChild(submenu);
     container.appendChild(btnLogout); container.appendChild(btnPanel); container.appendChild(btnUser);
@@ -98,22 +145,10 @@ window.UI = {
     carrusel.appendChild(gear);
   },
 
-  _renderStatusBar(session) {
-    this._removeStatusBar();
-    const rolLabel = window.Auth?.ROLES?.[session.role]?.label || session.role;
-    const bar = document.createElement("div"); bar.id = "status-bar"; bar.className = "status-bar";
-    bar.innerHTML = `
-      <span class="status-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> ${session.nombre || session.firstName}</span>
-      <span class="status-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l9 4.5v7L12 18l-9-4.5v-7L12 2z"/></svg> ${rolLabel}</span>
-      <span class="status-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> ${session.nucleus || session.state || "—"}</span>
-      <span class="status-item"><span class="online-dot"></span> Online</span>
-    `;
-    document.body.appendChild(bar);
-  },
-
-  _removeStatusBar() {
-    const b = document.getElementById("status-bar"); if (b) b.remove();
-  },
+  // v3.1: this._renderStatusBar()/_removeStatusBar() se sacaron de aca
+  // (ver nota en render()) -- mostraban nombre/rol/nucleo/online fijos
+  // en una barra flotante en TODAS las paginas, duplicando lo que ya
+  // se ve al abrir el menu de la cuenta.
 
   _wireConfigGear(gearBtn) {
     if (!gearBtn) return;
@@ -125,82 +160,106 @@ window.UI = {
       overlay.innerHTML = `
         <div class="config-panel">
           <button class="modal-close-btn" id="config-close-btn">&times;</button>
-          <h2><i class="fa-solid fa-gear"></i> Configuración</h2>
+          <h2><i class="fa-solid fa-gear"></i> Configuración ⚙️</h2>
+
+          <!-- v3.0 (G-13): pestañas en vez de una sola columna larga con
+               scroll — más fácil de escanear y deja lugar para que se sigan
+               agregando secciones sin que la ventana crezca sin límite. -->
+          <div class="config-tabs" role="tablist">
+            <button type="button" class="config-tab activo" data-tab="perfil" role="tab"><i class="fa-solid fa-id-card"></i> Perfil</button>
+            <button type="button" class="config-tab" data-tab="apariencia" role="tab"><i class="fa-solid fa-palette"></i> Apariencia</button>
+            <!-- v3.1: se sacó la pestaña "Notificaciones" — no hacía nada
+                 (los switches estaban todos deshabilitados, era un stub
+                 para una función que todavía no existe). -->
+            <button type="button" class="config-tab" data-tab="cuenta" role="tab"><i class="fa-solid fa-user-shield"></i> Cuenta</button>
+          </div>
+
           <div class="config-content">
 
-            <div class="config-section" id="config-preview-banner-wrap" style="display:none;">
-              <div class="config-preview-banner">
-                <i class="fa-solid fa-eye"></i>
-                <span id="config-preview-text"></span>
-                <button type="button" id="btn-salir-preview" class="btn-config-mini">Volver a mi vista real</button>
-              </div>
-            </div>
-
-            <div class="config-section config-perfil-card">
-              <div class="config-perfil-header">
-                <div class="config-perfil-avatar" id="config-perfil-avatar">?</div>
-                <div class="config-perfil-header-datos">
-                  <div class="config-perfil-header-nombre" id="config-perfil-nombre">—</div>
-                  <div class="config-perfil-header-rol" id="config-perfil-rol">—</div>
+            <!-- ============ PESTAÑA: PERFIL ============ -->
+            <div class="config-panel-seccion activa" data-panel="perfil">
+              <div class="config-section" id="config-preview-banner-wrap" style="display:none;">
+                <div class="config-preview-banner">
+                  <i class="fa-solid fa-eye"></i>
+                  <span id="config-preview-text"></span>
+                  <button type="button" id="btn-salir-preview" class="btn-config-mini">Volver a mi vista real</button>
                 </div>
               </div>
-              <div class="config-field">
-                <label>Agrupación</label>
-                <div class="config-valor-solo-lectura" id="config-perfil-agrupacion">—</div>
-              </div>
-              <p class="config-hint">Para cambiar tu nombre o agrupación, pedile a un director o administrador de mayor rango que lo haga desde Miembros.</p>
-            </div>
 
-            <div class="config-section">
-              <h3><i class="fa-solid fa-key"></i> Contraseña</h3>
-              <p class="config-hint">Cambiala cuando quieras — no es obligatorio hacerlo ahora.</p>
-              <div class="config-field">
-                <label>Nueva contraseña</label>
-                <div class="config-password-wrap">
-                  <input type="password" id="config-nueva-clave" class="modal-input" placeholder="Mínimo 8 caracteres" autocomplete="new-password" />
-                  <button type="button" class="config-toggle-clave" data-target="config-nueva-clave" title="Mostrar/ocultar contraseña"><i class="fa-solid fa-eye"></i></button>
+              <div class="config-section config-perfil-card">
+                <div class="config-perfil-header">
+                  <div class="config-perfil-avatar" id="config-perfil-avatar">?</div>
+                  <div class="config-perfil-header-datos">
+                    <div class="config-perfil-header-nombre" id="config-perfil-nombre">—</div>
+                    <div class="config-perfil-header-rol"><i id="config-perfil-rol-icono" class="fa-solid fa-user"></i> <span id="config-perfil-rol">—</span></div>
+                  </div>
                 </div>
-              </div>
-              <div class="config-field">
-                <label>Confirmar contraseña</label>
-                <div class="config-password-wrap">
-                  <input type="password" id="config-confirmar-clave" class="modal-input" placeholder="Repetí la contraseña" autocomplete="new-password" />
-                  <button type="button" class="config-toggle-clave" data-target="config-confirmar-clave" title="Mostrar/ocultar contraseña"><i class="fa-solid fa-eye"></i></button>
+                <div class="config-field">
+                  <label><i class="fa-solid fa-music"></i> Agrupación</label>
+                  <div class="config-valor-solo-lectura" id="config-perfil-agrupacion">—</div>
                 </div>
+                <!-- v3.0 (P-22): última sesión anterior a esta -->
+                <div class="config-field">
+                  <label><i class="fa-solid fa-clock-rotate-left"></i> Última sesión</label>
+                  <div class="config-valor-solo-lectura" id="config-perfil-ultima-sesion">—</div>
+                </div>
+                <!-- v3.0 (P-21): copiar correo/UID para tickets de soporte -->
+                <button type="button" id="btn-copiar-perfil" class="btn-config-mini" style="margin-top:0.6rem;">
+                  <i class="fa-solid fa-copy"></i> Copiar mi correo y UID
+                </button>
+                <!-- v3.1: se saco el aviso de "pedile a un director/admin que
+                     te cambie el nombre o la agrupacion desde Miembros" que
+                     iba aca. -->
               </div>
-              <button type="button" id="btn-guardar-clave" class="btn btn-submit config-btn-full"><i class="fa-solid fa-check"></i> Guardar contraseña</button>
             </div>
 
-            <div class="config-section" id="config-preview-section" style="display:none;">
-              <h3><i class="fa-solid fa-user-secret"></i> Modo de prueba</h3>
-              <p class="config-hint">Solo vos ves el sitio distinto — no cambia tu cuenta real ni la de nadie más.</p>
-              <div class="config-field">
-                <label>Ver como rol</label>
-                <select id="config-preview-rol" class="modal-input">
-                  <option value="owner_supremo">Owner Supremo</option>
-                  <option value="director_nacional">Director Nacional</option>
-                  <option value="director_regional">Director Regional</option>
-                  <option value="director_nucleo">Director de Núcleo</option>
-                  <option value="admin">Administrador</option>
-                  <option value="profesor">Profesor</option>
-                  <option value="estudiante">Estudiante</option>
-                </select>
+            <!-- ============ PESTAÑA: APARIENCIA ============ -->
+            <div class="config-panel-seccion" data-panel="apariencia">
+              <div class="config-section">
+                <h3><i class="fa-solid fa-sliders"></i> Preferencias visuales</h3>
+                <label class="config-switch-row" for="dark-mode-toggle-config">
+                  <span><i class="fa-solid fa-moon"></i> Modo oscuro</span>
+                  <span class="config-switch">
+                    <input type="checkbox" id="dark-mode-toggle-config">
+                    <span class="config-switch-slider"></span>
+                  </span>
+                </label>
+                <p class="config-hint">🖥️ Se aplica en todas las páginas del sitio, no solo en esta.</p>
               </div>
-              <div class="config-field">
-                <label>Núcleo simulado (opcional)</label>
-                <select id="config-preview-nucleo" class="modal-input"><option value="">— Ninguno —</option></select>
-              </div>
-              <button type="button" id="btn-aplicar-preview" class="btn btn-submit config-btn-full">Aplicar vista previa</button>
             </div>
 
-            <div class="config-section">
-              <h3><i class="fa-solid fa-chart-simple"></i> Conectados ahora</h3>
-              <div id="config-stats">Cargando...</div>
-            </div>
+            <!-- v3.1: se saco por completo la pestana "Notificaciones"
+                 (G-14 de v3.0) -- todos los switches estaban
+                 deshabilitados, era un stub sin funcion real. -->
 
-            <div class="config-section">
-              <h3><i class="fa-solid fa-sliders"></i> Preferencias</h3>
-              <label class="config-toggle"><input type="checkbox" id="dark-mode-toggle-config"> Modo oscuro</label>
+            <!-- ============ PESTAÑA: CUENTA ============ -->
+            <div class="config-panel-seccion" data-panel="cuenta">
+              <div class="config-section">
+                <h3><i class="fa-solid fa-chart-simple"></i> Conectados ahora</h3>
+                <div id="config-stats"><p class="config-hint">Cargando…</p></div>
+              </div>
+
+              <div class="config-section" id="config-preview-section" style="display:none;">
+                <h3><i class="fa-solid fa-user-secret"></i> Modo de prueba</h3>
+                <p class="config-hint">👀 Solo vos ves el sitio distinto — no cambia tu cuenta real ni la de nadie más.</p>
+                <div class="config-field">
+                  <label>Ver como rol</label>
+                  <select id="config-preview-rol" class="modal-input">
+                    <option value="owner_supremo">👑 Owner Supremo</option>
+                    <option value="director_nacional">🚩 Director Nacional</option>
+                    <option value="director_regional">🗺️ Director Regional</option>
+                    <option value="director_nucleo">🏛️ Director de Núcleo</option>
+                    <option value="admin">🛠️ Administrador</option>
+                    <option value="profesor">🎓 Profesor</option>
+                    <option value="estudiante">🎻 Estudiante</option>
+                  </select>
+                </div>
+                <div class="config-field">
+                  <label>Núcleo simulado (opcional)</label>
+                  <select id="config-preview-nucleo" class="modal-input"><option value="">— Ninguno —</option></select>
+                </div>
+                <button type="button" id="btn-aplicar-preview" class="btn btn-submit config-btn-full">Aplicar vista previa</button>
+              </div>
             </div>
 
           </div>
@@ -208,69 +267,42 @@ window.UI = {
       `;
       document.body.appendChild(overlay);
 
+      // v3.0 (G-13): cambio de pestaña
+      overlay.querySelectorAll(".config-tab").forEach(tab => {
+        tab.addEventListener("click", () => {
+          overlay.querySelectorAll(".config-tab").forEach(t => t.classList.remove("activo"));
+          overlay.querySelectorAll(".config-panel-seccion").forEach(p => p.classList.remove("activa"));
+          tab.classList.add("activo");
+          overlay.querySelector(`.config-panel-seccion[data-panel="${tab.dataset.tab}"]`)?.classList.add("activa");
+        });
+      });
+
       const closeConfig = () => { overlay.style.display = "none"; if (this._configUnsub) { this._configUnsub(); this._configUnsub = null; } };
       document.getElementById("config-close-btn").addEventListener("click", closeConfig);
       overlay.addEventListener("click", (e) => { if (e.target === overlay) closeConfig(); });
       document.getElementById("dark-mode-toggle-config").addEventListener("change", (e) => {
-        document.body.classList.toggle("dark-mode", e.target.checked);
+        document.documentElement.classList.toggle("dark-mode", e.target.checked);
         localStorage.setItem("darkMode", e.target.checked);
       });
       if (localStorage.getItem("darkMode") === "true") {
-        document.body.classList.add("dark-mode");
+        document.documentElement.classList.add("dark-mode");
         document.getElementById("dark-mode-toggle-config").checked = true;
       }
-      // ---- Mostrar / ocultar contraseña (los dos campos) ----
-      overlay.querySelectorAll(".config-toggle-clave").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const input = document.getElementById(btn.dataset.target);
-          const icon = btn.querySelector("i");
-          const mostrar = input.type === "password";
-          input.type = mostrar ? "text" : "password";
-          icon.className = mostrar ? "fa-solid fa-eye-slash" : "fa-solid fa-eye";
-        });
-      });
 
-      // ---- Cambiar contraseña (autoservicio, ya no es obligatorio) ----
-      document.getElementById("btn-guardar-clave").addEventListener("click", async () => {
-        const nueva = document.getElementById("config-nueva-clave");
-        const confirmar = document.getElementById("config-confirmar-clave");
-        const btn = document.getElementById("btn-guardar-clave");
-
-        if (nueva.value.length < 8) {
-          window._showToast?.("La contraseña debe tener al menos 8 caracteres.", "error");
-          return;
-        }
-        if (nueva.value !== confirmar.value) {
-          window._showToast?.("Las contraseñas no coinciden.", "error");
-          return;
-        }
-
-        const textoOriginal = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...';
-        try {
-          const res = await window.Auth.changePassword(nueva.value);
-          if (res.success) {
-            window._showToast?.("Contraseña actualizada correctamente.", "success");
-            nueva.value = "";
-            confirmar.value = "";
-          } else {
-            window._showToast?.(res.error || "No se pudo cambiar la contraseña.", "error");
-          }
-        } catch (err) {
-          window._showToast?.("Error: " + err.message, "error");
-        } finally {
-          btn.disabled = false;
-          btn.innerHTML = textoOriginal;
-        }
-      });
-
-      // ---- Modo de prueba (solo Owner Supremo real) ----
-      document.getElementById("btn-aplicar-preview").addEventListener("click", () => {
+      // ---- Modo de prueba (solo Owner Supremo real) — v3.0 (P-24): ahora
+      // pide una confirmación explícita antes de aplicar, para evitar
+      // activarlo sin querer.
+      document.getElementById("btn-aplicar-preview").addEventListener("click", async () => {
         const rol = document.getElementById("config-preview-rol").value;
         const nucleo = document.getElementById("config-preview-nucleo").value;
+        const rolLabel = window.Auth?.ROLES?.[rol]?.label || rol;
+        const ok = await window._confirmDialog(
+          `Vas a ver el sitio como <strong>${rolLabel}</strong>${nucleo ? " en el núcleo <strong>" + nucleo + "</strong>" : ""}. No cambia tu cuenta real ni la de nadie más — solo lo que ves vos en este navegador.`,
+          { titulo: "¿Aplicar vista previa?", textoOk: "Sí, aplicar" }
+        );
+        if (!ok) return;
         if (window.Auth.setPreviewOverride(rol, nucleo)) {
-          window._showToast?.(`Viendo el sitio como ${rol}${nucleo ? " · " + nucleo : ""}`, "success");
+          window._showToast?.(`Viendo el sitio como ${rolLabel}${nucleo ? " · " + nucleo : ""}`, "success");
           window.location.href = "panel.html";
         }
       });
@@ -279,10 +311,27 @@ window.UI = {
         window._showToast?.("Volviste a tu vista real (Owner Supremo)", "success");
         window.location.href = "panel.html";
       });
+
+      // v3.0 (P-21): copiar correo + UID en un solo clic, útil para tickets
+      // de soporte ("mandame tu UID") sin tener que ir a buscarlo a mano.
+      document.getElementById("btn-copiar-perfil").addEventListener("click", async () => {
+        const real = window.Auth.getRealSession();
+        const texto = `Correo: ${real?.email || "—"}\nUID: ${real?.uid || "—"}`;
+        try {
+          await navigator.clipboard.writeText(texto);
+          window._showToast?.("Correo y UID copiados al portapapeles", "success");
+        } catch {
+          window._showToast?.("No se pudo copiar automáticamente — copialo a mano: " + texto, "error");
+        }
+      });
     }
 
     gearBtn.addEventListener("click", async (e) => {
       e.stopPropagation();
+      // v3.1: cerramos el menu del avatar de forma explicita al abrir
+      // Configuracion, en vez de dejarlo "visible" tapado atras del
+      // overlay.
+      document.querySelector(".user-submenu")?.classList.remove("visible");
       overlay.style.display = "flex";
       this._loadConfigStats();
       await this._llenarPerfilYPreview();
@@ -301,7 +350,19 @@ window.UI = {
       document.getElementById("config-perfil-nombre").textContent = nombre;
       document.getElementById("config-perfil-agrupacion").textContent = data.agrupacion || "— (sin asignar)";
       document.getElementById("config-perfil-rol").textContent = window.Auth?.ROLES?.[real.role]?.label || real.role || "—";
-      document.getElementById("config-perfil-avatar").textContent = (nombre.charAt(0) || "?").toUpperCase();
+      document.getElementById("config-perfil-rol-icono").className = window.Auth?.ROLES?.[real.role]?.icon || "fa-solid fa-user";
+      const avatarEl = document.getElementById("config-perfil-avatar");
+      avatarEl.textContent = window._iniciales ? window._iniciales(nombre) : (nombre.charAt(0) || "?").toUpperCase();
+      // v3.0 (G-12): color de avatar derivado del rol, igual que en la
+      // barra superior y Miembros — reconocible de un vistazo.
+      avatarEl.style.background = window._colorPorRol ? window._colorPorRol(real.role) : "";
+      // v3.0 (P-22): última sesión ANTERIOR a esta (guardada en el login).
+      const ultimaSesionEl = document.getElementById("config-perfil-ultima-sesion");
+      if (ultimaSesionEl) {
+        ultimaSesionEl.textContent = real.previousLogin
+          ? new Date(real.previousLogin).toLocaleString("es-VE", { dateStyle: "long", timeStyle: "short" })
+          : "Esta es tu primera sesión registrada";
+      }
     } catch (err) { console.error("No se pudo leer el perfil:", err); }
 
     // Banner de "estás viendo como X"
@@ -329,15 +390,33 @@ window.UI = {
 
   async _loadConfigStats() {
     const statsDiv = document.getElementById("config-stats");
-    statsDiv.innerHTML = "Cargando estadísticas...";
+    statsDiv.innerHTML = '<p class="config-hint">Cargando…</p>';
     const q = query(collection(db, "usuarios"), where("isOnline", "==", true));
     this._configUnsub = onSnapshot(q, (snap) => {
-      let html = "<ul>";
+      // CORREGIDO 2026-09-06: antes esto mostraba una lista pelada con la
+      // clave interna del rol tal cual está en la base de datos (ej.
+      // "director_nucleo: 2"), sin ningún ícono ni el nombre legible que ya
+      // existe en ROLES. Ahora usa el mismo ícono y etiqueta que el resto
+      // del sitio, en tarjetitas en vez de una lista simple.
       const roles = {};
       snap.forEach(doc => { const r = doc.data().rango || "desconocido"; roles[r] = (roles[r] || 0) + 1; });
-      for (const [rol, count] of Object.entries(roles)) html += `<li>${rol}: ${count}</li>`;
-      html += "</ul>";
-      statsDiv.innerHTML = html;
+      const total = snap.size;
+      if (total === 0) {
+        statsDiv.innerHTML = '<p class="config-hint">😴 Nadie conectado en este momento.</p>';
+        return;
+      }
+      const filas = Object.entries(roles)
+        .sort((a, b) => (window.Auth?.ROLES?.[a[0]]?.level ?? 99) - (window.Auth?.ROLES?.[b[0]]?.level ?? 99))
+        .map(([rol, count]) => {
+          const info = window.Auth?.ROLES?.[rol];
+          return `<div class="config-stat-fila">
+            <span class="config-stat-rol"><i class="${info?.icon || "fa-solid fa-user"}"></i> ${info?.label || rol}</span>
+            <span class="config-stat-count">${count}</span>
+          </div>`;
+        }).join("");
+      statsDiv.innerHTML = `
+        <p class="config-stat-total"><span class="online-dot"></span> ${total} conectado${total === 1 ? "" : "s"} ahora</p>
+        ${filas}`;
     });
   }
 };

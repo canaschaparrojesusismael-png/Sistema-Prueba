@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<script>if(localStorage.getItem("darkMode")==="true")document.documentElement.classList.add("dark-mode");</script>
+
 <script>
   if (!sessionStorage.getItem("sistemaOrquestas_session") && !localStorage.getItem("sistemaOrquestas_session")) {
     window.location.href = "login.html";
@@ -9,8 +11,15 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Detalle Agrupación – Sistema de Orquestas</title>
-    <link rel="stylesheet" href="estilos.css?v=9.0">
+    <title>Repertorio – Sistema de Orquestas</title>
+        <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=16.0">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=16.0">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=16.0">
+    <meta property="og:title" content="Repertorio — Sistema de Orquestas">
+    <meta property="og:description" content="Piezas, partituras e instrumentación de la agrupación.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="icon-512.png">
+<link rel="stylesheet" href="estilos.css?v=16.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .back-link { display: inline-block; margin: 1.5rem 0; color: var(--color-primario); font-weight: 600; text-decoration: none; }
@@ -18,7 +27,7 @@
 
         .pieza-card {
             background: var(--color-blanco);
-            border: 1px solid #e0e4f0;
+            border: 1px solid var(--color-borde);
             border-radius: var(--border-radius);
             padding: 25px;
             margin-bottom: 25px;
@@ -66,6 +75,13 @@
             <h2 id="agrupacion-titulo" style="color: var(--color-primario); font-weight: 800;">Cargando...</h2>
             <button type="button" id="btn-nueva-pieza" class="btn btn-submit" style="display:none;"><i class="fa-solid fa-plus"></i> Nueva pieza</button>
         </div>
+        <!-- v3.0 (G-32): buscador dentro de la agrupación — filtra piezas e
+             instrumentos sin tener que volver a Piezas. -->
+        <div class="buscador-caja" id="buscador-repertorio-caja">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="buscador-repertorio" placeholder="Buscar pieza o instrumento…">
+            <button type="button" class="buscador-limpiar" id="buscador-repertorio-limpiar" aria-label="Limpiar búsqueda"><i class="fa-solid fa-xmark"></i></button>
+        </div>
         <div id="piezas-container"></div>
     </main>
 
@@ -105,15 +121,18 @@
 
     <script src="check-entorno.js" defer></script>
 
-    <script type="module" src="auth.js?v=10.0"></script>
-    <script type="module" src="ui-manager.js?v=10.0"></script>
+    <script type="module" src="auth.js?v=16.0"></script>
+    <script type="module" src="ui-manager.js?v=16.0"></script>
     <script type="module">
         import { db } from "./firebase-init.js";
         import { collection, query, where, onSnapshot, addDoc, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
-
-        // ==================== CONFIGURACIÓN DE CLOUDINARY ====================
-        const CLOUD_NAME = "kjfgogu5";
-        const UPLOAD_PRESET = "orquestas_unsigned";
+        // v3.0 (G-31): antes este archivo tenía su PROPIA copia de la
+        // función que sube a Cloudinary (con su propio CLOUD_NAME/UPLOAD_
+        // PRESET repetidos) en vez de usar el mismo módulo compartido que
+        // ya usan Carrusel/Flyers/Eventos/Formación. Ahora usa ese mismo
+        // módulo — si el día de mañana cambia el proveedor de almacenamiento,
+        // se cambia en un solo lugar en vez de en cinco.
+        import { subirACloudinary } from "./gestor-imagenes.js";
 
         // ==================== OBTENER PARÁMETRO DE LA URL ====================
         const urlParams = new URLSearchParams(window.location.search);
@@ -149,6 +168,20 @@
         const piezasContainer = document.getElementById("piezas-container");
         let piezasActuales = [];
         let partiturasPorPieza = new Map(); // piezaId -> Map(instrumento -> partituraDoc)
+        let textoBusquedaRepertorio = "";
+
+        // v3.0 (G-32): filtra tarjetas de pieza + instrumentos ya renderizados
+        document.getElementById("buscador-repertorio").addEventListener("input", (e) => {
+            textoBusquedaRepertorio = e.target.value.trim().toLowerCase();
+            document.getElementById("buscador-repertorio-caja").classList.toggle("con-texto", !!textoBusquedaRepertorio);
+            renderizarPiezas(piezasActuales);
+        });
+        document.getElementById("buscador-repertorio-limpiar").addEventListener("click", () => {
+            document.getElementById("buscador-repertorio").value = "";
+            textoBusquedaRepertorio = "";
+            document.getElementById("buscador-repertorio-caja").classList.remove("con-texto");
+            renderizarPiezas(piezasActuales);
+        });
 
         function renderizarPiezas(piezas) {
             piezasActuales = piezas;
@@ -163,7 +196,22 @@
 
             // Orden alfabético hecho acá (no en la consulta) para no necesitar
             // un índice compuesto en Firestore.
-            const piezasOrdenadas = [...piezas].sort((a, b) => (a.titulo || "").localeCompare(b.titulo || ""));
+            let piezasOrdenadas = [...piezas].sort((a, b) => (a.titulo || "").localeCompare(b.titulo || ""));
+
+            // v3.0 (G-32): si hay texto de búsqueda, se queda solo con las
+            // piezas cuyo título O algún instrumento coincidan.
+            if (textoBusquedaRepertorio) {
+                piezasOrdenadas = piezasOrdenadas.filter(pieza => {
+                    const partiturasDeEstaPieza = partiturasPorPieza.get(pieza.id) || new Map();
+                    const nombresInstrumentos = [...new Set([...(pieza.instrumentos || []), ...partiturasDeEstaPieza.keys()])];
+                    return (pieza.titulo || "").toLowerCase().includes(textoBusquedaRepertorio) ||
+                        nombresInstrumentos.some(i => i.toLowerCase().includes(textoBusquedaRepertorio));
+                });
+                if (!piezasOrdenadas.length) {
+                    piezasContainer.innerHTML = `<p>Ninguna pieza o instrumento coincide con "${window._escapeHtml(textoBusquedaRepertorio)}".</p>`;
+                    return;
+                }
+            }
 
             piezasOrdenadas.forEach(pieza => {
                 const card = document.createElement("section");
@@ -182,6 +230,8 @@
                 // pedía escribir la lista completa al crear la pieza).
                 const nombresInstrumentos = [...new Set([...(pieza.instrumentos || []), ...partiturasDeEstaPieza.keys()])];
 
+                nombresInstrumentos.sort((a, b) => a.localeCompare(b)); // v3.0 (P-51)
+
                 nombresInstrumentos.forEach(inst => {
                     const partitura = partiturasDeEstaPieza.get(inst);
                     const wrap = document.createElement("div");
@@ -191,6 +241,10 @@
                     btn.type = "button";
                     btn.className = "btn-instrumento" + (partitura ? " tiene-partitura" : " sin-partitura");
                     btn.innerHTML = `<i class="fa-solid ${partitura ? "fa-file-pdf" : "fa-hourglass-half"}"></i> ${window._escapeHtml(inst)}`;
+                    // v3.0 (P-49): fecha de la última actualización — el
+                    // campo ya se guardaba pero no se mostraba en ningún lado.
+                    const fechaMs = partitura?.fecha?.toMillis?.();
+                    if (fechaMs) btn.title = `Actualizada el ${new Date(fechaMs).toLocaleDateString("es-VE")}`;
                     btn.addEventListener("click", () => {
                         if (partitura) window.open(partitura.url, "_blank", "noopener");
                         else if (puedeEditar) abrirModalPartitura(pieza.id, inst);
@@ -204,7 +258,13 @@
                         btnReemplazar.className = "btn-reemplazar-partitura";
                         btnReemplazar.title = "Reemplazar este PDF";
                         btnReemplazar.innerHTML = `<i class="fa-solid fa-pen"></i>`;
-                        btnReemplazar.addEventListener("click", (e) => { e.stopPropagation(); abrirModalPartitura(pieza.id, inst); });
+                        // v3.0 (P-50): confirmación explícita antes de reemplazar
+                        // (antes abría el modal directo y sobreescribía al guardar).
+                        btnReemplazar.addEventListener("click", async (e) => {
+                            e.stopPropagation();
+                            const ok = await window._confirmDialog(`Vas a reemplazar el PDF de <strong>${window._escapeHtml(inst)}</strong> en "${window._escapeHtml(pieza.titulo)}".`, { titulo: "¿Reemplazar partitura?", textoOk: "Sí, reemplazar" });
+                            if (ok) abrirModalPartitura(pieza.id, inst);
+                        });
                         wrap.appendChild(btnReemplazar);
                     }
                     grid.appendChild(wrap);
@@ -259,26 +319,10 @@
             console.error("No se pudieron cargar las partituras:", err);
         });
 
-        // ==================== SUBIR ARCHIVO A CLOUDINARY ====================
-        async function subirArchivoACloudinary(blob, carpeta = "partituras") {
-            const formData = new FormData();
-            formData.append("file", blob);
-            formData.append("upload_preset", UPLOAD_PRESET);
-            formData.append("folder", carpeta);
-
-            const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, {
-                method: "POST",
-                body: formData
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error?.message || "Error al subir");
-            }
-
-            const data = await response.json();
-            return data.secure_url;
-        }
+        // v3.0 (G-31): la función local que subía a Cloudinary se sacó de
+        // acá — ahora usa el módulo compartido importado arriba
+        // (subirACloudinary), que hace exactamente lo mismo con el mismo
+        // CLOUD_NAME/preset, pero en un solo lugar para todo el sitio.
 
         // ==================== MODAL DE PARTITURA ====================
         function abrirModalPartitura(piezaId, instrumento) {
@@ -300,8 +344,9 @@
             const instrumento = document.getElementById("partitura-instrumento").value.trim();
             const archivo = document.getElementById("partitura-archivo").files[0];
 
+            // v3.0 (P-48): reemplaza el alert() nativo
             if (!instrumento || !archivo) {
-                alert("Debe indicar el instrumento y seleccionar un PDF.");
+                window._showToast?.("Indicá el instrumento y seleccioná un PDF.", "error");
                 return;
             }
 
@@ -311,7 +356,7 @@
 
             try {
                 await resolverNucleo();
-                const url = await subirArchivoACloudinary(archivo, "partituras");
+                const url = await subirACloudinary(archivo, "partituras");
                 const session = window.Auth?.getSession();
                 await addDoc(partiturasCol, {
                     piezaId,
@@ -324,10 +369,10 @@
                     fecha: new Date()
                 });
 
-                alert("Partitura subida correctamente.");
+                window._showToast?.("Partitura subida correctamente.", "success");
                 document.getElementById("modal-partitura").style.display = "none";
             } catch (error) {
-                alert("Error al subir: " + error.message);
+                window._showToast?.("Error al subir: " + error.message, "error");
             } finally {
                 btn.disabled = false;
                 btn.textContent = "Subir";
