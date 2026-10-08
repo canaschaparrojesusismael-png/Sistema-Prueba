@@ -1,458 +1,216 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es-VE">
 <head>
 <script>if(localStorage.getItem("darkMode")==="true")document.documentElement.classList.add("dark-mode");</script>
-
 <script>
-  if (!sessionStorage.getItem("sistemaOrquestas_session") && !localStorage.getItem("sistemaOrquestas_session")) {
-    window.location.href = "login.html";
-  }
+  if (!sessionStorage.getItem("sistemaOrquestas_session") && !localStorage.getItem("sistemaOrquestas_session")) { window.location.href = "login.html"; }
 </script>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Formación – Sistema de Orquestas</title>
-        <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=17.0">
-    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=17.0">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=17.0">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=22.0">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=22.0">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=22.0">
     <meta property="og:title" content="Formación — Sistema de Orquestas">
-    <meta property="og:description" content="Biblioteca de material de estudio y Tutor Musical con IA.">
+    <meta property="og:description" content="Material de estudio por niveles y tutor musical.">
     <meta property="og:type" content="website">
     <meta property="og:image" content="icon-512.png">
-<link rel="stylesheet" href="estilos.css?v=17.0">
+    <link rel="stylesheet" href="estilos.css?v=22.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .back-link { display: inline-block; margin: 1.5rem 0; color: var(--color-primario); font-weight: 600; text-decoration: none; align-self: flex-start; width: fit-content; text-align: left; }
-        .back-link:hover { text-decoration: underline; }
-
-        .formacion-intro { color: var(--color-texto-claro); margin-bottom: 1.2rem; max-width: 700px; }
-
-        .niveles-tabs { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
-        .nivel-tab {
-            padding: 0.55rem 1.1rem; border-radius: 999px; border: 2px solid var(--color-primario);
-            background: var(--color-blanco); color: var(--color-primario); font-weight: 700; font-size: 0.85rem;
-            cursor: pointer; transition: var(--transition-fast); white-space: nowrap;
-        }
-        .nivel-tab:hover { background: var(--color-secundario); }
-        .nivel-tab.activo { background: var(--color-primario); color: #fff; }
-        .nivel-tab-add {
-            padding: 0.55rem 1rem; border-radius: 999px; border: 2px dashed var(--color-texto-claro);
-            background: transparent; color: var(--color-texto-claro); font-weight: 700; font-size: 0.85rem; cursor: pointer;
-        }
-        .nivel-tab-add:hover { border-color: var(--color-primario); color: var(--color-primario); }
-
-        .grid-recursos { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
-
-        .card-recurso {
-            background: var(--color-blanco); border: 1px solid var(--color-borde); border-radius: var(--border-radius);
-            padding: 1.2rem; box-shadow: var(--shadow-card); transition: var(--transition-normal);
-            display: flex; flex-direction: column; gap: 0.5rem; text-align: left; cursor: pointer; position: relative;
-        }
-        .card-recurso:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); border-color: var(--color-primario); }
-        .card-recurso .tipo-badge {
-            align-self: flex-start; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
-            padding: 0.2rem 0.55rem; border-radius: 999px; background: var(--color-secundario); color: var(--color-primario);
-        }
-        .card-recurso .icono-nombre { display: flex; align-items: center; gap: 0.6rem; font-weight: 700; color: var(--color-texto); }
-        .card-recurso .icono-nombre .icono { font-size: 1.4rem; }
-        .card-recurso p { font-size: 0.82rem; color: var(--color-texto-claro); margin: 0; }
-        .card-recurso .fuente { font-size: 0.72rem; color: var(--color-primario); font-weight: 600; margin-top: auto; }
-
-        .card-recurso-admin-acciones { position: absolute; top: 8px; right: 8px; display: none; gap: 4px; }
-        .is-admin .card-recurso-admin-acciones { display: flex; }
-        .card-recurso-admin-acciones button {
-            width: 24px; height: 24px; border-radius: 50%; border: none; cursor: pointer; font-size: 0.7rem;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .btn-editar-recurso { background: var(--color-secundario); color: var(--color-primario); }
-        .btn-borrar-recurso { background: var(--color-acento); color: #fff; }
-
-        .card-agregar {
-            border: 2px dashed var(--color-texto-claro); display: flex; align-items: center; justify-content: center;
-            color: var(--color-texto-claro); font-weight: 700; min-height: 120px;
-        }
-        .card-agregar:hover { border-color: var(--color-primario); color: var(--color-primario); }
-
-        .vacio-nivel { grid-column: 1/-1; text-align: center; color: var(--color-texto-claro); padding: 2rem; }
-
-        #modal-recurso .editor-row { margin-bottom: 0.9rem; }
-        #modal-recurso textarea.modal-input { min-height: 140px; resize: vertical; }
-        /* v3.0: la regla de #lector-contenido se sacó de acá — ese modal
-           ya no existe (ver recurso-detalle.html). */
-        .formacion-layout { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
-        .formacion-principal { flex: 1 1 480px; min-width: 0; }
-        .formacion-chat-col { flex: 0 1 340px; min-width: 280px; }
-        .chat-ia-seccion-titulo { font-size: 1.1rem; font-weight: 800; color: var(--color-primario); margin-bottom: 0.6rem; }
-
-        @media (max-width: 768px) {
-            .formacion-principal, .formacion-chat-col { flex-basis: 100%; }
-            .grid-recursos { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-            .card-recurso { padding: 0.9rem; }
-            .card-recurso .icono-nombre { font-size: 0.9rem; }
-            .card-recurso p { font-size: 0.75rem; }
-            .niveles-tabs { gap: 0.4rem; margin-bottom: 1rem; }
-            .nivel-tab, .nivel-tab-add { padding: 0.45rem 0.85rem; font-size: 0.78rem; }
-            .chat-ia-embebido { height: 380px; }
-            .formacion-intro { font-size: 0.85rem; }
-        }
-    </style>
+        .formacion-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; width: 100%; align-items: start; }
+        .formacion-barra { display: flex; align-items: flex-end; gap: 0.8rem; width: 100%; }
+        .btn-tuerca { width: 42px; height: 42px; border-radius: 50%; border: none; background: var(--negro); color: #fff; cursor: pointer; flex-shrink: 0; margin-bottom: 4px; display: none; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,.28); transition: transform .4s ease, filter .2s; }
+        .btn-tuerca:hover { transform: rotate(60deg); filter: brightness(1.3); }
+        .recurso-portada { height: 150px; }
+        .recurso-portada .emoji { font-size: 2.8rem; position: relative; z-index: 1; }
+        .recurso-desc { font-size: 0.85rem; color: var(--color-texto-claro); margin: 0.2rem 0 0.5rem; }
+        .formacion-chat-col { position: sticky; top: 90px; }
+        .chat-ia-seccion-titulo { font-weight: 800; color: var(--color-primario); margin-bottom: 0.6rem; }
+        html.dark-mode .chat-ia-seccion-titulo { color: #d6d3ff; }
+        .chat-ia-embebido { height: 480px; }
+        .fila-nivel { display: grid; grid-template-columns: auto 1fr auto auto; gap: 0.5rem; align-items: center; background: rgba(255,255,255,.1); border-radius: 16px; padding: 0.55rem 0.6rem; margin-bottom: 0.55rem; }
+        .fila-nivel .orden { display: flex; flex-direction: column; gap: 2px; }
+        .fila-nivel .orden button, .fila-nivel .quitar { width: 28px; height: 22px; border: none; border-radius: 8px; background: rgba(255,255,255,.2); color: #fff; cursor: pointer; font-size: .7rem; }
+        .fila-nivel .orden button:disabled { opacity: .3; cursor: default; }
+        .fila-nivel .quitar { width: 34px; height: 34px; border-radius: 50%; background: var(--negro); font-size: .85rem; }
+        .fila-nivel .cnt { font-size: .75rem; opacity: .85; white-space: nowrap; }
+        .fila-nivel.nuevo { outline: 2px dashed rgba(255,255,255,.5); }
+        .fila-nivel.borrado { display: none; }
+        @media (max-width: 980px) { .formacion-layout { grid-template-columns: 1fr; } .formacion-chat-col { position: static; } .chat-ia-embebido { height: 420px; } }
+</style>
 </head>
 <body>
     <header class="barra-superior">
         <img src="datos.png" alt="Gobierno de Venezuela" style="max-height:50px;" />
         <nav id="user-nav" class="user-nav"></nav>
     </header>
-
-    <main class="contenido-web container" id="formacion-container">
-        <a class="back-link" href="panel.html">&larr; Volver al Panel</a>
-        <h2 style="color: var(--color-primario); font-weight: 800;">Formación</h2>
-        <p class="formacion-intro">
-            Material organizado por niveles — métodos (como Dan Hauser), correcciones, aclaraciones y otros
-            recursos. Cualquiera puede leerlo; agregar o editar recursos lo puede hacer un director
-            (de núcleo, regional, estadal) o administrador.
-        </p>
-
+    <div class="volver-barra"><a class="back-link" id="volver" href="panel.html"><i class="fa-solid fa-arrow-left"></i> Volver al panel</a></div>
+    <main class="contenido-web container pagina-interior" id="formacion-container">
+        <div class="pagina-cab">
+            <div><h1 class="pagina-titulo">Formación</h1><p class="pagina-sub">Métodos, correcciones y recursos organizados por nivel.</p></div>
+            <button type="button" class="btn btn-submit" id="btn-nuevo-recurso" style="display:none;"><i class="fa-solid fa-plus"></i> Agregar recurso</button>
+        </div>
         <div class="formacion-layout">
             <div class="formacion-principal">
-                <div class="niveles-tabs" id="niveles-tabs"></div>
-                <!-- v3.1: se sacó el buscador que había acá — se navega solo
-                     por las pestañas de nivel. -->
-                <div class="grid-recursos" id="grid-recursos"></div>
+                <div class="formacion-barra">
+                    <div class="tabs-linea" id="niveles-tabs" role="tablist" aria-label="Niveles"><span class="tabs-indicador" id="tab-ind"></span></div>
+                    <button type="button" class="btn-tuerca" id="btn-niveles" title="Administrar niveles" aria-label="Administrar niveles"><i class="fa-solid fa-gear"></i></button>
+                </div>
+                <div class="grid-tarjetas" id="grid-recursos" style="margin-top:1.4rem;" aria-live="polite"></div>
             </div>
-
-            <div class="formacion-chat-col">
+            <aside class="formacion-chat-col">
                 <div class="chat-ia-seccion-titulo"><i class="fa-solid fa-comments"></i> Tutor Musical</div>
                 <div class="chat-ia-embebido" id="chat-ia-embebido"></div>
-            </div>
+            </aside>
         </div>
     </main>
-
-    <div class="modal-overlay" id="modal-recurso">
-        <div class="modal-content">
-            <button class="modal-close-btn" id="recurso-close-btn">&times;</button>
-            <h2 id="modal-recurso-title">Nuevo recurso</h2>
-            <input type="hidden" id="recurso-id" />
-            <div class="editor-row">
-                <label><i class="fa-solid fa-layer-group"></i> Nivel</label>
-                <input type="text" id="recurso-nivel" class="modal-input" placeholder="Ej: Nivel 1 — Iniciación" />
-            </div>
-            <div class="editor-row">
-                <label><i class="fa-solid fa-shapes"></i> Tipo</label>
-                <select id="recurso-tipo" class="modal-input">
-                    <option value="Método">📘 Método</option>
-                    <option value="Libro">📖 Libro</option>
-                    <option value="Corrección">✏️ Corrección</option>
-                    <option value="Aclaración">💡 Aclaración</option>
-                    <option value="Video">🎬 Video</option>
-                    <option value="Recurso">📎 Recurso</option>
-                    <option value="Otro">🗂️ Otro</option>
-                </select>
-            </div>
-            <div class="editor-row"><label><i class="fa-solid fa-tag"></i> Nombre</label><input type="text" id="recurso-nombre" class="modal-input" placeholder="Ej: Método Dan Hauser Vol. 1" /></div>
-            <div class="editor-row"><label><i class="fa-solid fa-icons"></i> Icono (emoji)</label><input type="text" id="recurso-icono" class="modal-input" placeholder="Se sugiere uno solo según el tipo — podés cambiarlo" /></div>
-            <div class="editor-row"><label><i class="fa-solid fa-align-left"></i> Descripción breve</label><input type="text" id="recurso-descripcion" class="modal-input" placeholder="De qué trata este recurso" /></div>
-            <div class="editor-row">
-                <label><i class="fa-solid fa-file-pdf"></i> Subir un PDF</label>
-                <input type="file" id="recurso-pdf-file" class="modal-input" accept="application/pdf" />
-                <p class="config-hint" id="recurso-pdf-estado" style="margin:0.4rem 0 0; color:var(--color-texto-claro);"></p>
-            </div>
-            <div class="editor-row">
-                <label><i class="fa-solid fa-link"></i> O pegá un enlace (si ya subiste un PDF arriba, no hace falta)</label>
-                <input type="url" id="recurso-url" class="modal-input" placeholder="https://..." />
-            </div>
-            <div class="editor-row">
-                <label>O contenido/notas propias (opcional — se lee dentro del sitio)</label>
-                <textarea id="recurso-contenido" class="modal-input" placeholder="Texto, notas, aclaraciones…"></textarea>
-            </div>
-            <button id="btn-guardar-recurso" class="btn btn-submit">Guardar</button>
-            <button id="btn-cerrar-modal-recurso" class="btn btn-cerrar">Cancelar</button>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="modal-nivel">
-        <div class="modal-content" style="max-width:420px;">
-            <button class="modal-close-btn" id="nivel-close-btn">&times;</button>
-            <h2>Nuevo nivel</h2>
-            <div class="editor-row"><label>Nombre del nivel</label><input type="text" id="nivel-nombre" class="modal-input" placeholder="Ej: Nivel 3 — Avanzado" /></div>
-            <button id="btn-crear-nivel" class="btn btn-submit">Crear</button>
-        </div>
-    </div>
-
-    <!-- v3.0 (G-20): el modal simple de lectura se reemplazó por una
-         página propia (recurso-detalle.html) con visor de PDF embebido,
-         autor/fecha e info completa — así que #modal-lector ya no hace
-         falta acá. -->
+    <footer class="pie-pagina"><div class="footer-contenido"><p>© 2026 Fundación Musical Simón Bolívar</p></div></footer>
 
     <script src="check-entorno.js" defer></script>
-
-    <script type="module" src="auth.js?v=17.0"></script>
-    <script type="module" src="ui-manager.js?v=17.0"></script>
+    <script type="module" src="auth.js?v=22.0"></script>
+    <script type="module" src="ui-manager.js?v=22.0"></script>
     <script type="module">
+
         import { db } from "./firebase-init.js";
-        import {
-            collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc
-        } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+        import { abrirPanel, menuContextual, esc } from "./ui-componentes.js";
+        import { abrirFormularioRecurso, eliminarRecurso, esPDF, ICONO_POR_TIPO } from "./recursos-form.js";
+        import { aplicarEnLotes } from "./agrupaciones.js";
+        import { dibujarMiniaturaPDF } from "./visor-pdf.js";
         import { montarChatEmbebido } from "./chat-widget.js";
-        import { subirACloudinary } from "./gestor-imagenes.js";
+        import { collection, onSnapshot, addDoc, doc } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
 
-        // Ícono sugerido según el tipo — se usa como valor por defecto del
-        // campo "Icono" cuando alguien crea un recurso nuevo, para que no
-        // haga falta escribir un emoji a mano cada vez (se puede cambiar).
-        const ICONO_POR_TIPO = {
-            "Método": "📘", "Libro": "📖", "Corrección": "✏️",
-            "Aclaración": "💡", "Video": "🎬", "Recurso": "📎", "Otro": "🗂️"
-        };
+        const $ = (id) => document.getElementById(id);
+        const GESTORES = ["owner_supremo", "director_nacional", "director_regional", "director_nucleo", "admin"];
 
-        function initFormacion() {
+        function iniciar() {
             const session = window.Auth?.getSession();
             if (!session) { window.location.href = "index.html"; return; }
+            const real = window.Auth.getRealSession() || session;
+            const puedeEditar = GESTORES.includes(session.role) && GESTORES.includes(real.role);
+            let recursos = [], docsNiveles = [], cargadoR = false, cargadoN = false, nivelActivo = sessionStorage.getItem("formacion_nivel") || "", minis = new Map();
+            try { montarChatEmbebido($("chat-ia-embebido")); } catch (e) { console.error("Tutor:", e); }
+            $("btn-nuevo-recurso").style.display = puedeEditar ? "inline-flex" : "none";
+            $("btn-niveles").style.display = puedeEditar ? "inline-flex" : "none";
 
-            const modulosCol = collection(db, "formacion_modulos");
-            let recursos = [];
-            let nivelActivo = "";
-            const puedeEditar = window.Auth.checkPermission("manage_users"); // director de núcleo/regional/estadal/nacional/admin/owner
+            onSnapshot(collection(db, "formacion_modulos"), (s) => { recursos = s.docs.map((d) => ({ id: d.id, ...d.data() })); cargadoR = true; migrar(); pintar(); }, (e) => { cargadoR = true; console.error(e); window._showToast?.("No se pudieron cargar los recursos", "error"); pintar(); });
+            onSnapshot(collection(db, "formacion_niveles"), (s) => { docsNiveles = s.docs.map((d) => ({ id: d.id, ...d.data() })); cargadoN = true; migrar(); pintar(); }, (e) => { cargadoN = true; console.error(e); pintar(); });
 
-            if (puedeEditar) document.getElementById("formacion-container").classList.add("is-admin");
-
-            onSnapshot(modulosCol, (snap) => {
-                recursos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                if (!nivelActivo && recursos.length) nivelActivo = [...new Set(recursos.map(r => r.nivel))].sort()[0];
-                renderizarTodo();
-            }, (err) => {
-                console.error("No se pudieron leer los recursos de Formación:", err);
-                window._showToast?.("No se pudieron cargar los recursos (revisá permisos/consola)", "error");
-            });
-
-            function renderizarTodo() {
-                const niveles = [...new Set(recursos.map(r => r.nivel))].filter(Boolean).sort();
-                const tabsEl = document.getElementById("niveles-tabs");
-                // v3.0 (P-32): cantidad de recursos junto al nombre del nivel
-                tabsEl.innerHTML = niveles.map(n => {
-                    const cantidad = recursos.filter(r => r.nivel === n).length;
-                    return `<button type="button" class="nivel-tab ${n === nivelActivo ? "activo" : ""}" data-nivel="${window._escapeHtml(n)}">${window._escapeHtml(n)} <span style="opacity:0.7;">(${cantidad})</span></button>`;
-                }).join("") + (puedeEditar ? `<button type="button" class="nivel-tab-add" id="btn-nuevo-nivel">+ Nivel</button>` : "");
-
-                tabsEl.querySelectorAll(".nivel-tab").forEach(btn => {
-                    btn.addEventListener("click", () => { nivelActivo = btn.dataset.nivel; renderizarTodo(); });
-                });
-                document.getElementById("btn-nuevo-nivel")?.addEventListener("click", () => {
-                    document.getElementById("nivel-nombre").value = "";
-                    document.getElementById("modal-nivel").style.display = "flex";
-                });
-
-                const grid = document.getElementById("grid-recursos");
-                grid.innerHTML = "";
-                // v3.1: antes el buscador solo filtraba DENTRO del nivel activo —
-                // si lo que se buscaba estaba en otro nivel no aparecía nada,
-                // lo cual lo hacía sentir roto/inútil. Ahora, apenas hay texto,
-                // busca en TODOS los niveles a la vez (cada tarjeta muestra de
-                // qué nivel es); sin texto, sigue mostrando solo el nivel activo.
-                let items = recursos.filter(r => r.nivel === nivelActivo);
-
-                if (!niveles.length) {
-                    grid.innerHTML = `<p class="vacio-nivel">Todavía no hay recursos cargados${puedeEditar ? ". Usá el botón de abajo para agregar el primero." : "."}</p>`;
-                } else if (!items.length) {
-                    grid.innerHTML = `<p class="vacio-nivel">Este nivel todavía no tiene recursos.</p>`;
-                } else {
-                    items.forEach(r => {
-                        const card = document.createElement("div");
-                        card.className = "card-recurso";
-                        // v3.0 (P-37): badge "Nuevo" si se agregó hace 7 días o menos
-                        const esNuevo = r.fechaCreacion && (Date.now() - new Date(r.fechaCreacion).getTime()) < 7 * 24 * 60 * 60 * 1000;
-                        card.innerHTML = `
-                            <span class="tipo-badge">${window._escapeHtml(r.tipo) || "Recurso"}</span>
-                            ${esNuevo ? `<span class="badge-pill badge-nuevo" style="position:absolute;top:8px;right:8px;">Nuevo</span>` : ""}
-                            <div class="icono-nombre"><span class="icono">${window._escapeHtml(r.icono) || "📄"}</span> ${window._escapeHtml(r.nombre)}</div>
-                            ${r.descripcion ? `<p>${window._escapeHtml(r.descripcion)}</p>` : ""}
-                            <span class="fuente">${
-                                r.url
-                                    ? (/\.pdf(\?|$)/i.test(r.url)
-                                        ? '<i class="fa-solid fa-file-pdf"></i> Ver PDF'
-                                        : '<i class="fa-solid fa-up-right-from-square"></i> Ver enlace')
-                                    : (r.contenido ? '<i class="fa-solid fa-book-open"></i> Leer aquí' : "")
-                            }</span>
-                            <!-- v3.0 (G-23): autor + fecha, antes se guardaban pero no se mostraban -->
-                            ${(r.autor || r.fechaCreacion) ? `<p style="font-size:0.68rem;opacity:0.65;margin-top:-0.2rem;">
-                                ${r.autor ? `<i class="fa-solid fa-user-pen"></i> ${window._escapeHtml(r.autor)}` : ""}
-                                ${r.fechaCreacion ? ` · ${new Date(r.fechaCreacion).toLocaleDateString("es-VE")}` : ""}
-                            </p>` : ""}
-                            ${puedeEditar ? `<div class="card-recurso-admin-acciones">
-                                <button type="button" class="btn-editar-recurso" title="Editar"><i class="fa-solid fa-pen"></i></button>
-                                <button type="button" class="btn-borrar-recurso" title="Eliminar"><i class="fa-solid fa-xmark"></i></button>
-                            </div>` : ""}
-                        `;
-                        // v3.0 (G-19/G-20): en vez de abrir el PDF en una pestaña
-                        // nueva o un modal simple, ahora navega a una página
-                        // propia del recurso (visor embebido + info completa).
-                        card.addEventListener("click", () => {
-                            window.location.href = `recurso-detalle.html?id=${encodeURIComponent(r.id)}`;
-                        });
-                        card.querySelector(".btn-editar-recurso")?.addEventListener("click", (e) => {
-                            e.stopPropagation();
-                            abrirModalRecurso(r);
-                        });
-                        card.querySelector(".btn-borrar-recurso")?.addEventListener("click", async (e) => {
-                            e.stopPropagation();
-                            // v3.0 (G-02): reemplaza el confirm() nativo
-                            const ok = await window._confirmDialog(`Vas a eliminar <strong>"${window._escapeHtml(r.nombre)}"</strong>. Esta acción no se puede deshacer.`, { titulo: "¿Eliminar recurso?", peligroso: true, textoOk: "Sí, eliminar" });
-                            if (!ok) return;
-                            try { await deleteDoc(doc(db, "formacion_modulos", r.id)); window._showToast?.("Recurso eliminado", "success"); }
-                            catch (err) { window._showToast?.("No se pudo eliminar: " + err.message, "error"); }
-                        });
-                        grid.appendChild(card);
-                    });
-                }
-
-                if (puedeEditar && nivelActivo) {
-                    const btnAgregar = document.createElement("div");
-                    btnAgregar.className = "card-recurso card-agregar";
-                    btnAgregar.innerHTML = `<i class="fa-solid fa-plus"></i>&nbsp; Agregar recurso`;
-                    btnAgregar.addEventListener("click", () => abrirModalRecurso(null));
-                    grid.appendChild(btnAgregar);
-                }
+            // Niveles = documentos de formacion_niveles + (migración) niveles que solo existían como texto en los recursos.
+            const yaCreados = new Set();   // evita crear dos veces el mismo nivel mientras llega la actualización de la base
+            async function migrar() {
+                if (!puedeEditar || !cargadoR || !cargadoN) return;
+                const faltan = [...new Set(recursos.map((r) => r.nivel).filter(Boolean))].filter((n) => !yaCreados.has(n) && !docsNiveles.some((d) => d.nombre === n));
+                if (!faltan.length) return;
+                faltan.forEach((n) => yaCreados.add(n));
+                try { let o = docsNiveles.reduce((m, d) => Math.max(m, d.orden ?? 0), -1) + 1; for (const n of faltan.sort()) await addDoc(collection(db, "formacion_niveles"), { nombre: n, orden: o++ }); }
+                catch (e) { faltan.forEach((n) => yaCreados.delete(n)); console.warn("No se pudieron registrar los niveles existentes:", e); }
             }
+            const niveles = () => {
+                const base = [...new Set([...docsNiveles].sort((a, b) => (a.orden ?? 99) - (b.orden ?? 99) || a.nombre.localeCompare(b.nombre)).map((d) => d.nombre))];
+                const extra = [...new Set(recursos.map((r) => r.nivel).filter(Boolean))].filter((n) => !base.includes(n)).sort();
+                const todos = [...base, ...extra];
+                return puedeEditar ? todos : todos.filter((n) => recursos.some((r) => r.nivel === n));
+            };
 
-            function abrirModalRecurso(r) {
-                document.getElementById("modal-recurso-title").textContent = r ? "Editar recurso" : "Nuevo recurso";
-                document.getElementById("recurso-id").value = r?.id || "";
-                document.getElementById("recurso-nivel").value = r?.nivel || nivelActivo || "";
-                document.getElementById("recurso-tipo").value = r?.tipo || "Método";
-                document.getElementById("recurso-nombre").value = r?.nombre || "";
-                document.getElementById("recurso-icono").value = r?.icono || "";
-                document.getElementById("recurso-descripcion").value = r?.descripcion || "";
-                document.getElementById("recurso-url").value = r?.url || "";
-                document.getElementById("recurso-contenido").value = r?.contenido || "";
-                document.getElementById("recurso-pdf-file").value = "";
-                // CORREGIDO 2026-09-06: antes de subir/editar un recurso solo se
-                // podía pegar un enlace ya existente (ej. un PDF alojado en otro
-                // lado) — no había forma de subir el archivo directo desde acá.
-                // Este mensaje avisa si ya hay algo cargado, para que no genere
-                // dudas al reabrir para editar.
-                document.getElementById("recurso-pdf-estado").textContent = r?.url
-                    ? "Ya tiene un enlace/PDF cargado. Subí uno nuevo acá solo si querés reemplazarlo."
-                    : "";
-                document.getElementById("modal-recurso").style.display = "flex";
+            function pintarTabs(ns) {
+                const cont = $("niveles-tabs"), ind = $("tab-ind");
+                cont.querySelectorAll(".tab").forEach((b) => b.remove());
+                ns.forEach((n) => { const b = document.createElement("button"); b.type = "button"; b.className = "tab" + (n === nivelActivo ? " activo" : ""); b.setAttribute("role", "tab"); b.setAttribute("aria-selected", n === nivelActivo); b.dataset.nivel = n;
+                    b.innerHTML = `${esc(n)} <span class="n">${recursos.filter((r) => r.nivel === n).length}</span>`; cont.insertBefore(b, ind); });
+                requestAnimationFrame(() => { const a = cont.querySelector(".tab.activo"); if (a) { ind.style.width = a.offsetWidth + "px"; ind.style.transform = `translateX(${a.offsetLeft}px)`; } else ind.style.width = "0"; });
             }
+            function pintar() {
+                const grid = $("grid-recursos"), ns = niveles();
+                if (!cargadoR || !cargadoN) { grid.innerHTML = Array.from({ length: 3 }, () => `<div class="skeleton" style="height:250px;border-radius:22px;"></div>`).join(""); return; }
+                if (!ns.includes(nivelActivo)) nivelActivo = ns[0] || "";
+                pintarTabs(ns);
+                if (!ns.length) { grid.innerHTML = `<div class="estado-vacio"><i class="fa-solid fa-graduation-cap"></i><h3>Todavía no hay niveles</h3><p>Los niveles organizan el material de estudio.</p>${puedeEditar ? `<button type="button" class="btn btn-submit" id="vacio-nivel"><i class="fa-solid fa-gear"></i> Crear niveles</button>` : ""}</div>`; $("vacio-nivel")?.addEventListener("click", abrirNiveles); return; }
+                const items = recursos.filter((r) => r.nivel === nivelActivo).sort((a, b) => String(b.fechaCreacion || "").localeCompare(String(a.fechaCreacion || "")));
+                if (!items.length) { grid.innerHTML = `<div class="estado-vacio"><i class="fa-solid fa-book-open"></i><h3>Este nivel todavía no tiene recursos</h3>${puedeEditar ? `<button type="button" class="btn btn-submit" id="vacio-recurso"><i class="fa-solid fa-plus"></i> Agregar el primero</button>` : "<p>Pronto habrá material disponible.</p>"}</div>`; $("vacio-recurso")?.addEventListener("click", () => nuevoRecurso()); return; }
+                grid.innerHTML = items.map((r, i) => {
+                    const mini = esPDF(r.url) ? minis.get(r.url) : null;
+                    return `<article class="pin-card" style="animation-delay:${Math.min(i, 8) * 40}ms">
+                        <a class="pin-enlace" href="recurso-detalle.html?id=${encodeURIComponent(r.id)}" aria-label="Abrir ${esc(r.nombre)}"></a>
+                        <div class="pin-portada recurso-portada" data-mini="${esc(esPDF(r.url) ? r.url : "")}" ${mini ? `style="background:#fff url('${mini}') top center/cover"` : ""}>${mini ? "" : `<span class="emoji">${esc(r.icono || ICONO_POR_TIPO[r.tipo] || "📄")}</span>`}</div>
+                        <div class="pin-body"><span class="eyebrow">${esc(r.tipo || "Recurso")}</span><h3>${esc(r.nombre)}</h3>
+                            ${r.descripcion ? `<p class="recurso-desc">${esc(r.descripcion)}</p>` : ""}
+                            <p class="pin-meta">${esc([r.autor, r.fechaCreacion ? new Date(r.fechaCreacion).toLocaleDateString("es-VE") : ""].filter(Boolean).join(" · "))}</p></div>
+                        ${puedeEditar ? `<div class="card-acciones"><button type="button" class="btn-mas" data-menu="${esc(r.id)}" aria-label="Opciones de ${esc(r.nombre)}" aria-haspopup="menu"><i class="fa-solid fa-ellipsis"></i></button></div>` : ""}
+                    </article>`;
+                }).join("");
+                grid.querySelectorAll(".recurso-portada[data-mini]").forEach((el) => { if (el.dataset.mini && !minis.has(el.dataset.mini)) obs.observe(el); });
+            }
+            const obs = new IntersectionObserver((es) => es.forEach(async (e) => {
+                if (!e.isIntersecting) return; const el = e.target; obs.unobserve(el); const url = el.dataset.mini; if (!url || minis.has(url)) return;
+                const c = document.createElement("canvas");
+                if (await dibujarMiniaturaPDF(c, url, 320)) { const d = c.toDataURL("image/jpeg", 0.72); minis.set(url, d); if (el.isConnected) { el.style.background = `#fff url('${d}') top center/cover`; el.innerHTML = ""; } } else minis.set(url, null);
+            }), { rootMargin: "200px" });
+            const st = document.createElement("style"); st.textContent = ".pin-enlace{position:absolute;inset:0;z-index:1}.pin-card .card-acciones{z-index:3}"; document.head.appendChild(st);
 
-            // Sugiere un ícono acorde al tipo elegido, pero solo si el campo de
-            // ícono todavía está vacío — nunca pisa uno que la persona ya puso.
-            document.getElementById("recurso-tipo").addEventListener("change", (e) => {
-                const campoIcono = document.getElementById("recurso-icono");
-                if (!campoIcono.value.trim()) campoIcono.value = ICONO_POR_TIPO[e.target.value] || "";
+            $("niveles-tabs").addEventListener("click", (e) => { const b = e.target.closest(".tab"); if (!b) return; nivelActivo = b.dataset.nivel; sessionStorage.setItem("formacion_nivel", nivelActivo); pintar(); });
+            window.addEventListener("resize", () => pintarTabs(niveles()));
+            $("grid-recursos").addEventListener("click", (e) => {
+                const b = e.target.closest("[data-menu]"); if (!b) return; const r = recursos.find((x) => x.id === b.dataset.menu); if (!r) return;
+                menuContextual(b, [{ icono: "fa-pen", texto: "Editar", onClick: () => abrirFormularioRecurso({ recurso: r, niveles: niveles(), sesion: real, onGuardado: (n) => { nivelActivo = n; } }) },
+                    { separador: true }, { icono: "fa-trash", texto: "Eliminar", peligro: true, onClick: () => eliminarRecurso(r) }]);
             });
+            const nuevoRecurso = () => abrirFormularioRecurso({ niveles: niveles(), nivelInicial: nivelActivo, sesion: real, onGuardado: (n) => { nivelActivo = n; sessionStorage.setItem("formacion_nivel", n); } });
+            $("btn-nuevo-recurso").addEventListener("click", () => { if (!niveles().length) { window._showToast?.("Primero crea un nivel con la tuerca ⚙.", "info"); abrirNiveles(); return; } nuevoRecurso(); });
 
-            document.getElementById("recurso-pdf-file").addEventListener("change", (e) => {
-                const f = e.target.files[0];
-                // v3.0 (P-36): tamaño del archivo visible antes de subir
-                document.getElementById("recurso-pdf-estado").textContent = f
-                    ? `Se subirá "${f.name}" (${(f.size / 1024 / 1024).toFixed(1)} MB) al guardar (reemplaza el enlace de abajo).`
-                    : "";
-            });
-
-            document.getElementById("btn-guardar-recurso").addEventListener("click", async () => {
-                const id = document.getElementById("recurso-id").value;
-                const nivel = document.getElementById("recurso-nivel").value.trim();
-                const nombre = document.getElementById("recurso-nombre").value.trim();
-                if (!nivel || !nombre) { window._showToast?.("Nivel y nombre son obligatorios.", "error"); return; }
-
-                const existente = id ? recursos.find(x => x.id === id) : null;
-                // v3.0 (P-35): confirmación explícita antes de reemplazar un
-                // PDF/link que ya tenía cargado (antes solo había un texto
-                // informativo, sin bloquear el guardado por error).
-                const nuevoUrlPegado = document.getElementById("recurso-url").value.trim();
-                const archivoNuevo = document.getElementById("recurso-pdf-file").files[0];
-                if (existente?.url && (archivoNuevo || (nuevoUrlPegado && nuevoUrlPegado !== existente.url))) {
-                    const ok = await window._confirmDialog(
-                        `Este recurso ya tiene un PDF/enlace cargado. Si continuás, se reemplaza por el nuevo.`,
-                        { titulo: "¿Reemplazar el archivo actual?", textoOk: "Sí, reemplazar" }
-                    );
-                    if (!ok) return;
+            // ---------- UNA sola tuerca: administra TODOS los niveles ----------
+            function abrirNiveles() {
+                let filas = niveles().map((n) => ({ id: docsNiveles.find((d) => d.nombre === n)?.id || null, original: n, nombre: n, borrado: false }));
+                const cnt = (nombreOriginal) => recursos.filter((r) => r.nivel === nombreOriginal).length;
+                const p = abrirPanel({ titulo: "Administrar niveles", subtitulo: "Cambia el nombre, el orden, agrega o elimina niveles. Los cambios se aplican al guardar.", cuerpoHTML: `<div id="nv-lista"></div><button type="button" class="btn btn-cerrar btn-sm" id="nv-agregar" style="margin-top:.4rem"><i class="fa-solid fa-plus"></i> Agregar nivel</button><p class="error-campo" id="nv-err" role="alert"></p>`,
+                    pieHTML: `<button type="button" class="btn btn-cerrar" id="nv-cancelar">Cancelar</button><button type="button" class="btn btn-submit" id="nv-guardar">Guardar cambios</button>` });
+                const lista = p.panel.querySelector("#nv-lista"), err = p.panel.querySelector("#nv-err");
+                function dibujar() {
+                    const vivas = filas.filter((f) => !f.borrado);
+                    lista.innerHTML = vivas.map((f, i) => `<div class="fila-nivel ${f.id ? "" : "nuevo"}" data-k="${filas.indexOf(f)}">
+                        <div class="orden"><button type="button" data-mv="-1" ${i === 0 ? "disabled" : ""} aria-label="Subir"><i class="fa-solid fa-chevron-up"></i></button><button type="button" data-mv="1" ${i === vivas.length - 1 ? "disabled" : ""} aria-label="Bajar"><i class="fa-solid fa-chevron-down"></i></button></div>
+                        <input type="text" maxlength="60" value="${esc(f.nombre)}" aria-label="Nombre del nivel" data-nom>
+                        <span class="cnt">${f.id ? cnt(f.original) + " recurso(s)" : "nuevo"}</span>
+                        <button type="button" class="quitar" data-del aria-label="Eliminar nivel"><i class="fa-solid fa-trash"></i></button></div>`).join("") || `<p class="ayuda">No hay niveles. Agrega el primero.</p>`;
                 }
-
-                const btn = document.getElementById("btn-guardar-recurso");
-                const textoOriginal = btn.textContent;
-                btn.disabled = true;
-
-                // CORREGIDO 2026-09-06: antes esto era obligatoriamente un enlace
-                // pegado a mano — ahora, si se eligió un archivo PDF, se sube acá
-                // (mismo Cloudinary que ya usan las imágenes del sitio) y su URL
-                // final se guarda en el mismo campo "url" de siempre — la IA y el
-                // resto del sitio no necesitan saber si el enlace vino de un PDF
-                // subido o de un link pegado, es exactamente el mismo campo.
-                let url = nuevoUrlPegado;
-                const archivo = archivoNuevo;
-                if (archivo) {
-                    btn.textContent = "⏳ Subiendo PDF...";
-                    try {
-                        url = await subirACloudinary(archivo, "formacion");
-                    } catch (err) {
-                        // Si esto falla, probablemente el preset de Cloudinary no
-                        // tenga habilitada la subida de archivos que no sean
-                        // imágenes — se avisa claro en vez de fallar en silencio,
-                        // y no se pierde nada: el resto del formulario queda intacto.
-                        window._showToast?.("No se pudo subir el PDF: " + err.message + ". Probá pegando un enlace en vez de subir el archivo.", "error");
-                        btn.disabled = false;
-                        btn.textContent = textoOriginal;
-                        return;
+                dibujar();
+                lista.addEventListener("input", (e) => { const inp = e.target.closest("[data-nom]"); if (inp) filas[Number(inp.closest(".fila-nivel").dataset.k)].nombre = inp.value; });
+                lista.addEventListener("click", async (e) => {
+                    const fila = e.target.closest(".fila-nivel"); if (!fila) return; const k = Number(fila.dataset.k), f = filas[k];
+                    const mv = e.target.closest("[data-mv]");
+                    if (mv) { const vivas = filas.filter((x) => !x.borrado), i = vivas.indexOf(f), j = i + Number(mv.dataset.mv); const g = vivas[j]; if (!g) return; const a = filas.indexOf(f), b = filas.indexOf(g); [filas[a], filas[b]] = [filas[b], filas[a]]; dibujar(); return; }
+                    if (e.target.closest("[data-del]")) {
+                        const n = f.id ? cnt(f.original) : 0;
+                        if (n > 0 && !(await window._confirmDialog(`El nivel <strong>${esc(f.original)}</strong> tiene ${n} recurso(s). Si lo eliminas, <strong>también se eliminan sus recursos</strong>. ¿Seguro?`, { titulo: "¿Eliminar nivel y sus recursos?", peligroso: true, textoOk: "Sí, eliminar todo" }))) return;
+                        f.borrado = true; dibujar();
                     }
-                }
-
-                const datos = {
-                    nivel,
-                    tipo: document.getElementById("recurso-tipo").value,
-                    nombre,
-                    icono: document.getElementById("recurso-icono").value.trim() || "📄",
-                    descripcion: document.getElementById("recurso-descripcion").value.trim(),
-                    url,
-                    contenido: document.getElementById("recurso-contenido").value.trim(),
-                    autor: session.nombre || session.firstName || "",
-                    // v3.0 (G-23/P-37): fecha de creación real — se conserva la
-                    // original al editar, y se fija a "ahora" solo al crear.
-                    fechaCreacion: existente?.fechaCreacion || new Date().toISOString(),
-                };
-                try {
-                    if (id) await updateDoc(doc(db, "formacion_modulos", id), datos);
-                    else await addDoc(modulosCol, datos);
-                    nivelActivo = nivel;
-                    document.getElementById("modal-recurso").style.display = "none";
-                    window._showToast?.("Recurso guardado", "success");
-                } catch (err) {
-                    window._showToast?.("No se pudo guardar: " + err.message, "error");
-                } finally { btn.disabled = false; btn.textContent = textoOriginal; }
-            });
-
-            document.getElementById("btn-crear-nivel").addEventListener("click", () => {
-                const nombre = document.getElementById("nivel-nombre").value.trim();
-                if (!nombre) return;
-                document.getElementById("modal-nivel").style.display = "none";
-                nivelActivo = nombre;
-                abrirModalRecurso(null);
-            });
-
-            document.getElementById("recurso-close-btn").addEventListener("click", () => document.getElementById("modal-recurso").style.display = "none");
-            document.getElementById("btn-cerrar-modal-recurso").addEventListener("click", () => document.getElementById("modal-recurso").style.display = "none");
-            document.getElementById("nivel-close-btn").addEventListener("click", () => document.getElementById("modal-nivel").style.display = "none");
-
-            window.UI?.render();
-            montarChatEmbebido(document.getElementById("chat-ia-embebido"));
-
-            // v3.0: si se llegó desde el botón "Editar" de la página de
-            // detalle de un recurso (recurso-detalle.html?editar=ID),
-            // abre directo el modal de edición de ese recurso.
-            const idAEditar = new URLSearchParams(window.location.search).get("editar");
-            if (idAEditar && puedeEditar) {
-                let intentos = 0;
-                const intentarAbrir = () => {
-                    const r = recursos.find(x => x.id === idAEditar);
-                    if (r) { nivelActivo = r.nivel; renderizarTodo(); abrirModalRecurso(r); }
-                    else if (intentos++ < 15) setTimeout(intentarAbrir, 300); // por si el snapshot todavía no llegó
-                };
-                intentarAbrir();
+                });
+                p.panel.querySelector("#nv-agregar").addEventListener("click", () => { filas.push({ id: null, original: "", nombre: "", borrado: false }); dibujar(); lista.querySelector(".fila-nivel:last-child input")?.focus(); });
+                p.panel.querySelector("#nv-cancelar").addEventListener("click", p.cerrar);
+                p.panel.querySelector("#nv-guardar").addEventListener("click", async () => {
+                    err.textContent = ""; const vivas = filas.filter((f) => !f.borrado).map((f) => ({ ...f, nombre: f.nombre.trim() }));
+                    if (vivas.some((f) => !f.nombre)) { err.textContent = "Todos los niveles necesitan un nombre."; return; }
+                    const vistos = new Set(); for (const f of vivas) { const k = f.nombre.toLowerCase(); if (vistos.has(k)) { err.textContent = `El nombre “${f.nombre}” está repetido.`; return; } vistos.add(k); }
+                    const btn = p.panel.querySelector("#nv-guardar"); btn.disabled = true; btn.textContent = "Guardando…";
+                    try {
+                        const ops = [];
+                        for (const f of filas.filter((x) => x.borrado && x.id)) { ops.push(["delete", doc(db, "formacion_niveles", f.id)]); recursos.filter((r) => r.nivel === f.original).forEach((r) => ops.push(["delete", doc(db, "formacion_modulos", r.id)])); }
+                        for (let i = 0; i < vivas.length; i++) {
+                            const f = vivas[i];
+                            if (f.id) { ops.push(["update", doc(db, "formacion_niveles", f.id), { nombre: f.nombre, orden: i }]); if (f.nombre !== f.original) recursos.filter((r) => r.nivel === f.original).forEach((r) => ops.push(["update", doc(db, "formacion_modulos", r.id), { nivel: f.nombre }])); }
+                        }
+                        await aplicarEnLotes(ops);
+                        for (let i = 0; i < vivas.length; i++) if (!vivas[i].id) await addDoc(collection(db, "formacion_niveles"), { nombre: vivas[i].nombre, orden: i });
+                        const act = vivas.find((f) => f.original === nivelActivo); nivelActivo = act ? act.nombre : (vivas[0]?.nombre || "");
+                        window._showToast?.("Niveles actualizados", "success"); p.cerrar();
+                    } catch (e) { console.error(e); err.textContent = "No se pudo guardar: " + e.message; btn.disabled = false; btn.textContent = "Guardar cambios"; }
+                });
             }
+            $("btn-niveles").addEventListener("click", abrirNiveles);
+            window.UI?.render?.();
         }
+        if (window.Auth?.getSession()) iniciar(); else window.addEventListener("auth-ready", iniciar, { once: true });
 
-        window.addEventListener("auth-ready", initFormacion);
-        if (window.Auth?.getSession()) initFormacion();
     </script>
 </body>
 </html>

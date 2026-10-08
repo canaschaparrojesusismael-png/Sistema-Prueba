@@ -64,22 +64,8 @@ const ROLES = {
   }
 };
 
-function generarClaveSegura() {
-  const mayus = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-  const minus = "abcdefghjkmnpqrstuvwxyz";
-  const nums = "23456789";
-  const simb = "!@#$%&*";
-  const todos = mayus + minus + nums + simb;
-  let clave = "";
-  clave += mayus[Math.floor(Math.random() * mayus.length)];
-  clave += minus[Math.floor(Math.random() * minus.length)];
-  clave += nums[Math.floor(Math.random() * nums.length)];
-  clave += simb[Math.floor(Math.random() * simb.length)];
-  for (let i = 4; i < 12; i++) {
-    clave += todos[Math.floor(Math.random() * todos.length)];
-  }
-  return clave.split("").sort(() => Math.random() - 0.5).join("");
-}
+// v4.0: las contraseñas ya NO se generan en el navegador (Math.random no es
+// criptográficamente seguro): las genera el servidor y vienen en la respuesta.
 
 function generarUUID() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
@@ -198,7 +184,7 @@ window._confirmDialog = function (mensaje, { titulo = "Confirmar", peligroso = f
 window._alertDialog = function (mensaje, { titulo = "Aviso", tipo = "alerta" } = {}) {
   return _dialogBase(tipo, titulo, mensaje, [{ texto: "Entendido", clase: "btn-submit", valor: true }]);
 };
-window._promptDialog = function (mensaje, valorInicial = "", { titulo = "Escribí un valor", placeholder = "" } = {}) {
+window._promptDialog = function (mensaje, valorInicial = "", { titulo = "Escribe un valor", placeholder = "" } = {}) {
   return _dialogBase("pregunta", titulo, mensaje, [
     { texto: "Cancelar", clase: "btn-cerrar" },
     { texto: "Aceptar", clase: "btn-submit" }
@@ -225,7 +211,6 @@ window.Auth = {
   auth,
   db,
   ROLES,
-  generarClaveSegura,
 
   canView(targetRole) {
     const session = this.getSession();
@@ -264,7 +249,15 @@ window.Auth = {
       }
       const userCred = await signInWithEmailAndPassword(auth, email, password);
       const user = userCred.user;
-      const snap = await getDoc(doc(db, "usuarios", user.uid));
+      let snap;
+      try {
+        snap = await getDoc(doc(db, "usuarios", user.uid));
+      } catch (errLectura) {
+        await signOut(auth);
+        // Con las reglas v4, una cuenta desactivada no puede leer ni su propio perfil.
+        const denegado = errLectura?.code === "permission-denied";
+        return { success: false, error: denegado ? "Esta cuenta está desactivada o no tiene acceso. Contacta a un director." : "No se pudo leer tu perfil: " + errLectura.message };
+      }
       if (!snap.exists()) { await signOut(auth); return { success: false, error: "Usuario no registrado." }; }
       const data = snap.data();
 
@@ -285,9 +278,9 @@ window.Auth = {
         this.monitorSession(user.uid, sessionId);
       } catch (errEstado) {
         // Esto NO debe bloquear el login: si falla, solo perdés el indicador de
-        // "en línea" y el cierre de sesión remoto, pero podés entrar igual.
+        // "en línea" y el cierre de sesión remoto, pero puedes entrar igual.
         console.error(
-          "⚠️ No se pudo marcar la sesión como 'en línea' (revisá que publicaste " +
+          "⚠️ No se pudo marcar la sesión como 'en línea' (revisa que publicaste " +
           "las reglas de Firestore más recientes en Firebase Console). Detalle:",
           errEstado
         );
@@ -303,7 +296,7 @@ window.Auth = {
         age: data.edad || 0, group: data.agrupacion || "",
         state: data.estado || "", nucleus: data.nucleo || "",
         permissions: ROLES[data.rango]?.permissions || ["view_profile"],
-        requiresPasswordChange: data.requiresPasswordChange || false,
+        instrument: data.instrumento || "",
         // v3.0: guardamos el lastLogin ANTERIOR (el que tenía el documento
         // antes de que esta misma función lo pise más abajo) para poder
         // mostrar "Tu última sesión fue el..." en Configuración.
@@ -315,28 +308,34 @@ window.Auth = {
       if (remember) localStorage.setItem("sistemaOrquestas_session", JSON.stringify(sessionData));
       window.dispatchEvent(new CustomEvent('auth-ready', { detail: sessionData }));
       return { success: true, user: sessionData };
-    } catch (err) { return { success: false, error: err.message }; }
+    } catch (err) {
+      const codigos = {
+        "auth/invalid-credential": "Correo o contraseña incorrectos.",
+        "auth/wrong-password": "Correo o contraseña incorrectos.",
+        "auth/user-not-found": "Correo o contraseña incorrectos.",
+        "auth/invalid-email": "El correo no tiene un formato válido.",
+        "auth/user-disabled": "Esta cuenta está desactivada. Contacta a un director.",
+        "auth/too-many-requests": "Demasiados intentos. Espera unos minutos y prueba de nuevo.",
+        "auth/network-request-failed": "No hay conexión con el servidor. Revisa tu internet."
+      };
+      return { success: false, error: codigos[err.code] || err.message };
+    }
   },
 
-  async registerUser(username, nombre, rango, agrupacion, estado, nucleo, edad = 0) {
+  // v4.0: el servidor genera la contraseña y la devuelve UNA sola vez ({ clave }).
+  async registerUser(username, nombre, rango, agrupacion, estado, nucleo, edad = 0, instrumento = "") {
     try {
-      const clave = generarClaveSegura();
-      // Antes: Cloud Function (requería plan Blaze). Ahora: backend en Vercel.
       const resultado = await backendAPI.crearUsuario({
         email: username.trim(),
-        password: clave,
-        nombre,
-        rango,
+        nombre, rango,
         agrupacion: agrupacion || "",
+        instrumento: instrumento || "",
         estado: estado || "",
         nucleo: nucleo || "",
         edad: edad || 0
       });
-      if (resultado.success) {
-        return { success: true, clave, uid: resultado.uid };
-      } else {
-        return { success: false, error: resultado.error || "Error desconocido" };
-      }
+      if (resultado.success) return { success: true, clave: resultado.clave, uid: resultado.uid };
+      return { success: false, error: resultado.error || "Error desconocido" };
     } catch (err) {
       return { success: false, error: err.message };
     }
@@ -372,8 +371,8 @@ window.Auth = {
       }
     } catch (e) {}
     if (window._sessionUnsub) { window._sessionUnsub(); window._sessionUnsub = null; }
-    localStorage.removeItem("sistemaOrquestas_session"); sessionStorage.removeItem("sistemaOrquestas_session");
-    localStorage.removeItem("currentSessionId"); sessionStorage.removeItem("currentSessionId");
+    this._limpiarSesionLocal();
+    sessionStorage.removeItem("perfil_recargado");
     window.location.href = "index.html";
   },
 
@@ -407,6 +406,56 @@ window.Auth = {
     return { ...real, role: preview.role, nucleus: preview.nucleus, state: preview.state, permissions: preview.permissions, _previewReal: real.role };
   },
 
+  // v4.0 — SINCRONIZACIÓN DEL PERFIL REAL.
+  // Antes el rol/núcleo/estado se guardaban UNA vez al iniciar sesión y se usaban
+  // para siempre (hasta cerrar sesión): si a alguien lo cambiaban de núcleo, lo
+  // ascendían o lo desactivaban, el navegador seguía mostrando lo viejo. Ahora, en
+  // cada carga de página, se lee el perfil de Firestore; si algo cambió se
+  // actualiza la sesión local y se recarga UNA vez para que la pantalla use los
+  // datos correctos. Si la cuenta ya no existe o está desactivada, se cierra sesión.
+  async sincronizarPerfil() {
+    const real = this.getRealSession();
+    if (!real) return;
+    const user = await new Promise((resolve) => {
+      const unsub = onAuthStateChanged(auth, (u) => { unsub(); resolve(u); });
+    });
+    if (!user) { this._limpiarSesionLocal(); window.location.href = "login.html"; return; }
+    let data = null;
+    try {
+      const snap = await getDoc(doc(db, "usuarios", user.uid));
+      data = snap.exists() ? snap.data() : null;
+    } catch (err) {
+      if (err?.code === "permission-denied") data = null;  // cuenta desactivada
+      else { console.warn("No se pudo sincronizar el perfil (sigo con la sesión local):", err); return; }
+    }
+    if (!data || data.cuentaActiva === false) {
+      window._showToast?.("Tu cuenta ya no tiene acceso. Cerrando sesión…", "error");
+      setTimeout(() => this.logout(), 900);
+      return;
+    }
+    const nuevo = {
+      nombre: data.nombre || "", role: data.rango, roleLevel: ROLES[data.rango]?.level ?? 99,
+      group: data.agrupacion || "", instrument: data.instrumento || "",
+      state: data.estado || "", nucleus: data.nucleo || "",
+      permissions: ROLES[data.rango]?.permissions || ["view_profile"]
+    };
+    const cambio = ["role", "group", "instrument", "state", "nucleus", "nombre"].some((k) => (real[k] || "") !== (nuevo[k] || ""));
+    if (!cambio) return;
+    const actualizada = { ...real, ...nuevo, firstName: nuevo.nombre.split(" ")[0] || "", lastName: nuevo.nombre.split(" ").slice(1).join(" ") || "" };
+    sessionStorage.setItem("sistemaOrquestas_session", JSON.stringify(actualizada));
+    if (localStorage.getItem("sistemaOrquestas_session")) localStorage.setItem("sistemaOrquestas_session", JSON.stringify(actualizada));
+    if (!sessionStorage.getItem("perfil_recargado")) {
+      sessionStorage.setItem("perfil_recargado", "1");
+      window.location.reload();
+    } else {
+      sessionStorage.removeItem("perfil_recargado");
+    }
+  },
+  _limpiarSesionLocal() {
+    localStorage.removeItem("sistemaOrquestas_session"); sessionStorage.removeItem("sistemaOrquestas_session");
+    localStorage.removeItem("currentSessionId"); sessionStorage.removeItem("currentSessionId");
+  },
+
   checkPermission(perm) { const s = this.getSession(); return s ? s.permissions.includes(perm) : false; },
   getRole() { const s = this.getSession(); return s ? s.role : null; },
   onAuthChange(cb) { return onAuthStateChanged(auth, cb); }
@@ -417,4 +466,5 @@ window.Auth = {
   const currentSessionId = sessionStorage.getItem("currentSessionId") || localStorage.getItem("currentSessionId");
   if (session && currentSessionId) window.Auth.monitorSession(session.uid, currentSessionId);
   window.dispatchEvent(new CustomEvent('auth-ready', { detail: session }));
+  if (session) window.Auth.sincronizarPerfil().catch((e) => console.warn("sincronizarPerfil:", e));
 })();

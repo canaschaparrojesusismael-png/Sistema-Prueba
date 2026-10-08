@@ -1,5 +1,8 @@
 import { db } from "./firebase-init.js";
 import { collection, query, where, onSnapshot, doc, updateDoc, getDocs, getDoc } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+import { iniciarNucleoActivo, pintarCabecera } from "./nucleo-activo.js";
+
+const esc = (t) => (window._escapeHtml ? window._escapeHtml(t) : String(t ?? ""));
 
 window.UI = {
   _configUnsub: null,
@@ -37,7 +40,8 @@ window.UI = {
 
     if (!session) {
       if (target) target.innerHTML = `<a href="login.html" class="btn btn-nav btn-login">Iniciar Sesión</a>`;
-      this._renderNucleoHeader(null);
+      document.getElementById("header-identidad")?.remove();
+      document.getElementById("header-identidad-sep")?.remove();
     } else {
       this._renderAutenticado(session, target);
       // El carrusel de index.html es el NACIONAL: solo Owner Supremo / Director Nacional lo editan.
@@ -48,26 +52,10 @@ window.UI = {
       // el mismo dato ya disponible al abrir el menu de usuario, asi
       // que quedaba duplicado y de mas.
       this._renderPreviewBanner();
-      this._renderNucleoHeader(session);
+      // v4.0: rótulo del núcleo en la cabecera (texto) + botón flotante de núcleos.
+      if (!this._nucleoIniciado) { this._nucleoIniciado = true; iniciarNucleoActivo().catch((e) => console.error("No se pudo iniciar el núcleo activo:", e)); }
+      else pintarCabecera();
     }
-  },
-
-  // v3.0 (P-17): mostrar el núcleo activo directamente en la barra
-  // superior (antes solo se veía adentro del menú de usuario, así que
-  // había que abrirlo para confirmarlo).
-  _renderNucleoHeader(session) {
-    const header = document.querySelector("header.barra-superior");
-    let badge = document.getElementById("nucleo-header-badge");
-    if (!session || !session.nucleus) { if (badge) badge.remove(); return; }
-    if (!badge) {
-      badge = document.createElement("div");
-      badge.id = "nucleo-header-badge";
-      badge.className = "nucleo-header-badge";
-      const userNav = document.getElementById("user-nav");
-      if (userNav?.parentElement) userNav.parentElement.insertBefore(badge, document.querySelector(".btn-menu-movil") || userNav);
-      else if (header) header.appendChild(badge);
-    }
-    badge.innerHTML = `<i class="fa-solid fa-building-columns" aria-hidden="true"></i> ${session.nucleus}`;
   },
 
   _renderPreviewBanner() {
@@ -80,7 +68,7 @@ window.UI = {
     banner.id = "preview-mode-banner";
     banner.className = "preview-mode-banner";
     const label = window.Auth?.ROLES?.[preview.role]?.label || preview.role;
-    banner.innerHTML = `<i class="fa-solid fa-eye"></i> Viendo el sitio como <strong>${label}${preview.nucleus ? " · " + preview.nucleus : ""}</strong> — es solo una vista de prueba.
+    banner.innerHTML = `<i class="fa-solid fa-eye"></i> Viendo el sitio como <strong>${esc(label)}${preview.nucleus ? " · " + esc(preview.nucleus) : ""}</strong> — es solo una vista de prueba.
       <button type="button" id="btn-salir-preview-banner">Volver a mi vista real</button>`;
     document.body.prepend(banner);
     document.getElementById("btn-salir-preview-banner").addEventListener("click", () => {
@@ -104,13 +92,14 @@ window.UI = {
     if (window._colorPorRol) btnUser.style.background = window._colorPorRol(session.role);
     btnUser.innerHTML = `<span>${initial}</span>`;
 
-    const nombreCompleto = session.nombre || `${session.firstName || ""} ${session.lastName || ""}`.trim() || "Usuario";
+    const nombreCompleto = esc(session.nombre || `${session.firstName || ""} ${session.lastName || ""}`.trim() || "Usuario");
     const rolLabel = window.Auth?.ROLES?.[session.role]?.label || session.role || "—";
     const submenu = document.createElement("div"); submenu.className = "user-submenu";
     submenu.innerHTML = `
       <p class="user-submenu-nombre">${nombreCompleto}</p>
-      <p class="user-submenu-dato"><i class="fa-solid fa-shield-halved"></i> ${rolLabel}</p>
-      <p class="user-submenu-dato"><i class="fa-solid fa-building-columns"></i> ${session.nucleus || session.group || "—"}</p>
+      <p class="user-submenu-dato"><i class="fa-solid fa-shield-halved"></i> ${esc(rolLabel)}</p>
+      <p class="user-submenu-dato"><i class="fa-solid fa-building-columns"></i> ${esc(session.nucleus || session.group || "—")}</p>
+      ${session.instrument ? `<p class="user-submenu-dato"><i class="fa-solid fa-music"></i> ${esc(session.instrument)}</p>` : ""}
       <p class="user-submenu-dato"><i class="fa-solid fa-circle" style="color:var(--color-exito);font-size:0.5rem;"></i> Conectado</p>
       <hr class="user-submenu-sep"/>
       <button type="button" id="config-gear-btn" class="user-submenu-item"><i class="fa-solid fa-gear"></i> Configuración</button>
@@ -198,6 +187,10 @@ window.UI = {
                   <label><i class="fa-solid fa-music"></i> Agrupación</label>
                   <div class="config-valor-solo-lectura" id="config-perfil-agrupacion">—</div>
                 </div>
+                <div class="config-field">
+                  <label><i class="fa-solid fa-guitar"></i> Instrumento</label>
+                  <div class="config-valor-solo-lectura" id="config-perfil-instrumento">—</div>
+                </div>
                 <!-- v3.0 (P-22): última sesión anterior a esta -->
                 <div class="config-field">
                   <label><i class="fa-solid fa-clock-rotate-left"></i> Última sesión</label>
@@ -235,13 +228,13 @@ window.UI = {
             <!-- ============ PESTAÑA: CUENTA ============ -->
             <div class="config-panel-seccion" data-panel="cuenta">
               <div class="config-section">
-                <h3><i class="fa-solid fa-chart-simple"></i> Conectados ahora</h3>
+                <h3><i class="fa-solid fa-chart-simple"></i> Conectados ahora <span class="config-hint" style="font-weight:400;">(en tu alcance)</span></h3>
                 <div id="config-stats"><p class="config-hint">Cargando…</p></div>
               </div>
 
               <div class="config-section" id="config-preview-section" style="display:none;">
                 <h3><i class="fa-solid fa-user-secret"></i> Modo de prueba</h3>
-                <p class="config-hint">👀 Solo vos ves el sitio distinto — no cambia tu cuenta real ni la de nadie más.</p>
+                <p class="config-hint">👀 Solo tú ves el sitio distinto — no cambia tu cuenta real ni la de nadie más.</p>
                 <div class="config-field">
                   <label>Ver como rol</label>
                   <select id="config-preview-rol" class="modal-input">
@@ -349,6 +342,8 @@ window.UI = {
       const nombre = data.nombre || real.nombre || "—";
       document.getElementById("config-perfil-nombre").textContent = nombre;
       document.getElementById("config-perfil-agrupacion").textContent = data.agrupacion || "— (sin asignar)";
+      const elInstr = document.getElementById("config-perfil-instrumento");
+      if (elInstr) elInstr.textContent = data.instrumento || "— (sin asignar)";
       document.getElementById("config-perfil-rol").textContent = window.Auth?.ROLES?.[real.role]?.label || real.role || "—";
       document.getElementById("config-perfil-rol-icono").className = window.Auth?.ROLES?.[real.role]?.icon || "fa-solid fa-user";
       const avatarEl = document.getElementById("config-perfil-avatar");
@@ -384,14 +379,19 @@ window.UI = {
       const snap = await getDocs(collection(db, "nucleos"));
       const nombres = [...new Set(snap.docs.map(d => d.data().nombre))].sort();
       const sel = document.getElementById("config-preview-nucleo");
-      sel.innerHTML = `<option value="">— Ninguno —</option>` + nombres.map(n => `<option value="${n}">${n}</option>`).join("");
+      sel.innerHTML = `<option value="">— Ninguno —</option>` + nombres.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join("");
     } catch (err) { console.error("No se pudo cargar núcleos para el modo de prueba:", err); }
   },
 
   async _loadConfigStats() {
     const statsDiv = document.getElementById("config-stats");
     statsDiv.innerHTML = '<p class="config-hint">Cargando…</p>';
-    const q = query(collection(db, "usuarios"), where("isOnline", "==", true));
+    // v4.0: las reglas solo dejan leer usuarios dentro del alcance de cada rol.
+    const real = window.Auth?.getRealSession?.();
+    let q;
+    if (["owner_supremo", "director_nacional"].includes(real?.role)) q = query(collection(db, "usuarios"), where("isOnline", "==", true));
+    else if (real?.role === "director_regional") q = query(collection(db, "usuarios"), where("isOnline", "==", true), where("estado", "==", real.state || "__"));
+    else q = query(collection(db, "usuarios"), where("isOnline", "==", true), where("nucleo", "==", real?.nucleus || "__"));
     this._configUnsub = onSnapshot(q, (snap) => {
       // CORREGIDO 2026-09-06: antes esto mostraba una lista pelada con la
       // clave interna del rol tal cual está en la base de datos (ej.

@@ -1,6 +1,6 @@
 import { auth } from "./firebase-init.js";
 
-// 👉 Cambiá esto por la URL real que te da Vercel al desplegar sistema-cma-api
+// 👉 Cambia esto por la URL real que te da Vercel al desplegar sistema-cma-api
 // (ver README.md de esa carpeta). Ejemplo: "https://sistema-cma-api.vercel.app"
 export const API_BASE_URL = "https://sistema-cma-api.vercel.app";
 
@@ -72,7 +72,9 @@ async function llamarAPI(endpoint, body, { anonimo = false } = {}) {
 // solo que ahora pega contra Vercel en vez de Firebase.
 export const backendAPI = {
   crearUsuario: (datos) => llamarAPI("crear-usuario", datos),
-  resetPassword: (targetUid, newPassword) => llamarAPI("reset-password", { targetUid, newPassword }),
+  // v4.0: la contraseña la genera el SERVIDOR y viene en la respuesta ({ clave }).
+  resetPassword: (targetUid) => llamarAPI("reset-password", { targetUid }),
+  estadoCuenta: (targetUid, activa) => llamarAPI("estado-cuenta", { targetUid, activa }),
   eliminarUsuario: (targetUid) => llamarAPI("eliminar-usuario", { targetUid }),
   sincronizarRango: (targetUid) => llamarAPI("sincronizar-rango", { targetUid }),
   // El chat SÍ requiere sesión (ver por qué en el comentario de

@@ -19,10 +19,8 @@ export function montarChatEmbebido(contenedorEl) {
   const session = window.Auth?.getSession();
   const agrupacion = session?.group || session?.nucleus;
   const saludo = agrupacion
-    ? `¡Hola! Preguntame sobre teoría, instrumentos, historia de El Sistema, o dónde
-      encontrar un tema acá en Formación 🎵 Vi que sos de <strong>${window._escapeHtml ? window._escapeHtml(agrupacion) : agrupacion}</strong> — ¡vamos!`
-    : `¡Hola! Preguntame sobre teoría, instrumentos, historia de El Sistema, o dónde
-      encontrar un tema acá en Formación 🎵`;
+    ? `¡Hola! Pregúntame sobre teoría, instrumentos, historia de El Sistema, o dónde encontrar un tema acá en Formación 🎵 Vi que eres de <strong>${window._escapeHtml ? window._escapeHtml(agrupacion) : agrupacion}</strong> — ¡vamos!`
+    : `¡Hola! Pregúntame sobre teoría, instrumentos, historia de El Sistema, o dónde encontrar un tema acá en Formación 🎵`;
 
   contenedorEl.innerHTML = `
     <div class="chat-ia-header">
@@ -38,7 +36,7 @@ export function montarChatEmbebido(contenedorEl) {
       <button type="button" class="chip-sugerida">¿Cuándo es el próximo ensayo?</button>
     </div>
     <div class="chat-ia-input-row">
-      <input type="text" id="chat-ia-input" placeholder="Preguntá algo de música…" maxlength="1000" />
+      <input type="text" id="chat-ia-input" placeholder="Pregunta algo de música…" maxlength="1000" />
       <button type="button" id="chat-ia-enviar"><i class="fa-solid fa-paper-plane"></i></button>
     </div>
     <!-- v3.0 (P-39): contador de caracteres — el backend limita a 1000 y
@@ -102,19 +100,19 @@ export function montarChatEmbebido(contenedorEl) {
   const EXPLICACION_POR_CATEGORIA = {
     sin_conexion_al_backend: {
       titulo: "El navegador no pudo ni conectarse al servidor",
-      quehacer: "Puede ser: (1) no hay internet ahora mismo, (2) el proyecto de Vercel no está desplegado en esa URL, o (3) CORS está bloqueando el pedido. Revisá en Vercel → tu proyecto → Deployments, que haya un despliegue activo, y que la URL en backend-api.js (API_BASE_URL) sea exactamente esa.",
+      quehacer: "Puede ser: (1) no hay internet ahora mismo, (2) el proyecto de Vercel no está desplegado en esa URL, o (3) CORS está bloqueando el pedido. Revisa en Vercel → tu proyecto → Deployments, que haya un despliegue activo, y que la URL en backend-api.js (API_BASE_URL) sea exactamente esa.",
     },
     respuesta_no_json_502: {
       titulo: "Vercel cortó la función a mitad de camino (502)",
-      quehacer: "Esto NO es un error controlado por el código — significa que la función se cayó antes de terminar (ej. crasheó, o Vercel no pudo levantarla). Andá a Vercel → tu proyecto → Deployments → el último → \"Functions\" → \"api/chat\" y mirá los logs ahí: el error real y su stack trace están ahí, no acá.",
+      quehacer: "Esto NO es un error controlado por el código — significa que la función se cayó antes de terminar (ej. crasheó, o Vercel no pudo levantarla). Andá a Vercel → tu proyecto → Deployments → el último → \"Functions\" → \"api/chat\" y mira los logs ahí: el error real y su stack trace están ahí, no acá.",
     },
     respuesta_no_json_504: {
       titulo: "La función tardó demasiado y Vercel la cortó (504, tiempo agotado)",
-      quehacer: "El código ya tiene timeouts internos de 4s por proveedor de IA para evitar esto — si igual pasa, puede ser que Firestore esté respondiendo muy lento. Mirá los logs de la función en Vercel para confirmar en qué paso se colgó.",
+      quehacer: "El código ya tiene timeouts internos de 4s por proveedor de IA para evitar esto — si igual pasa, puede ser que Firestore esté respondiendo muy lento. Mira los logs de la función en Vercel para confirmar en qué paso se colgó.",
     },
     ambos_proveedores_fallaron: {
       titulo: "El servidor respondió, pero ni Groq ni Gemini pudieron generar una respuesta",
-      quehacer: "Mirá el detalle de cada proveedor abajo — cada uno dice exactamente por qué falló (clave inválida, modelo no encontrado, límite de uso, etc.).",
+      quehacer: "Mira el detalle de cada proveedor abajo — cada uno dice exactamente por qué falló (clave inválida, modelo no encontrado, límite de uso, etc.).",
     },
     error_interno_servidor: {
       titulo: "Hubo un error inesperado dentro del código del servidor",
@@ -138,11 +136,11 @@ export function montarChatEmbebido(contenedorEl) {
   };
 
   function explicarPorStatus(status) {
-    if (status === 404) return { titulo: "La URL del servidor no existe (404)", quehacer: "El proyecto de Vercel no tiene ninguna función en esa ruta. Revisá que API_BASE_URL en backend-api.js sea EXACTAMENTE la URL que Vercel te dio (Vercel → tu proyecto → Domains), y que el archivo api/chat.js esté commiteado y desplegado." };
+    if (status === 404) return { titulo: "La URL del servidor no existe (404)", quehacer: "El proyecto de Vercel no tiene ninguna función en esa ruta. Revisa que API_BASE_URL en backend-api.js sea EXACTAMENTE la URL que Vercel te dio (Vercel → tu proyecto → Domains), y que el archivo api/chat.js esté commiteado y desplegado." };
     if (status === 401 || status === 403) return { titulo: `El servidor rechazó el pedido (código ${status})`, quehacer: "Puede ser un problema de permisos o de configuración del backend." };
-    if (status === 429) return { titulo: "Demasiados pedidos seguidos (429)", quehacer: "Puede ser el límite propio del chat, o un límite de uso de Groq/Gemini. Mirá el mensaje exacto de abajo." };
-    if (status >= 500) return { titulo: `El servidor tuvo un problema interno (código ${status})`, quehacer: "Mirá los logs de la función en Vercel para el detalle exacto." };
-    return { titulo: `El servidor respondió con un error (código ${status})`, quehacer: "Revisá el detalle técnico de abajo." };
+    if (status === 429) return { titulo: "Demasiados pedidos seguidos (429)", quehacer: "Puede ser el límite propio del chat, o un límite de uso de Groq/Gemini. Mira el mensaje exacto de abajo." };
+    if (status >= 500) return { titulo: `El servidor tuvo un problema interno (código ${status})`, quehacer: "Mira los logs de la función en Vercel para el detalle exacto." };
+    return { titulo: `El servidor respondió con un error (código ${status})`, quehacer: "Revisa el detalle técnico de abajo." };
   }
 
   function armarReporteDeError(err) {
@@ -216,7 +214,7 @@ export function montarChatEmbebido(contenedorEl) {
 
       // CORREGIDO 2026-09-01: esta ventana de chat la usan sobre todo
       // estudiantes (a veces niños) — antes, CUALQUIER falla le mostraba a
-      // cualquiera un reporte técnico crudo ("Revisá Vercel → Deployments
+      // cualquiera un reporte técnico crudo ("Revisa Vercel → Deployments
       // → Functions...", nombres de variables de entorno, etc.), que no
       // sirve para nadie que no pueda entrar al panel de Vercel, y encima
       // expone detalles internos del servidor a cualquier visitante.
@@ -225,7 +223,7 @@ export function montarChatEmbebido(contenedorEl) {
       const esResponsableTecnico = window.Auth?.checkPermission?.("manage_users");
 
       if (!esResponsableTecnico) {
-        agregarMensaje("😔 El Tutor Musical no está disponible en este momento. Probá recargar la página; si sigue sin responder en unos minutos, avisale a un director o administrador.", true);
+        agregarMensaje("😔 El Tutor Musical no está disponible en este momento. Prueba recargar la página; si sigue sin responder en unos minutos, avisale a un director o administrador.", true);
         return;
       }
 
@@ -243,7 +241,7 @@ export function montarChatEmbebido(contenedorEl) {
       // reintente varias veces seguidas.
       const ahora = Date.now();
       if (ahora - ultimoDiagnosticoTs < 20000) {
-        agregarMensaje("🔎 (Diagnóstico automático omitido — ya se corrió hace menos de 20s. Mirá el resultado del mensaje anterior, o esperá un momento antes de reintentar.)", true);
+        agregarMensaje("🔎 (Diagnóstico automático omitido — ya se corrió hace menos de 20s. Mira el resultado del mensaje anterior, o espera un momento antes de reintentar.)", true);
         return;
       }
       ultimoDiagnosticoTs = ahora;
@@ -258,7 +256,7 @@ export function montarChatEmbebido(contenedorEl) {
       // versión), es matemáticamente imposible que sea un problema de
       // Groq/Gemini — el código que está corriendo no es el actualizado.
       if (diag.version && err.version && diag.version !== err.version) {
-        agregarMensaje(`🔎 VEREDICTO: el chat respondió con la versión "${err.version}" pero el diagnóstico (recién) ve la versión "${diag.version}". Son distintas — hay MÁS DE UN deploy sirviendo tráfico a la vez, o el navegador tiene una respuesta vieja en caché. Probá recargar con Ctrl+Shift+R.`, true);
+        agregarMensaje(`🔎 VEREDICTO: el chat respondió con la versión "${err.version}" pero el diagnóstico (recién) ve la versión "${diag.version}". Son distintas — hay MÁS DE UN deploy sirviendo tráfico a la vez, o el navegador tiene una respuesta vieja en caché. Prueba recargar con Ctrl+Shift+R.`, true);
       } else if (!err.version && diag.version) {
         agregarMensaje(`🔎 VEREDICTO: el chat respondió SIN campo de versión, pero el diagnóstico sí tiene una ("${diag.version}"). Esto confirma que el código que respondió tu mensaje es una versión VIEJA — el archivo _lib/proveedoresIA.js en producción no tiene los últimos cambios. No es un problema de Groq/Gemini ni de tus claves: es que el deploy no se aplicó todavía.`, true);
       }
@@ -276,7 +274,7 @@ export function montarChatEmbebido(contenedorEl) {
         if (fallas.length) msg += "\n· Faltan variables de entorno en Vercel: " + fallas.join(", ");
         if (piezas.length) msg += "\n· " + piezas.join("\n· ");
         if (!fallas.length && !piezas.length) {
-          msg += "\nProbó Groq y Gemini con una llamada real ahora mismo y los dos respondieron bien. Si tu mensaje falló pero esto dice que está todo bien, mirá el VEREDICTO de arriba — casi seguro es un problema de versión desplegada, no de las IA en sí.";
+          msg += "\nProbó Groq y Gemini con una llamada real ahora mismo y los dos respondieron bien. Si tu mensaje falló pero esto dice que está todo bien, mira el VEREDICTO de arriba — casi seguro es un problema de versión desplegada, no de las IA en sí.";
         }
         agregarMensaje(msg, true);
       } else if (diag.error) {

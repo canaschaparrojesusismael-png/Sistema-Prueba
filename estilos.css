@@ -11,7 +11,7 @@
    compartido, hay que subir este mismo número en TODOS los archivos que
    lo referencian (búsqueda y reemplazo de "?v=14.0" por la versión
    siguiente alcanza, ya que es idéntico en todos lados).
-   (Hoy: 17.0)
+   (Hoy: 21.0)
    ================================================================ */
 /* v3.2: antes esto era 'Segoe UI', system-ui... — la fuente por defecto de
    Windows, sin ninguna identidad propia (en Mac/Linux/celular cada quien
@@ -74,9 +74,9 @@
   --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.06);
   --shadow-modal: 0 20px 40px rgba(0, 0, 0, 0.15);
   --shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.12);
-  --transition-fast: all 0.2s ease;
-  --transition-normal: all 0.3s ease;
-  --transition-premium: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.25s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease, filter 0.2s ease;
+  --transition-normal: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.25s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease, filter 0.3s ease;
+  --transition-premium: color 0.35s ease, background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.25s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease, filter 0.35s ease;
   --font-family: 'Lexend', 'Segoe UI', system-ui, -apple-system, sans-serif;
 
   /* Dashboard extra */
@@ -224,6 +224,13 @@ img {
   flex-direction: column;
   justify-content: center; /* Empuja todo hacia el centro, matando el espacio muerto abajo */
   gap: 2.5rem; /* Separación automática entre el estandarte, el carrusel y las citas */
+  /* v3.8: entrada suave del contenido al cargar cada página — antes el
+     contenido aparecía estático de golpe apenas terminaba de cargar. */
+  animation: entradaContenido 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes entradaContenido {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .pie-pagina {
   margin-top: auto;
@@ -384,12 +391,16 @@ img {
   flex: 3 1 0; 
   min-width: 0;
   height: 300px; /* Extendido levemente de 240px a 300px */
-  background: linear-gradient(to bottom right, var(--color-primario-oscuro), var(--color-primario-claro));
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--border-radius);
+  background: linear-gradient(135deg, var(--color-primario-oscuro), var(--color-primario-claro));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  /* v3.9: antes las dos cajas (imagen y texto) tenían exactamente el
+     mismo radio en las 4 esquinas -- se veían como gemelas. Un radio
+     grande solo en dos esquinas opuestas les da una silueta más dinámica
+     sin dejar de ser simples rectángulos redondeados. */
+  border-radius: 28px 12px 28px 12px;
   overflow: hidden;
-  box-shadow: var(--shadow-card);
-  transition: var(--transition-normal);
+  box-shadow: 0 10px 30px -8px rgba(33,25,99,0.45), 0 2px 8px rgba(0,0,0,0.15);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 .imagen-carrusel {
   width: 100%;
@@ -401,36 +412,44 @@ img {
   display: block;
   image-rendering: -webkit-optimize-contrast;
   background: rgba(0,0,0,0.08);
-  /* AGREGADO 2026-09-07: antes de que llegue la primera imagen real, esta
-     etiqueta no tiene "src" (para no mostrar nada roto) — aparece con un
-     fundido suave apenas main.js le asigna una URL real. */
+  /* v3.0: antes de que llegue la primera imagen real, esta etiqueta no
+     tiene "src" (para no mostrar nada roto).
+     v3.6: el fundido ahora se dispara con la clase "cargada" (agregada en
+     el evento "load" real de la imagen, en main.js) en vez de con el
+     selector [src] -- ese selector se activaba apenas se ASIGNABA la URL,
+     no cuando la imagen terminaba de bajar, así que en la práctica nunca
+     se veía ningún fundido: la opacidad ya estaba en 1 antes de que
+     hubiera algo dibujado, y la imagen aparecía de golpe apenas terminaba
+     de descargar. */
   opacity: 0;
   transition: opacity 0.35s ease;
 }
-.imagen-carrusel[src]:not([src=""]) { opacity: 1; }
+.imagen-carrusel.cargada { opacity: 1; }
 .carousel-arrow {
   flex: 0 0 auto;
   align-self: center;
-  background: linear-gradient(135deg, #c1121f, #1a1a1a);
+  background: linear-gradient(135deg, #e0343f, #a10d16);
   color: white;
   border: none;
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   font-size: 1.3rem;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-  transition: var(--transition-fast);
+  box-shadow: 0 4px 16px rgba(161,13,22,0.4);
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease, filter 0.2s ease;
 }
 .carousel-arrow:hover,
 .carousel-arrow:focus {
-  transform: translateY(-1px) scale(1.05);
+  transform: translateY(-2px) scale(1.08);
+  box-shadow: 0 6px 20px rgba(161,13,22,0.5);
   filter: brightness(1.1);
   outline: none;
 }
+.carousel-arrow:active { transform: translateY(0) scale(0.94); }
 .carrusel-tarjeta {
   display: flex;
   align-items: stretch;
@@ -438,19 +457,23 @@ img {
   flex: 1 1 0;
   min-width: 0;
 }
-.carrusel-caja:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
-.carrusel-texto:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+.carrusel-caja:hover { box-shadow: 0 16px 40px -8px rgba(33,25,99,0.55), 0 4px 12px rgba(0,0,0,0.2); transform: translateY(-3px); }
+.carrusel-texto:hover { box-shadow: 0 16px 40px -8px rgba(33,25,99,0.55), 0 4px 12px rgba(0,0,0,0.2); transform: translateY(-3px); }
 .carrusel-texto {
   position: relative;
   flex: 7 1 0; 
   min-width: 0;
-  /* Fondo adaptado con la misma dirección de degradado */
-  background: linear-gradient(to bottom right, var(--color-primario-oscuro), var(--color-primario-claro));
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--border-radius);
+  /* Mismo degradé de base + un resplandor radial suave (arriba a la
+     derecha) para que no sea un color plano — variedad sutil de textura
+     sin salirse de la paleta de marca. */
+  background:
+    radial-gradient(circle at 88% 8%, rgba(255,255,255,0.14), transparent 45%),
+    linear-gradient(135deg, var(--color-primario-oscuro), var(--color-primario-claro));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px 28px 12px 28px;
   padding: 1.6rem 2rem;
-  box-shadow: var(--shadow-card);
-  transition: var(--transition-normal);
+  box-shadow: 0 10px 30px -8px rgba(33,25,99,0.45), 0 2px 8px rgba(0,0,0,0.15);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -464,15 +487,15 @@ img {
   font-weight: 800;
   line-height: 1.3;
   position: relative;
-  padding-top: 0.9rem;
+  padding-top: 1rem;
 }
 .carrusel-texto h2::before {
   content: "";
   position: absolute;
   top: 0; left: 0;
-  width: 42px; height: 3px;
-  background: linear-gradient(135deg, #c1121f, #1a1a1a);
-  border-radius: 2px;
+  width: 42px; height: 4px;
+  background: linear-gradient(90deg, #e0343f, #ff8a3d);
+  border-radius: 4px;
 }
 .carrusel-texto p {
   font-size: 0.95rem;
@@ -699,7 +722,7 @@ img {
   overflow-y: auto;
   position: relative;
   box-shadow: var(--shadow-modal);
-  animation: scaleIn 0.3s ease;
+  animation: scaleIn 0.45s cubic-bezier(0.22, 1, 0.36, 1);
   color: #ffffff;
 }
 .modal-content h2,
@@ -713,8 +736,8 @@ img {
   color: rgba(255,255,255,0.85);
 }
 @keyframes scaleIn {
-  from { transform: scale(0.9); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from { transform: scale(0.85) translateY(12px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
 }
 
 /* ---- Contenido interno del panel de Configuración ---- */
@@ -858,6 +881,11 @@ img {
   background: #ffffff;
   animation: loaderPuntoOnda 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
+/* v3.7: descripción exacta que se dio -- "la pelotica izquierda se vuelve
+   oscura, luego la izquierda se vuelve clara MIENTRAS la segunda se
+   vuelve oscura" -- eso es de IZQUIERDA a derecha. La v3.6 lo había dejado
+   al revés por una lectura ambigua de un mensaje anterior; esto lo
+   corrige con la descripción más precisa que se dio ahora. */
 .loader-puntos span:nth-child(1) { animation-delay: 0s; }
 .loader-puntos span:nth-child(2) { animation-delay: 0.32s; }
 .loader-puntos span:nth-child(3) { animation-delay: 0.64s; }
@@ -884,11 +912,19 @@ img {
 }
 .config-preview-banner span { flex: 1; min-width: 160px; }
 .btn-config-mini {
-  background: #0a0a0a; color: #fff; border: none;
+  background: linear-gradient(135deg, #2b2b2b, #000000); color: #fff; border: none;
   padding: 0.4rem 0.8rem; border-radius: 999px; font-size: 0.78rem;
   font-weight: 700; cursor: pointer; white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease, filter 0.2s ease;
 }
-.btn-config-mini:hover { filter: brightness(1.2); }
+.btn-config-mini:hover { filter: brightness(1.25); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0,0,0,0.35); }
+.btn-config-mini:active { transform: translateY(0) scale(0.96); }
+/* v3.7: mismo lenguaje del engranaje grande (carrusel/flyers/calendario)
+   pero para el ícono chico "⚙️" de los botones "Núcleos" — antes no tenía
+   ninguna animación. */
+.btn-config-mini .icono-giro { display: inline-block; transition: transform 0.4s ease; }
+.btn-config-mini:hover .icono-giro { transform: rotate(35deg); }
 
 /* Aviso fijo de "modo de prueba" (Owner Supremo viendo como otro rol) */
 .preview-mode-banner {
@@ -1005,6 +1041,7 @@ img {
   overflow: hidden;
   background: linear-gradient(135deg, var(--color-primario-oscuro), var(--color-primario));
   margin-bottom: 1rem;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15), 0 8px 24px rgba(0,0,0,0.25);
 }
 .preview-grande img { width: 100%; height: 100%; object-fit: contain; }
 .acciones-item { display: flex; gap: 0.75rem; }
@@ -1025,10 +1062,11 @@ img {
   border: 2px solid transparent;
   cursor: pointer;
   background: var(--color-secundario);
-  transition: var(--transition-fast);
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .thumb img { width: 100%; height: 100%; object-fit: cover; }
-.thumb.selected { border-color: var(--color-primario); }
+.thumb:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 6px 14px rgba(0,0,0,0.3); }
+.thumb.selected { border-color: #ffffff; box-shadow: 0 0 0 3px var(--color-primario-claro), 0 6px 14px rgba(0,0,0,0.3); transform: scale(1.05); }
 .thumb-vacio { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; color: var(--color-texto-claro); }
 .thumb-add {
   display: flex;
@@ -1037,8 +1075,9 @@ img {
   border: 2px dashed rgba(255,255,255,0.7);
   color: #ffffff;
   font-size: 1.3rem;
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), background 0.2s ease, border-color 0.2s ease;
 }
-.thumb-add:hover { background: rgba(255,255,255,0.15); }
+.thumb-add:hover { background: rgba(255,255,255,0.2); border-color: #ffffff; transform: translateY(-3px) scale(1.08) rotate(90deg); }
 .crop-area {
   position: absolute;
   border: 2px dashed white;
@@ -1126,7 +1165,7 @@ img {
 /* v3.4: BUG grande encontrado — estas reglas de .btn/.btn-submit/.btn-cerrar
    estaban escritas SOLO para adentro de .modal-content. Pero esas mismas
    clases se usan en ~30 botones de página (no de modal): "+ Nuevo Registro"
-   y "Exportar CSV" en Miembros, "+Nueva pieza" en Repertorio, etc. Esos
+   "+Nueva pieza" en Repertorio, etc. Esos
    botones no heredaban ningún estilo y se veían con el botón crudo del
    navegador (gris, sin redondeo, sin sombra) — exactamente lo que se veía
    en las capturas. Se generalizan para que apliquen en cualquier lado,
@@ -1141,35 +1180,48 @@ button.btn,
   padding: 0.55rem 1.5rem;
   border-radius: 25px;
   cursor: pointer;
-  transition: var(--transition-normal);
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease, filter 0.2s ease;
   letter-spacing: 0.02em;
   gap: 0.4rem;
   border: none;
   font-family: var(--font-family);
 }
+/* v3.6: antes .btn-submit/.btn-cerrar eran un relleno sólido plano (negro
+   liso / rojo liso) — la única diferencia con un <button> sin estilo era
+   el redondeado. Los botones de navegación (.btn-nav) del header ya usan
+   degradé + sombra + elevación al pasar el mouse; se lleva ese mismo
+   lenguaje visual acá para que TODOS los botones del sitio se sientan de
+   la misma familia, no solo los del header. */
 .btn-submit,
 button.btn-submit {
-  background: #0a0a0a;
+  background: linear-gradient(135deg, #2b2b2b, #000000);
   color: #ffffff;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
 }
 .btn-submit:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(0,0,0,0.5);
-  background: #000000;
-  filter: brightness(1.2);
+  box-shadow: 0 10px 26px rgba(0,0,0,0.45);
+  filter: brightness(1.25);
 }
+.btn-submit:active { transform: translateY(0) scale(0.96); }
 .btn-submit:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
+  filter: none;
 }
 .btn-cerrar,
 button.btn-cerrar {
-  background: var(--color-acento);
+  background: linear-gradient(135deg, #e0343f, #a10d16);
   color: white;
+  box-shadow: 0 6px 18px rgba(161,13,22,0.35);
 }
-.btn-cerrar:hover { background: #d40404; }
+.btn-cerrar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 26px rgba(161,13,22,0.45);
+  filter: brightness(1.15);
+}
+.btn-cerrar:active { transform: translateY(0) scale(0.96); }
 .modal-content label {
   font-size: 0.8rem;
   font-weight: 600;
@@ -1231,10 +1283,6 @@ button.btn-cerrar {
 /* v3.0 (G-07): wrap de citas + botón de edición (solo visible para quien
    puede editar el carrusel nacional) */
 .citas-grid-wrap { position: relative; }
-#btn-editar-citas {
-  margin-top: 0.8rem;
-  display: inline-flex; align-items: center; gap: 0.4rem;
-}
 
 /* v3.0 (P-12): contador discreto "2 / 5" del carrusel */
 .carrusel-contador {
@@ -1435,8 +1483,6 @@ body, .carrusel-caja, .modal-content, .config-panel, header.barra-superior {
   font-size: 0.72rem; font-weight: 700; padding: 0.22rem 0.65rem;
   border-radius: 999px; white-space: nowrap;
 }
-.badge-nuevo { background: var(--color-exito); color: #fff; }
-.badge-temporal { background: var(--color-alerta); color: #1a1a1a; }
 .badge-hoy { background: var(--color-acento); color: #fff; }
 
 .buscador-caja {
@@ -1545,15 +1591,404 @@ body, .carrusel-caja, .modal-content, .config-panel, header.barra-superior {
 /* ================================================================
    v3.0 — BADGE DE NÚCLEO EN LA BARRA SUPERIOR (P-17)
    ================================================================ */
-.nucleo-header-badge {
-  display: flex; align-items: center; gap: 0.4rem;
-  font-size: 0.78rem; font-weight: 700; color: var(--color-primario);
-  background: var(--color-secundario); padding: 0.4rem 0.9rem;
-  border-radius: 999px; white-space: nowrap;
-}
 @media (max-width: 640px) { .nucleo-header-badge { display: none; } }
 
 /* Fila de switch deshabilitada (Notificaciones — G-14, "próximamente") */
 .config-switch-row-disabled { opacity: 0.5; cursor: not-allowed; }
 .config-switch-row-disabled .config-switch input { cursor: not-allowed; }
 
+
+
+/* ================================================================
+   v4.0 — REDISEÑO 2.0
+   Regla de color de TODO el sitio (si algo no la cumple, es un bug):
+     · AZUL  → fondos (cabecera, portadas, modales, pie)
+     · ROJO  → acciones importantes (Guardar, Crear, Subir, Confirmar)
+     · NEGRO → acciones secundarias (Cancelar, Editar, flechas, engranajes)
+   Inspirado en patrones de Pinterest: esquinas muy redondeadas, tarjetas
+   que revelan sus acciones al pasar el mouse, un solo botón flotante de
+   creación, buscador grande, "esqueletos" de carga y toasts abajo al centro.
+   ================================================================ */
+:root {
+  --rojo: #c1121f;
+  --rojo-claro: #d62839;
+  --rojo-oscuro: #8f0d16;
+  --negro: #111111;
+  --radio-xl: 24px;
+}
+:focus-visible { outline: 3px solid rgba(65, 56, 169, 0.55); outline-offset: 2px; border-radius: 6px; }
+.modal-content :focus-visible, .barra-superior :focus-visible { outline-color: rgba(255, 255, 255, 0.85); }
+
+/* ---- A. Botones: rojo = importante, negro = secundario ---- */
+.btn-submit,
+button.btn-submit {
+  background: linear-gradient(135deg, var(--rojo-claro), #a30f1c);
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(193, 18, 31, 0.35);
+}
+.btn-submit:hover { box-shadow: 0 10px 26px rgba(193, 18, 31, 0.45); filter: brightness(1.08); }
+.btn-cerrar,
+button.btn-cerrar {
+  background: linear-gradient(135deg, #2b2b2b, #000000);
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+.btn-cerrar:hover { box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4); filter: brightness(1.25); }
+.btn-nav.btn-login { background: linear-gradient(135deg, var(--rojo-claro), var(--rojo-oscuro)); }
+.carousel-edit-btn { background: linear-gradient(135deg, #2b2b2b, #000000); }
+.toast-error { background: var(--rojo); }
+
+/* Botones redondos de acción sobre tarjetas (estilo Pinterest: aparecen al pasar el mouse) */
+.icon-btn {
+  width: 36px; height: 36px; border-radius: 50%; border: none; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--negro); color: #fff; font-size: 0.85rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), filter 0.2s;
+}
+.icon-btn:hover { transform: scale(1.12); filter: brightness(1.25); }
+.icon-btn.rojo { background: var(--rojo); }
+.icon-btn.claro { background: rgba(255, 255, 255, 0.95); color: var(--negro); }
+.card-acciones {
+  position: absolute; top: 10px; right: 10px; z-index: 5;
+  display: flex; gap: 6px; opacity: 0; transform: translateY(-4px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.pin-card:hover .card-acciones, .pin-card:focus-within .card-acciones { opacity: 1; transform: none; }
+@media (hover: none) { .card-acciones { opacity: 1; transform: none; } }
+
+/* ---- B. Rótulo del núcleo en la cabecera (TEXTO + línea separadora, no botón) ---- */
+.header-identidad {
+  display: flex; align-items: center; gap: 0.45rem;
+  margin-left: auto; min-width: 0; max-width: min(46vw, 440px);
+  color: var(--color-texto-sobre-primario); font-weight: 700; line-height: 1.2;
+}
+.header-identidad i { font-size: 0.7rem; opacity: 0.85; flex-shrink: 0; }
+.header-identidad-texto {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: font-size 0.25s ease;
+}
+.header-sep { width: 1px; align-self: stretch; min-height: 34px; background: rgba(255, 255, 255, 0.5); flex-shrink: 0; }
+@media (max-width: 640px) {
+  .header-sep { display: none; }
+  .header-identidad { order: 3; flex-basis: 100%; margin-left: 0; max-width: 100%; justify-content: center; }
+}
+
+/* ---- C. Barra "← Volver" bajo la cabecera + títulos de página ---- */
+.volver-barra { padding: 14px 32px 0; }
+.back-link,
+.volver-barra .back-link {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  margin: 0; padding: 0.35rem 0; width: fit-content; align-self: flex-start;
+  color: var(--color-primario); font-weight: 700; font-size: 0.95rem; text-decoration: none;
+  background: none; border: none; cursor: pointer; font-family: var(--font-family);
+}
+.back-link i { transition: transform 0.2s ease; }
+.back-link:hover { text-decoration: none; filter: brightness(0.85); }
+.back-link:hover i { transform: translateX(-4px); }
+html.dark-mode .back-link { color: #b9b4ff; }
+.contenido-web.container.pagina-interior {
+  justify-content: flex-start; gap: 1.25rem; padding-top: 0.6rem; max-width: 1200px;
+}
+.pagina-cab { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.pagina-titulo { font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 800; color: var(--color-primario); line-height: 1.15; margin: 0; }
+html.dark-mode .pagina-titulo { color: #d6d3ff; }
+.pagina-sub { color: var(--color-texto-claro); font-size: 0.95rem; margin-top: 0.25rem; }
+@media (max-width: 640px) { .volver-barra { padding: 10px 16px 0; } }
+
+/* ---- D. Botón flotante + panel de núcleos (estilo menú "Crear" de Pinterest) ---- */
+.fab-nucleos {
+  position: fixed; right: 24px; bottom: 24px; z-index: 880;
+  display: inline-flex; align-items: center; gap: 0.6rem;
+  padding: 0.95rem 1.35rem; border: none; border-radius: 999px;
+  background: linear-gradient(135deg, var(--rojo-claro), #a30f1c); color: #fff;
+  font: 700 0.92rem var(--font-family); cursor: pointer;
+  box-shadow: 0 10px 28px rgba(193, 18, 31, 0.45);
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease, box-shadow 0.2s ease;
+}
+.fab-nucleos:hover { transform: translateY(-3px) scale(1.03); box-shadow: 0 14px 34px rgba(193, 18, 31, 0.55); }
+.fab-nucleos.oculto { opacity: 0; pointer-events: none; transform: scale(0.8); }
+@media (max-width: 640px) {
+  .fab-nucleos { width: 58px; height: 58px; padding: 0; justify-content: center; font-size: 1.15rem; right: 16px; bottom: 16px; }
+  .fab-nucleos span { display: none; }
+}
+.panel-nucleos {
+  position: fixed; right: 24px; bottom: 24px; z-index: 890;
+  width: min(390px, calc(100vw - 32px)); max-height: min(640px, calc(100vh - 100px));
+  display: flex; flex-direction: column;
+  background: var(--color-blanco); color: var(--color-texto);
+  border: 1px solid var(--color-borde); border-radius: var(--radio-xl);
+  box-shadow: 0 24px 60px rgba(17, 12, 60, 0.35);
+  opacity: 0; visibility: hidden; transform: translateY(18px) scale(0.96); transform-origin: bottom right;
+  transition: opacity 0.22s ease, transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.22s;
+}
+.panel-nucleos.abierto { opacity: 1; visibility: visible; transform: none; }
+@media (max-width: 640px) { .panel-nucleos { right: 16px; bottom: 16px; } }
+.panel-nucleos-cab { display: flex; align-items: center; justify-content: space-between; padding: 1.1rem 1.2rem 0.4rem; }
+.panel-nucleos-cab h2 { font-size: 1.3rem; font-weight: 800; color: var(--color-texto); margin: 0; }
+.panel-nucleos-x {
+  width: 36px; height: 36px; border-radius: 50%; border: none; cursor: pointer;
+  background: var(--color-superficie-suave); color: var(--color-texto); font-size: 1rem;
+  transition: transform 0.25s ease, background 0.2s;
+}
+.panel-nucleos-x:hover { background: var(--color-borde); transform: rotate(90deg); }
+.panel-nucleos-cuerpo { padding: 0.4rem 0.7rem 1rem; overflow-y: auto; }
+.panel-nucleos-item {
+  display: flex; align-items: center; gap: 0.85rem; width: 100%;
+  padding: 0.6rem 0.6rem; border-radius: 16px; border: none; background: none;
+  color: inherit; text-align: left; font-family: var(--font-family); cursor: pointer;
+  transition: background 0.18s ease;
+}
+.panel-nucleos-item:hover { background: var(--color-superficie-suave); }
+.pn-tile {
+  width: 48px; height: 48px; border-radius: 14px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--color-superficie-suave); color: var(--color-primario); font-size: 1.1rem;
+}
+.pn-tile-rojo { background: var(--rojo); color: #fff; }
+.pn-textos { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.pn-textos strong { font-size: 0.95rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pn-textos small { font-size: 0.78rem; color: var(--color-texto-claro); }
+.pn-grupo { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-texto-claro); margin: 0.9rem 0.6rem 0.2rem; }
+.pn-activo { background: rgba(65, 56, 169, 0.09); }
+.pn-activo .pn-tile { background: var(--color-primario); color: #fff; }
+.pn-check { color: var(--color-primario); font-size: 1.05rem; }
+.pn-acciones { display: flex; gap: 6px; opacity: 0; transition: opacity 0.18s; }
+.pn-fila:hover .pn-acciones, .pn-fila:focus-within .pn-acciones { opacity: 1; }
+@media (hover: none) { .pn-acciones { opacity: 1; } }
+.pn-btn { width: 30px; height: 30px; border-radius: 50%; border: none; background: var(--negro); color: #fff; font-size: 0.72rem; cursor: pointer; }
+.pn-btn-peligro { background: var(--rojo); }
+.panel-nucleos-buscar {
+  display: flex; align-items: center; gap: 0.6rem; margin: 0.5rem 0.2rem 0.2rem;
+  background: var(--color-superficie-suave); border-radius: 999px; padding: 0.6rem 1rem; color: var(--color-texto-claro);
+}
+.panel-nucleos-buscar input { flex: 1; border: none; background: none; outline: none; color: var(--color-texto); font: 0.9rem var(--font-family); }
+.pn-vacio { text-align: center; color: var(--color-texto-claro); padding: 1.5rem 0.5rem; font-size: 0.9rem; }
+.panel-nucleos-volver { background: none; border: none; color: var(--color-primario); font: 700 0.85rem var(--font-family); cursor: pointer; padding: 0.4rem 0.6rem; }
+.pn-form { padding: 0.4rem 0.6rem 0.2rem; display: flex; flex-direction: column; gap: 0.4rem; }
+.pn-form h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: 0.4rem; }
+.pn-form label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-texto-claro); margin-top: 0.4rem; }
+.pn-form input, .pn-form select {
+  padding: 0.75rem 1rem; border-radius: 14px; border: 1.5px solid var(--color-borde);
+  background: var(--color-superficie-suave); color: var(--color-texto); font: 0.95rem var(--font-family); outline: none;
+}
+.pn-form input:focus, .pn-form select:focus { border-color: var(--color-primario); box-shadow: 0 0 0 3px rgba(65, 56, 169, 0.12); }
+.pn-form-botones { display: flex; gap: 0.6rem; justify-content: flex-end; margin-top: 1rem; }
+
+/* ---- E. Modales: un solo botón de cierre (X), esquinas amplias ---- */
+.modal-content, .config-panel { border-radius: var(--radio-xl); box-shadow: 0 30px 80px rgba(10, 6, 50, 0.5); }
+.modal-content { padding: 2rem 2rem 1.6rem; max-height: 88vh; }
+.modal-content.modal-ancho { max-width: 760px; }
+.modal-content h2 { font-weight: 800; font-size: 1.35rem; margin-bottom: 1.2rem; padding-right: 2.8rem; }
+.modal-close-btn {
+  background: rgba(255, 255, 255, 0.16); box-shadow: none; width: 38px; height: 38px; font-size: 1.1rem;
+  top: 14px; right: 14px;
+}
+.modal-close-btn:hover { background: rgba(255, 255, 255, 0.32); transform: rotate(90deg); }
+.modal-acciones { display: flex; gap: 0.7rem; justify-content: flex-end; align-items: center; margin-top: 1.4rem; flex-wrap: wrap; }
+.modal-acciones .izquierda { margin-right: auto; }
+.campo { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1rem; }
+.campo-fila { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+@media (max-width: 560px) { .campo-fila { grid-template-columns: 1fr; } }
+.campo-ayuda { font-size: 0.78rem; color: rgba(255, 255, 255, 0.78); margin: 0; }
+.modal-content .modal-contexto {
+  display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 1.2rem;
+  padding: 0.45rem 0.9rem; border-radius: 999px; background: rgba(255, 255, 255, 0.14);
+  font-size: 0.85rem; font-weight: 600; color: #fff;
+}
+
+/* Chips (filtros, audiencias, niveles) */
+.chip {
+  display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem;
+  border-radius: 999px; border: 1.5px solid var(--color-borde); background: var(--color-blanco);
+  color: var(--color-texto); font: 600 0.85rem var(--font-family); cursor: pointer;
+  transition: background 0.18s, border-color 0.18s, color 0.18s, transform 0.18s;
+}
+.chip:hover { border-color: var(--color-primario); transform: translateY(-1px); }
+.chip.activo { background: var(--color-primario); border-color: var(--color-primario); color: #fff; }
+.chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.modal-content .chip { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.35); color: #fff; }
+.modal-content .chip:hover { border-color: #fff; }
+.modal-content .chip.activo { background: #ffffff; color: var(--color-primario-oscuro); border-color: #ffffff; }
+
+/* Contraseña generada: SIEMPRE fondo blanco + texto negro (se lee en cualquier modo) */
+.clave-caja {
+  background: #ffffff; color: #111111; border: 2px solid #ffffff; border-radius: 16px;
+  padding: 1rem 1.2rem; text-align: center; user-select: all; word-break: break-all;
+  font: 700 1.55rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 0.08em;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+/* ---- F. Buscador grande, esqueletos de carga, estados vacíos ---- */
+.buscador-caja.buscador-grande { max-width: none; padding: 0.85rem 1.4rem; font-size: 1rem; background: var(--color-superficie-suave); border-color: transparent; margin-bottom: 0; }
+.buscador-caja.buscador-grande:focus-within { background: var(--color-blanco); }
+.skeleton {
+  background: linear-gradient(90deg, var(--color-superficie-suave) 25%, var(--color-borde) 37%, var(--color-superficie-suave) 63%);
+  background-size: 400% 100%; animation: shimmer 1.4s ease infinite; border-radius: 16px;
+}
+@keyframes shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+.estado-vacio { text-align: center; padding: 3rem 1rem; color: var(--color-texto-claro); grid-column: 1 / -1; }
+.estado-vacio i { font-size: 2.6rem; color: var(--color-primario); opacity: 0.45; margin-bottom: 0.9rem; display: block; }
+.estado-vacio h3 { color: var(--color-texto); font-size: 1.1rem; margin-bottom: 0.3rem; }
+.estado-vacio .btn { margin-top: 1rem; }
+.pin-card {
+  position: relative; background: var(--color-blanco); border: 1px solid var(--color-borde);
+  border-radius: 22px; box-shadow: var(--shadow-card); overflow: hidden;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease, border-color 0.25s;
+  animation: entradaContenido 0.4s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+.pin-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-hover); border-color: rgba(65, 56, 169, 0.35); }
+
+/* ---- G. Toasts abajo al centro (no tapan el botón flotante) ---- */
+#toast-stack { right: auto; left: 50%; transform: translateX(-50%); align-items: center; bottom: 24px; }
+
+/* ---- H. Zoom de flyers: lupa SOLO sobre la imagen, abre y cierra con animación ---- */
+.flyer-card { cursor: zoom-in; }
+.zoom-fondo {
+  position: fixed; inset: 0; z-index: 10600; cursor: default;
+  background: rgba(10, 8, 40, 0); transition: background 0.35s ease;
+}
+.zoom-fondo.visible { background: rgba(10, 8, 40, 0.9); }
+.zoom-img {
+  position: fixed; z-index: 10601; object-fit: contain; cursor: zoom-out;
+  border-radius: 12px; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+  transition: left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), top 0.4s cubic-bezier(0.2, 0.8, 0.2, 1),
+              width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), height 0.4s cubic-bezier(0.2, 0.8, 0.2, 1),
+              border-radius 0.4s ease;
+}
+
+/* ---- I. Visor de PDF propio (PDF.js): se ve igual en PC y celular ---- */
+.visor-pdf { background: #3b3f4a; border-radius: 20px; overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--shadow-card); }
+.visor-pdf-barra {
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+  padding: 0.6rem 0.9rem; background: linear-gradient(to bottom right, var(--color-primario-oscuro), var(--color-primario-claro)); color: #fff;
+}
+.visor-pdf-barra .visor-titulo { font-weight: 700; font-size: 0.9rem; margin-right: auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40ch; }
+.visor-pdf-barra .visor-pag { font-size: 0.82rem; opacity: 0.9; min-width: 70px; text-align: center; }
+.visor-pdf-barra button, .visor-pdf-barra a {
+  display: inline-flex; align-items: center; gap: 0.4rem; border: none; cursor: pointer; text-decoration: none;
+  background: rgba(255, 255, 255, 0.16); color: #fff; border-radius: 999px; padding: 0.45rem 0.85rem;
+  font: 700 0.8rem var(--font-family); transition: background 0.18s;
+}
+.visor-pdf-barra button:hover, .visor-pdf-barra a:hover { background: rgba(255, 255, 255, 0.3); }
+.visor-pdf-barra .visor-descargar { background: var(--rojo); }
+.visor-pdf-barra .visor-descargar:hover { background: var(--rojo-claro); }
+.visor-pdf-paginas { overflow: auto; max-height: 78vh; padding: 1rem; display: flex; flex-direction: column; align-items: center; gap: 0.9rem; }
+.visor-pdf-pagina { background: #fff; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4); position: relative; max-width: none; }
+.visor-pdf-pagina canvas { display: block; }
+.visor-pdf-aviso { color: #fff; text-align: center; padding: 2.5rem 1.2rem; max-width: 560px; margin: 0 auto; }
+.visor-pdf-aviso i { font-size: 2rem; margin-bottom: 0.7rem; display: block; opacity: 0.85; }
+.visor-pdf-aviso .botones { display: flex; gap: 0.6rem; justify-content: center; margin-top: 1rem; flex-wrap: wrap; }
+.visor-pdf-fullscreen { position: fixed; inset: 0; z-index: 10400; border-radius: 0; }
+.visor-pdf-fullscreen .visor-pdf-paginas { max-height: none; flex: 1; }
+
+/* v4.0 — la cabecera nunca se parte: el rótulo del núcleo cede espacio (con "…") antes de empujar los botones */
+@media (min-width: 900px) {
+  header.barra-superior { flex-wrap: nowrap; gap: 1rem; }
+  header.barra-superior > img { flex-shrink: 0; }
+  header.barra-superior #user-nav { flex-shrink: 0; }
+  .header-identidad { flex: 0 1 auto; max-width: clamp(160px, 30vw, 420px); justify-content: flex-end; }
+  .header-identidad-texto { min-width: 0; }
+}
+/* Avisos: un solo aviso de "núcleo activo" a la vez (no se apilan) */
+
+/* ---- v4.0 · Panel lateral (crear / editar) — hoja inferior en celular ---- */
+.panel-fondo { position: fixed; inset: 0; z-index: 1000; background: rgba(10, 8, 40, 0); transition: background 0.2s ease-in; display: flex; justify-content: flex-end; }
+.panel-fondo.abierto { background: rgba(10, 8, 40, 0.55); transition-duration: 0.3s; transition-timing-function: var(--ease-out, cubic-bezier(.22, 1, .36, 1)); }
+.panel-lat {
+  width: min(460px, 100vw); height: 100%; display: flex; flex-direction: column; color: #fff;
+  background: linear-gradient(160deg, var(--color-primario-oscuro), var(--color-primario));
+  border-radius: var(--radio-xl, 24px) 0 0 var(--radio-xl, 24px); box-shadow: -24px 0 60px rgba(10, 6, 50, 0.4);
+  transform: translateX(32px); opacity: 0; transition: transform 0.2s cubic-bezier(.64, 0, .78, 0), opacity 0.2s ease-in;
+}
+.panel-lat-amplio { width: min(720px, 100vw); }
+.panel-fondo.abierto .panel-lat { transform: none; opacity: 1; transition: transform 0.32s cubic-bezier(.22, 1, .36, 1), opacity 0.25s ease-out; }
+.panel-lat-cab { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1.4rem 1.4rem 0.6rem; }
+.panel-lat-cab h2 { font-size: 1.3rem; font-weight: 800; margin: 0; }
+.panel-lat-sub { margin: 0.3rem 0 0; font-size: 0.85rem; opacity: 0.85; }
+.panel-lat-x { width: 38px; height: 38px; flex-shrink: 0; border: none; border-radius: 50%; cursor: pointer; background: rgba(255, 255, 255, 0.16); color: #fff; font-size: 1.05rem; transition: transform 0.25s ease, background 0.2s; }
+.panel-lat-x:hover { background: rgba(255, 255, 255, 0.3); transform: rotate(90deg); }
+.panel-lat-cuerpo { flex: 1; overflow-y: auto; padding: 0.6rem 1.4rem 1rem; }
+.panel-lat-pie { display: flex; gap: 0.7rem; justify-content: flex-end; align-items: center; flex-wrap: wrap; padding: 1rem 1.4rem calc(1rem + env(safe-area-inset-bottom, 0px)); border-top: 1px solid rgba(255, 255, 255, 0.15); }
+.panel-lat-pie .izquierda { margin-right: auto; }
+.panel-lat label { display: block; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.9; margin: 1rem 0 0.35rem; }
+.panel-lat input[type="text"], .panel-lat input[type="email"], .panel-lat input[type="number"], .panel-lat input[type="search"], .panel-lat select, .panel-lat textarea {
+  width: 100%; padding: 0.8rem 1rem; border-radius: 14px; border: 2px solid transparent; background: #fff; color: #1a1a2e; font: 0.95rem var(--font-family); outline: none; box-sizing: border-box;
+}
+.panel-lat input:focus, .panel-lat select:focus, .panel-lat textarea:focus { border-color: #fff; box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.28); }
+.panel-lat .ayuda { font-size: 0.8rem; opacity: 0.8; margin: 0.35rem 0 0; }
+.panel-lat .error-campo { color: #ffd0d4; font-size: 0.82rem; margin: 0.35rem 0 0; font-weight: 600; }
+@media (max-width: 640px) {
+  .panel-fondo { align-items: flex-end; }
+  .panel-lat, .panel-lat-amplio { width: 100vw; height: auto; max-height: 92vh; border-radius: 24px 24px 0 0; transform: translateY(40px); }
+  .panel-fondo.abierto .panel-lat { transform: none; }
+}
+
+/* ---- v4.0 · Menú contextual "···" ---- */
+.menu-ctx {
+  position: fixed; z-index: 1100; min-width: 200px; padding: 6px; border-radius: 16px;
+  background: var(--color-blanco); color: var(--color-texto); border: 1px solid var(--color-borde); box-shadow: 0 18px 44px rgba(17, 12, 60, 0.28);
+  opacity: 0; transform: translateY(-4px) scale(0.98); transform-origin: top right; transition: opacity 0.12s ease-out, transform 0.12s ease-out;
+}
+.menu-ctx.abierto { opacity: 1; transform: none; }
+.menu-ctx button { display: flex; align-items: center; gap: 0.7rem; width: 100%; padding: 0.6rem 0.8rem; border: none; background: none; border-radius: 10px; color: inherit; font: 600 0.88rem var(--font-family); cursor: pointer; text-align: left; }
+.menu-ctx button:hover, .menu-ctx button:focus-visible { background: var(--color-superficie-suave); outline: none; }
+.menu-ctx button i { width: 1.1rem; text-align: center; color: var(--color-texto-claro); }
+.menu-ctx button.peligro, .menu-ctx button.peligro i { color: var(--rojo); }
+.menu-ctx hr { border: none; border-top: 1px solid var(--color-borde); margin: 4px 6px; }
+.btn-mas { width: 36px; height: 36px; border: none; border-radius: 50%; background: var(--negro); color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28); transition: transform 0.2s ease, filter 0.2s ease; }
+.btn-mas:hover { filter: brightness(1.3); transform: scale(1.08); }
+
+/* ---- v4.0 · Aviso con "Deshacer" ---- */
+.toast.toast-deshacer { background: var(--negro); color: #fff; position: relative; overflow: hidden; display: flex; gap: 1rem; align-items: center; padding-right: 0.8rem; }
+.toast-deshacer button { border: none; border-radius: 999px; padding: 0.4rem 0.9rem; background: #fff; color: var(--negro); font: 800 0.8rem var(--font-family); cursor: pointer; }
+.toast-deshacer .toast-barra { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--rojo-claro); transform-origin: left; animation: barraDeshacer linear forwards; }
+.toast.saliendo { opacity: 0; transform: translateY(8px); transition: opacity 0.18s ease-in, transform 0.18s ease-in; }
+@keyframes barraDeshacer { to { transform: scaleX(0); } }
+
+/* ---- v4.0 · Cuadrícula de tarjetas (agrupaciones, piezas, recursos, miembros) ---- */
+.grid-tarjetas { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 22px; width: 100%; }
+a.pin-card, .pin-card.clic { display: block; text-decoration: none; color: inherit; cursor: pointer; }
+.pin-portada {
+  position: relative; height: 130px; overflow: hidden; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--color-primario-oscuro), var(--color-primario-claro)); color: #fff; font-size: 2.6rem;
+}
+.pin-portada::before, .pin-portada::after { content: ""; position: absolute; border-radius: 50%; background: rgba(255, 255, 255, 0.1); }
+.pin-portada::before { width: 150px; height: 150px; right: -40px; top: -60px; }
+.pin-portada::after { width: 90px; height: 90px; left: -20px; bottom: -40px; }
+.pin-portada canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; background: #fff; }
+.pin-body { padding: 1rem 1.1rem 1.15rem; }
+.pin-body h3 { font-size: 1.08rem; font-weight: 800; color: var(--color-texto); margin: 0 0 0.25rem; overflow-wrap: anywhere; }
+.pin-meta { font-size: 0.82rem; color: var(--color-texto-claro); margin: 0; }
+.eyebrow { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-primario); }
+html.dark-mode .eyebrow { color: #b9b4ff; }
+.btn-fila { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+.btn-sm { padding: 0.5rem 1rem; font-size: 0.82rem; }
+.barra-herramientas { display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: center; width: 100%; }
+.barra-herramientas .buscador-caja { flex: 1 1 280px; margin: 0; }
+.barra-herramientas select { padding: 0.7rem 1rem; border-radius: 999px; border: 1.5px solid var(--color-borde); background: var(--color-blanco); color: var(--color-texto); font: 600 0.88rem var(--font-family); }
+.pagina-cab > .btn { flex-shrink: 0; }
+.flyers-encabezado { flex-wrap: wrap; }
+/* el visor dentro de una ventana: la × queda a la derecha de la barra, sin tapar "Descargar" */
+.visor-contenido .visor-pdf-barra { padding-right: 62px; }
+.visor-contenido .modal-close-btn { top: 12px; right: 14px; background: rgba(0, 0, 0, 0.35); }
+
+/* ---- v4.0 · Pestañas con subrayado deslizante ---- */
+.tabs-linea { position: relative; display: flex; gap: 0.2rem; overflow-x: auto; scrollbar-width: none; border-bottom: 1.5px solid var(--color-borde); flex: 1; min-width: 0; }
+.tabs-linea::-webkit-scrollbar { display: none; }
+.tabs-linea .tab { border: none; background: none; cursor: pointer; padding: 0.75rem 1rem; font: 700 0.95rem var(--font-family); color: var(--color-texto-claro); white-space: nowrap; transition: color 0.2s ease; }
+.tabs-linea .tab:hover { color: var(--color-texto); }
+.tabs-linea .tab.activo { color: var(--color-primario); }
+html.dark-mode .tabs-linea .tab.activo { color: #d6d3ff; }
+.tabs-linea .tab .n { font-weight: 800; opacity: 0.6; margin-left: 0.25rem; }
+.tabs-indicador { position: absolute; bottom: -1.5px; left: 0; height: 3px; border-radius: 3px; background: var(--color-primario); width: 0; transform: translateX(0); transition: transform 0.28s cubic-bezier(.22, 1, .36, 1), width 0.28s cubic-bezier(.22, 1, .36, 1); }
+html.dark-mode .tabs-indicador { background: #b9b4ff; }
+
+/* v4.0 — reset global de fuente: botones, selects e inputs heredan Lexend (antes caían a Arial) */
+button, input, select, textarea { font-family: inherit; }
+
+/* v4.0 — tarjetas: sin salto vertical; la imagen interna se acerca un poco (estilo Pinterest) */
+.pin-card:hover { transform: none; }
+.pin-portada i, .pin-portada .emoji { transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1); }
+.pin-card:hover .pin-portada i, .pin-card:hover .pin-portada .emoji { transform: scale(1.1); }
+.btn:active { transform: scale(0.97); }

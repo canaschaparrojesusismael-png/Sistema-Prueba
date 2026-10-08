@@ -1,7 +1,6 @@
 import { db } from "./firebase-init.js";
 import {
-  collection, onSnapshot, getDocs, doc, writeBatch, setDoc,
-  query, where, limit, orderBy
+  collection, onSnapshot, getDocs, doc, writeBatch, query, where, limit, orderBy
 } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
 import { subirACloudinary, abrirEditorImagen } from "./gestor-imagenes.js";
 
@@ -80,7 +79,21 @@ import { subirACloudinary, abrirEditorImagen } from "./gestor-imagenes.js";
     }
     if (currentIndex >= carouselData.length) currentIndex = 0;
     const item = carouselData[currentIndex];
-    if (imgEl) { imgEl.src = item.url || ""; imgEl.alt = item.alt || ""; }
+    if (imgEl) {
+      imgEl.classList.remove("cargada");
+      // v3.7: si la imagen ya está en caché del navegador, "load" puede
+      // disparar tan rápido que el opacity:0 inicial nunca llega a
+      // pintarse en pantalla -- el navegador junta los dos cambios en un
+      // solo frame y la transición no se ve (queda como si "apareciera de
+      // golpe" en vez de con fundido). El doble requestAnimationFrame
+      // fuerza a que haya como mínimo un frame pintado en el medio.
+      imgEl.onload = () => {
+        requestAnimationFrame(() => requestAnimationFrame(() => imgEl.classList.add("cargada")));
+      };
+      imgEl.onerror = () => imgEl.classList.remove("cargada");
+      imgEl.src = item.url || "";
+      imgEl.alt = item.alt || "";
+    }
     if (tituloEl) tituloEl.textContent = item.alt || "Sin título";
     if (descEl) descEl.textContent = item.text || "";
     if (contadorEl) contadorEl.textContent = carouselData.length > 1 ? `${currentIndex + 1} / ${carouselData.length}` : "";
@@ -90,7 +103,9 @@ import { subirACloudinary, abrirEditorImagen } from "./gestor-imagenes.js";
 
   function siguienteSlide() { if (carouselData.length) { currentIndex = (currentIndex + 1) % carouselData.length; renderizarCarrusel(carouselData); } }
   function anteriorSlide() { if (carouselData.length) { currentIndex = (currentIndex - 1 + carouselData.length) % carouselData.length; renderizarCarrusel(carouselData); } }
-  function autoRotacionStart() { clearInterval(autoInterval); autoInterval = setInterval(siguienteSlide, 4000); }
+  // v4.0: sin autoplay si la persona pidió menos movimiento, y no gira en una pestaña oculta
+  const reducirMovimiento = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function autoRotacionStart() { clearInterval(autoInterval); if (reducirMovimiento) return; autoInterval = setInterval(() => { if (!document.hidden) siguienteSlide(); }, 5000); }
   function autoRotacionStop() { clearInterval(autoInterval); }
 
   // Migración inicial de localStorage
@@ -305,7 +320,7 @@ import { subirACloudinary, abrirEditorImagen } from "./gestor-imagenes.js";
         modal.style.display = "none";
       } catch (err) {
         console.error("Error al guardar los cambios del carrusel:", err);
-        window._showToast?.("No se pudieron guardar los cambios. Mirá la consola (F12) para más detalle.", "error");
+        window._showToast?.("No se pudieron guardar los cambios. Mira la consola (F12) para más detalle.", "error");
       } finally {
         saveBtn.disabled = false;
         saveBtn.textContent = saveBtnTextoOriginal;
@@ -351,7 +366,7 @@ import { subirACloudinary, abrirEditorImagen } from "./gestor-imagenes.js";
         renderizarCarrusel(imagenes);
       }, err => {
         console.error("No se pudo leer el carrusel desde Firestore:", err);
-        window._showToast?.("No se pudo cargar el carrusel (revisá permisos/consola)", "error");
+        window._showToast?.("No se pudo cargar el carrusel (revisa permisos/consola)", "error");
       });
     } catch (err) {
       console.error("Error al suscribirse al carrusel:", err);
@@ -407,98 +422,6 @@ import { subirACloudinary, abrirEditorImagen } from "./gestor-imagenes.js";
 
     window.UI?.render(); // vuelve a pintar la barra de navegación para que muestre (o no) el botón de editar
   })();
-})();
-
-// ==================== CITAS DE LA PORTADA (G-07) ====================
-// Antes eran 3 tarjetas de texto fijo ("— Cita 1/2/3") escritas directo en
-// el HTML. Ahora viven en Firestore (contenido/citas) igual que el resto
-// del contenido editable del sitio, con un botón de edición visible solo
-// para quien puede editar el carrusel (mismo permiso: edit_carousel +
-// owner_supremo/director_nacional, porque es contenido del carrusel
-// nacional de la portada).
-(function () {
-  const citasRef = doc(db, "contenido", "citas");
-  const DEFAULTS = [
-    { texto: "La música transformó mi manera de ver el mundo y de relacionarme con los demás.", autor: "Testimonio de la comunidad" },
-    { texto: "Gracias al Sistema pude formarme como músico y hoy enseño a nuevas generaciones.", autor: "Testimonio de la comunidad" },
-    { texto: "Un espacio de oportunidades donde la disciplina y el arte van de la mano.", autor: "Testimonio de la comunidad" }
-  ];
-  let citasActuales = DEFAULTS;
-
-  function renderCitas(items) {
-    const cont = document.getElementById("citas-grid");
-    if (!cont) return;
-    cont.innerHTML = "";
-    items.forEach(c => {
-      const card = document.createElement("div");
-      card.className = "cita-card";
-      card.innerHTML = `
-        <i class="fa-solid fa-quote-left" aria-hidden="true"></i>
-        <p>"${window._escapeHtml ? window._escapeHtml(c.texto || "") : (c.texto || "")}"</p>
-        <div class="cita-autor">— ${window._escapeHtml ? window._escapeHtml(c.autor || "Testimonio") : (c.autor || "Testimonio")}</div>`;
-      cont.appendChild(card);
-    });
-  }
-
-  function initCitasModal() {
-    const btnEditar = document.getElementById("btn-editar-citas");
-    if (btnEditar) btnEditar.style.display = "inline-flex";
-
-    function renderCampos() {
-      const wrap = document.getElementById("citas-editor-campos");
-      if (!wrap) return;
-      wrap.innerHTML = citasActuales.map((c, i) => `
-        <div class="editor-row" style="border-top:${i ? "1px solid rgba(255,255,255,0.15)" : "none"};padding-top:${i ? "0.9rem" : "0"};margin-top:${i ? "0.9rem" : "0"};">
-          <label>Cita ${i + 1} — Texto:</label>
-          <input type="text" class="form-control cita-texto-input" data-idx="${i}" value="${window._escapeHtml ? window._escapeHtml(c.texto || "") : ""}" maxlength="220" placeholder="Texto de la cita">
-          <label style="margin-top:0.5rem;">Cita ${i + 1} — Autor:</label>
-          <input type="text" class="form-control cita-autor-input" data-idx="${i}" value="${window._escapeHtml ? window._escapeHtml(c.autor || "") : ""}" maxlength="60" placeholder="Quién lo dijo">
-        </div>`).join("");
-    }
-
-    btnEditar?.addEventListener("click", () => {
-      renderCampos();
-      document.getElementById("modal-citas").style.display = "flex";
-    });
-    const cerrar = () => { document.getElementById("modal-citas").style.display = "none"; };
-    document.getElementById("citas-close-btn")?.addEventListener("click", cerrar);
-    document.getElementById("close-citas-modal")?.addEventListener("click", cerrar);
-    document.getElementById("modal-citas")?.addEventListener("click", (e) => { if (e.target.id === "modal-citas") cerrar(); });
-
-    document.getElementById("save-citas-btn")?.addEventListener("click", async () => {
-      const btn = document.getElementById("save-citas-btn");
-      const textoInputs = document.querySelectorAll(".cita-texto-input");
-      const autorInputs = document.querySelectorAll(".cita-autor-input");
-      const nuevas = Array.from(textoInputs).map((el, i) => ({
-        texto: el.value.trim(),
-        autor: autorInputs[i]?.value.trim() || "Testimonio de la comunidad"
-      }));
-      btn.disabled = true; const textoOriginal = btn.textContent; btn.textContent = "Guardando...";
-      try {
-        await setDoc(citasRef, { items: nuevas });
-        window._showToast?.("Citas actualizadas", "success");
-        cerrar();
-      } catch (err) {
-        console.error("No se pudieron guardar las citas:", err);
-        window._showToast?.("No se pudieron guardar las citas", "error");
-      } finally {
-        btn.disabled = false; btn.textContent = textoOriginal;
-      }
-    });
-  }
-
-  onSnapshot(citasRef, snap => {
-    citasActuales = (snap.exists() && Array.isArray(snap.data().items) && snap.data().items.length) ? snap.data().items : DEFAULTS;
-    renderCitas(citasActuales);
-  }, err => {
-    console.error("No se pudieron cargar las citas (se muestran las de por defecto):", err);
-    renderCitas(DEFAULTS);
-  });
-
-  try {
-    const rol = window.Auth?.getSession()?.role;
-    if (["owner_supremo", "director_nacional"].includes(rol)) initCitasModal();
-  } catch (err) { console.error("Error al inicializar el editor de citas:", err); }
 })();
 
 // ==================== DASHBOARD: MÉTRICAS Y RESUMEN ====================

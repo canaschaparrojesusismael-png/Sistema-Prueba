@@ -6,14 +6,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema Nacional de Orquestas</title>
-        <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=17.0">
-    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=17.0">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=17.0">
+        <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=22.0">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=22.0">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=22.0">
     <meta property="og:title" content="Sistema Nacional de Orquestas">
     <meta property="og:description" content="Sistema Nacional de Orquestas — información, agenda y comunidad.">
     <meta property="og:type" content="website">
     <meta property="og:image" content="icon-512.png">
-<link rel="stylesheet" href="estilos.css?v=17.0">
+<link rel="stylesheet" href="estilos.css?v=22.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -38,7 +38,7 @@
             <!-- v3.0 (G-10): tabindex para poder navegar el carrusel con las
                  flechas del teclado una vez que tiene foco; G-09: también
                  escucha gestos de swipe en celular (ver main.js). -->
-            <div class="carrusel-visual" id="carrusel-visual" tabindex="0" role="region" aria-label="Carrusel de imágenes, usá las flechas del teclado para navegar">
+            <div class="carrusel-visual" id="carrusel-visual" tabindex="0" role="region" aria-label="Carrusel de imágenes, usa las flechas del teclado para navegar">
                 <button class="carousel-arrow" id="prev-slide" aria-label="Anterior">&#10094;</button>
                 <div class="carrusel-tarjeta" id="carrusel-tarjeta">
                     <div class="carrusel-caja">
@@ -61,47 +61,27 @@
             <div class="carrusel-posicion" id="carousel-posicion"></div>
         </div>
 
-        <!-- CITAS: 3 tarjetas debajo del carrusel — v3.0 (G-07): antes eran
-             texto fijo de relleno ("— Cita 1/2/3"); ahora se cargan desde
-             Firestore igual que el carrusel, con un botón de edición para
-             quien tenga permiso (mismo permiso que edita el carrusel). -->
+        <!-- CITAS: 3 tarjetas fijas (ya no son editables desde el sitio) -->
         <div class="citas-grid-wrap">
             <div class="citas-grid" id="citas-grid">
                 <div class="cita-card">
                     <i class="fa-solid fa-quote-left"></i>
                     <p>"La música transformó mi manera de ver el mundo y de relacionarme con los demás."</p>
-                    <div class="cita-autor">— Testimonio</div>
+                    <div class="cita-autor">— Testimonio de la comunidad</div>
                 </div>
                 <div class="cita-card">
                     <i class="fa-solid fa-quote-left"></i>
                     <p>"Gracias al Sistema pude formarme como músico y hoy enseño a nuevas generaciones."</p>
-                    <div class="cita-autor">— Testimonio</div>
+                    <div class="cita-autor">— Testimonio de la comunidad</div>
                 </div>
                 <div class="cita-card">
                     <i class="fa-solid fa-quote-left"></i>
                     <p>"Un espacio de oportunidades donde la disciplina y el arte van de la mano."</p>
-                    <div class="cita-autor">— Testimonio</div>
+                    <div class="cita-autor">— Testimonio de la comunidad</div>
                 </div>
             </div>
-            <button type="button" id="btn-editar-citas" class="btn-config-mini" style="display:none;" title="Editar citas">
-                <i class="fa-solid fa-pen"></i> Editar citas
-            </button>
         </div>
     </main>
-
-    <!-- v3.0 (G-07): modal de edición de citas — texto simple, sin imágenes,
-         así que no necesita el editor de recorte/rotar que usan carrusel/flyers. -->
-    <div class="modal-overlay" id="modal-citas" style="display:none;">
-        <div class="modal-content premium-modal">
-            <button class="modal-close-btn" id="citas-close-btn">&times;</button>
-            <h2><i class="fa-solid fa-quote-left"></i> Editar citas de la portada</h2>
-            <div id="citas-editor-campos"></div>
-            <div class="crop-buttons">
-                <button id="save-citas-btn" class="btn btn-submit">Guardar Cambios</button>
-                <button id="close-citas-modal" class="btn btn-cerrar">Cerrar</button>
-            </div>
-        </div>
-    </div>
 
     <!-- PIE DE PÁGINA -->
     <footer class="pie-pagina">
@@ -112,9 +92,9 @@
 
     <script>document.getElementById("footer-year").textContent = new Date().getFullYear();</script>
     <script src="check-entorno.js" defer></script>
-    <script type="module" src="firebase-init.js?v=17.0"></script>
-    <script type="module" src="auth.js?v=17.0"></script>
-    <script type="module" src="ui-manager.js?v=17.0"></script>
-    <script type="module" src="main.js?v=17.0"></script>
+    <script type="module" src="firebase-init.js?v=22.0"></script>
+    <script type="module" src="auth.js?v=22.0"></script>
+    <script type="module" src="ui-manager.js?v=22.0"></script>
+    <script type="module" src="main.js?v=22.0"></script>
 </body>
 </html>

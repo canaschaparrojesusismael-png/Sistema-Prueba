@@ -12,283 +12,186 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel – Sistema de Orquestas</title>
-        <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=17.0">
-    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=17.0">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=17.0">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=22.0">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=22.0">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=22.0">
     <meta property="og:title" content="Panel — Sistema de Orquestas">
-    <meta property="og:description" content="Flyers, calendario y accesos rápidos del núcleo.">
+    <meta property="og:description" content="Calendario, flyers y accesos de tu núcleo.">
     <meta property="og:type" content="website">
     <meta property="og:image" content="icon-512.png">
-<link rel="stylesheet" href="estilos.css?v=17.0">
+    <link rel="stylesheet" href="estilos.css?v=22.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* ---- Flyers: franja completa, pegada arriba, de punta a punta ---- */
+        /* ================= FLYERS (franja azul de punta a punta) ================= */
         .flyers-bloque {
             background: linear-gradient(to bottom right, var(--color-primario-oscuro), var(--color-primario-claro));
-            padding: 8px 0 12px;
+            padding: 14px 0 22px;
         }
         .flyers-encabezado {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 2rem 6px;
-            display: flex;
-            align-items: baseline;
-            gap: 0.6rem;
-            color: #fff;
+            max-width: 1200px; margin: 0 auto; padding: 0 2rem 8px;
+            display: flex; align-items: baseline; gap: 0.6rem; color: #fff;
         }
-        .flyers-encabezado .nucleo-nombre { font-weight: 800; font-size: 1.1rem; }
-        .flyers-encabezado .nucleo-estado { font-size: 0.85rem; opacity: 0.85; }
-        #nucleo-selector {
-            margin-left: auto;
-            padding: 0.35rem 0.7rem;
-            border-radius: 999px;
-            border: none;
-            font-size: 0.8rem;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        .flyer-card {
-            width: 100%;
-            height: 100%;
-            display: block;
-            object-fit: cover;
-            transition: var(--transition-normal);
-        }
-        /* AGREGADO 2026-09-06/07: envuelve cada flyer para poder mostrarle sus
-           propios puntitos de carga centrados encima mientras la imagen
-           todavía está bajando — el tamaño fijo (200x130) que antes tenía
-           .flyer-card directo ahora vive acá, y la imagen de adentro llena
-           el 100%. La sombra/borde de hover se pasan a este contenedor (en
-           vez de la imagen) para que no se recorten con overflow:hidden. */
-        .flyer-card-wrap {
-            position: relative; width: 200px; height: 130px; flex-shrink: 0;
-            border-radius: var(--border-radius-sm); overflow: hidden;
-            border: 2px solid transparent;
-            box-shadow: var(--shadow-card);
-            /* Color "de esqueleto" — se ve mientras la imagen todavía no bajó
-               del todo; una vez que carga, la imagen (100% del bloque) lo tapa. */
-            background: #e4e8f5;
-            transition: transform 0.3s ease, box-shadow var(--transition-normal), border-color var(--transition-normal);
-        }
-        .flyer-card-wrap:hover {
-            border-color: #fff;
-            box-shadow: var(--shadow-hover);
-        }
+        .flyers-encabezado .nucleo-nombre { font-weight: 800; font-size: 1.25rem; }
+        .flyers-encabezado .nucleo-estado { font-size: 0.9rem; opacity: 0.85; }
         .carrusel-flyers {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 14px;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 2rem;
-            position: relative;
+            display: flex; align-items: center; justify-content: center; gap: 14px;
+            max-width: 1200px; margin: 0 auto; padding: 0 2rem; position: relative;
         }
         .flyers-viewport {
-            display: flex;
-            gap: 20px;
-            flex-grow: 1;
-            justify-content: center;
-            align-items: flex-start;
-            overflow: visible;
-            /* AGREGADO 2026-09-07: 130px de la tarjeta + margen para que el
-               corrimiento "tipo menú" del flyer del medio no se recorte. */
-            min-height: 155px;
-            padding-top: 4px;
+            display: flex; gap: 20px; flex-grow: 1; justify-content: center; align-items: flex-start;
+            overflow: visible; min-height: 160px; padding-top: 4px;
         }
-        .flyers-viewport:empty::after {
-            content: "Sin flyers todavía para este núcleo";
-            color: rgba(255,255,255,0.75);
-            font-size: 0.9rem;
-            align-self: center;
-        }
-        /* v3.0 (P-27): estado vacío con botón de acción para quien puede editar */
-        .flyers-vacio-cta {
-            display: flex; flex-direction: column; align-items: center; gap: 0.7rem;
-            align-self: center; padding: 0.5rem 0;
-        }
-        .flyers-vacio-cta p { color: rgba(255,255,255,0.8); font-size: 0.9rem; margin: 0; }
+        .flyers-vacio-cta { display: flex; flex-direction: column; align-items: center; gap: 0.7rem; align-self: center; padding: 0.5rem 0; text-align: center; }
+        .flyers-vacio-cta p { color: rgba(255,255,255,0.85); font-size: 0.92rem; margin: 0; }
         .flecha-btn {
-            background: #0a0a0a;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            font-size: 1.5rem;
-            cursor: pointer;
-            border-radius: 5px;
-            transition: var(--transition-fast);
-            flex-shrink: 0;
+            background: linear-gradient(135deg, #2b2b2b, #000000); color: #fff; border: none;
+            width: 44px; height: 48px; font-size: 1.1rem; cursor: pointer; border-radius: 14px; flex-shrink: 0;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+            transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), filter 0.2s ease;
         }
-        .flecha-btn:hover { filter: brightness(1.3); }
+        .flecha-btn:hover { filter: brightness(1.3); transform: translateY(-2px); }
+        .flecha-btn:active { transform: scale(0.94); }
+        .flyer-card-wrap {
+            position: relative; width: 200px; height: 130px; flex-shrink: 0;
+            border-radius: 14px; overflow: hidden; border: 2px solid transparent;
+            box-shadow: 0 8px 20px -6px rgba(10,8,60,0.5); background: #e4e8f5;
+            transform: translateY(var(--corrimiento, 0px));
+            transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+        .flyer-card-wrap:hover { border-color: #fff; box-shadow: 0 14px 32px -6px rgba(10,8,60,0.6); transform: translateY(calc(var(--corrimiento, 0px) - 4px)) scale(1.03); }
+        .flyer-card { width: 100%; height: 100%; display: block; object-fit: cover; opacity: 0; transition: opacity 0.4s ease; }
+        .flyer-card.cargada { opacity: 1; }
+        .flyer-card-wrap .loader-puntos { transition: opacity 0.35s ease; }
+        .flyer-card-wrap .loader-puntos.oculto { opacity: 0; pointer-events: none; }
+        .flyers-editar {
+            position: absolute; right: 2rem; bottom: -12px; width: 40px; height: 40px; border-radius: 50%;
+            border: none; background: linear-gradient(135deg, #2b2b2b, #000); color: #fff; font-size: 1rem; cursor: pointer;
+            display: none; align-items: center; justify-content: center; box-shadow: 0 6px 16px rgba(0,0,0,0.35); z-index: 4;
+            transition: transform 0.4s ease, filter 0.2s;
+        }
+        .flyers-editar:hover { transform: rotate(35deg) scale(1.08); filter: brightness(1.3); }
 
-        /* ---- Calendario + accesos: pegados arriba, misma altura, sin huecos ---- */
-        /* v3.3: la sección de flyers de arriba (.flyers-encabezado,
-           .carrusel-flyers) usa max-width:1200px, pero .contenido-web.container
-           (compartida con index.html) es de 1050px — dos anchos distintos
-           centrados por separado en la misma página hacen que sus bordes
-           izquierdo/derecho no coincidan, y el calendario se ve "corrido" /
-           descuadrado respecto a los flyers de arriba. Acá, solo en Panel,
-           se iguala a 1200px; index.html sigue usando 1050px sin tocarse. */
-        .contenido-web.container { max-width: 1200px; }
-        .dashboard-grid {
-            display: grid;
-            /* Aumentamos de 2.2fr a 2.4fr para que el calendario ocupe un poco más y empuje la derecha */
-            grid-template-columns: 2.4fr 1fr; 
-            /* Aumentamos el espacio vacío entre ambos de 16px a 32px */
-            gap: 32px; 
-            align-items: start;
-            margin: 1rem 0 1.5rem;
+        /* ================= DASHBOARD ================= */
+        .contenido-web.container.panel-main { max-width: 1200px; justify-content: flex-start; padding-top: 2rem; }
+        .dashboard-grid { display: grid; grid-template-columns: 2.4fr 1fr; gap: 32px; align-items: start; }
+        .panel-lateral { display: flex; flex-direction: column; gap: 14px; }
+        .nav-card {
+            display: flex; align-items: center; gap: 0.9rem; padding: 0.9rem 1rem;
+            background: var(--color-blanco); border: 1px solid var(--color-borde); border-radius: 20px;
+            color: var(--color-texto); text-decoration: none; box-shadow: var(--shadow-card);
+            transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease, border-color 0.25s ease;
+            animation: entradaContenido 0.4s cubic-bezier(0.22, 1, 0.36, 1) backwards;
         }
-        .calendario-container {
-            background: var(--color-blanco);
-            border: 1px solid var(--color-borde);
-            border-radius: var(--border-radius);
-            padding: 20px;
-            box-shadow: var(--shadow-card);
-            position: relative;
-            overflow: visible;
-            display: flex;
-            flex-direction: column;
-        }
-        .calendario-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        .calendario-header button {
-            background: var(--color-primario);
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: var(--transition-fast);
-        }
-        .calendario-header button:hover { background: var(--color-primario-oscuro); }
-        .calendario-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 5px;
-            text-align: center;
-        }
-        .dia-semana {
-            font-weight: bold;
-            color: var(--color-texto);
-            padding: 6px 0;
-            background: var(--color-superficie-suave);
-            border-radius: 8px;
-            font-size: 0.85rem;
-        }
-        .dia-numero {
-            padding: 6px 0;
-            border: 1px solid var(--color-borde);
-            border-radius: 8px;
-            min-height: 52px;
-            cursor: pointer;
-            transition: var(--transition-fast);
-            font-size: 0.85rem;
-            position: relative;
-        }
-        .dia-numero:hover { background: var(--color-primario); color: white; border-color: var(--color-primario); }
-        .dia-numero.otro-mes { color: var(--color-texto-claro); opacity: 0.55; }
-        .evento {
-            font-size: 0.65rem;
-            padding: 1px 5px;
-            border-radius: 6px;
-            margin-top: 2px;
-            display: block;
-            cursor: pointer;
-        }
-        /* v3.0 (G-17): botón de mes/año + botón "Hoy" + popover rápido */
-        .mes-anio-btn {
-            background: none; border: none; color: var(--color-texto);
-            font-size: 1.15rem; font-weight: 800; cursor: pointer;
-            padding: 4px 10px; border-radius: 8px; font-family: var(--font-family);
-        }
-        .mes-anio-btn:hover { background: var(--color-superficie-suave); }
-        .btn-hoy-calendario {
-            background: var(--color-secundario) !important; color: var(--color-primario) !important;
-            font-weight: 700; font-size: 0.75rem !important; padding: 5px 12px !important;
-        }
-        .mes-anio-popover {
-            display: flex; gap: 0.5rem; align-items: center; justify-content: center;
-            background: var(--color-superficie-suave); border: 1px solid var(--color-borde);
-            border-radius: 10px; padding: 0.6rem; margin-bottom: 0.8rem;
-        }
-        .mes-anio-popover select {
-            padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid var(--color-borde);
-            background: var(--color-blanco); color: var(--color-texto); font-family: var(--font-family);
-        }
-        /* v3.0 (P-25): resalta el día de hoy en la grilla */
-        .dia-numero.es-hoy { border: 2px solid var(--color-acento); font-weight: 800; }
-        .badge-hoy-punto {
-            position: absolute; top: 3px; right: 3px; width: 6px; height: 6px;
-            border-radius: 50%; background: var(--color-acento);
-        }
-        /* v3.0 (P-28): "+N más" cuando un día tiene muchos eventos */
-        .evento-mas {
-            font-size: 0.63rem; color: var(--color-texto-claro); text-decoration: underline;
-            display: block; cursor: pointer; margin-top: 2px;
-        }
-        /* Botones de acceso: tamaño compacto normal, NO estirados a la altura
-           del calendario (eso dejaba cajas enormes casi vacías). */
-        .sidebar {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-        .dropdown-btn {
-            padding: 20px 22px;
-            background: var(--color-blanco);
-            border: 1px solid var(--color-borde);
-            border-radius: var(--border-radius);
-            font-size: 1.05rem;
-            font-weight: 700;
-            color: var(--color-texto);
-            cursor: pointer;
-            text-align: left;
-            box-shadow: var(--shadow-card);
-            transition: var(--transition-normal);
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 0.7rem;
-        }
-        .dropdown-btn i { color: var(--color-primario); font-size: 1.15rem; width: 1.2em; text-align: center; }
-        .dropdown-btn:hover { border-color: var(--color-primario); transform: translateY(-2px); }
-        .form-control {
-            width: 100%; padding: 0.55rem 0.7rem; margin-top: 0.3rem;
-            border-radius: 8px; border: 1px solid rgba(255,255,255,0.25);
-            background: rgba(255,255,255,0.95); color: var(--color-texto);
-            font-size: 0.9rem; font-family: inherit;
-        }
-        .form-control:focus { outline: none; border-color: var(--color-primario); }
-        .modal-content textarea.form-control { resize: vertical; }
-        .editor-row label { font-weight: 700; color: rgba(255,255,255,0.9); font-size: 0.85rem; flex: 0 0 90px; }
+        .nav-card:nth-child(1) { animation-delay: 0.05s; } .nav-card:nth-child(2) { animation-delay: 0.1s; } .nav-card:nth-child(3) { animation-delay: 0.15s; }
+        .nav-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); border-color: var(--color-primario); }
+        .nav-tile { width: 48px; height: 48px; border-radius: 14px; background: var(--color-primario); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; flex-shrink: 0; }
+        .nav-textos { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+        .nav-textos strong { font-size: 1.02rem; font-weight: 800; }
+        .nav-textos small { color: var(--color-texto-claro); font-size: 0.8rem; }
+        .nav-flecha { color: var(--color-texto-claro); font-size: 0.8rem; transition: transform 0.2s; }
+        .nav-card:hover .nav-flecha { transform: translateX(4px); color: var(--color-primario); }
 
-        /* Selector de color con muestras (reemplaza el <input type="color"> nativo, feo y chico) */
-        .color-swatches { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-        .color-swatch {
-            width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
-            border: 3px solid transparent; transition: var(--transition-fast);
+        .proximos { background: var(--color-blanco); border: 1px solid var(--color-borde); border-radius: 20px; padding: 1rem 1rem 0.6rem; box-shadow: var(--shadow-card); }
+        .proximos h3 { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-texto-claro); margin-bottom: 0.5rem; }
+        .proximo-item { display: flex; align-items: center; gap: 0.75rem; width: 100%; padding: 0.5rem 0.3rem; border: none; background: none; text-align: left; cursor: pointer; border-radius: 12px; color: var(--color-texto); font-family: var(--font-family); }
+        .proximo-item:hover { background: var(--color-superficie-suave); }
+        .proximo-fecha { width: 44px; height: 48px; border-radius: 12px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #1a1a1a; line-height: 1.05; }
+        .proximo-fecha b { font-size: 1.1rem; } .proximo-fecha small { font-size: 0.6rem; text-transform: uppercase; font-weight: 700; }
+        .proximo-info { display: flex; flex-direction: column; min-width: 0; }
+        .proximo-info strong { font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .proximo-info small { font-size: 0.76rem; color: var(--color-texto-claro); }
+        .proximos-vacio { font-size: 0.85rem; color: var(--color-texto-claro); padding: 0.4rem 0.3rem 0.8rem; }
+
+        /* ================= CALENDARIO 2.0 ================= */
+        .cal-card {
+            background: var(--color-blanco); border: 1px solid var(--color-borde); border-radius: 28px;
+            padding: 1.4rem 1.4rem 1.2rem; box-shadow: var(--shadow-card); position: relative;
+            animation: entradaContenido 0.45s cubic-bezier(0.22, 1, 0.36, 1);
         }
-        .color-swatch:hover { transform: scale(1.12); }
-        .color-swatch.activo { border-color: #fff; box-shadow: 0 0 0 2px var(--color-primario); }
-        #admin-controls { display: flex; gap: 10px; margin-top: 15px; }
-        #event-group-row, #event-photo-row, #event-color-row { display: none; }
-        #event-photo-preview {
-            max-width: 100%;
-            max-height: 150px;
-            margin-top: 10px;
-            display: none;
-            border-radius: 8px;
+        .cal-cab { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.4rem; }
+        .cal-nav-btn {
+            width: 38px; height: 38px; border-radius: 50%; border: none; cursor: pointer; background: var(--color-superficie-suave);
+            color: var(--color-texto); font-size: 0.85rem; transition: background 0.2s, transform 0.2s;
         }
+        .cal-nav-btn:hover { background: var(--color-primario); color: #fff; transform: scale(1.08); }
+        .cal-mes {
+            border: none; cursor: pointer; border-radius: 999px; padding: 0.55rem 1.3rem;
+            background: linear-gradient(135deg, var(--color-primario-claro), var(--color-primario)); color: #fff;
+            font: 800 1.05rem var(--font-family); display: inline-flex; align-items: center; gap: 0.5rem;
+            box-shadow: 0 6px 16px rgba(65,56,169,0.35); transition: transform 0.2s, filter 0.2s;
+        }
+        .cal-mes:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .cal-mes i { font-size: 0.7rem; opacity: 0.8; }
+        .cal-cab .espacio { flex: 1; }
+        .cal-hoy { border: none; cursor: pointer; border-radius: 999px; padding: 0.5rem 1rem; background: var(--color-secundario); color: var(--color-primario); font: 700 0.8rem var(--font-family); }
+        html.dark-mode .cal-hoy { color: #d6d3ff; }
+        .cal-hoy:hover { filter: brightness(0.95); }
+        .cal-nuevo { padding: 0.55rem 1.1rem; font-size: 0.85rem; display: none; }
+        .cal-visibilidad { display: flex; align-items: center; gap: 0.45rem; font-size: 0.8rem; color: var(--color-texto-claro); margin: 0.3rem 0 0.9rem 0.2rem; }
+        .cal-visibilidad i { color: var(--color-primario); }
+        .cal-popover {
+            display: none; gap: 0.5rem; align-items: center; justify-content: center; flex-wrap: wrap;
+            background: var(--color-superficie-suave); border-radius: 18px; padding: 0.7rem; margin-bottom: 0.9rem;
+        }
+        .cal-popover select { padding: 0.5rem 0.8rem; border-radius: 12px; border: 1.5px solid var(--color-borde); background: var(--color-blanco); color: var(--color-texto); font: 0.9rem var(--font-family); }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+        .cal-sem { text-align: center; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--color-texto-claro); padding: 0.3rem 0; }
+        .cal-dia {
+            min-height: 88px; padding: 6px 7px; border-radius: 16px; border: 1.5px solid var(--color-borde);
+            background: var(--color-blanco); cursor: pointer; display: flex; flex-direction: column; gap: 3px; min-width: 0;
+            transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s;
+        }
+        .cal-dia:hover { border-color: var(--color-primario); box-shadow: 0 6px 18px rgba(65,56,169,0.18); transform: translateY(-2px); background: var(--color-superficie-suave); }
+        .cal-dia.otro-mes { opacity: 0.4; pointer-events: none; background: transparent; border-style: dashed; }
+        .cal-num { font-size: 0.82rem; font-weight: 800; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--color-texto); }
+        .cal-dia.es-hoy .cal-num { background: var(--rojo); color: #fff; }
+        .cal-dia.es-hoy { border-color: var(--rojo); }
+        .cal-ev {
+            display: block; font-size: 0.68rem; font-weight: 700; line-height: 1.25; padding: 2px 7px; border-radius: 8px;
+            color: #1a1a1a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;
+            transition: filter 0.15s, transform 0.15s;
+        }
+        .cal-ev:hover { filter: brightness(0.93); transform: scale(1.02); }
+        .cal-mas { font-size: 0.68rem; font-weight: 700; color: var(--color-primario); padding: 0 4px; }
+        html.dark-mode .cal-mas { color: #b9b4ff; }
+        .cal-puntos { display: none; gap: 3px; flex-wrap: wrap; }
+        .cal-puntos i { width: 7px; height: 7px; border-radius: 50%; display: block; }
+        .cal-esqueleto { height: 88px; }
         @media (max-width: 768px) {
             .dashboard-grid { grid-template-columns: 1fr; }
-            .flyers-encabezado { flex-wrap: wrap; }
+            .cal-card { padding: 1rem 0.8rem; border-radius: 22px; }
+            .cal-dia { min-height: 54px; padding: 4px; align-items: center; border-radius: 12px; }
+            .cal-ev, .cal-mas { display: none; }
+            .cal-puntos { display: flex; justify-content: center; }
             .flyer-card-wrap { width: 150px; height: 105px; }
+            .flyers-encabezado, .carrusel-flyers { padding-left: 1rem; padding-right: 1rem; }
+            .flyers-editar { right: 1rem; }
         }
+
+        /* ================= DETALLE / FORMULARIO DE EVENTO ================= */
+        .dia-lista { display: flex; flex-direction: column; gap: 0.7rem; margin-top: 0.4rem; }
+        .dia-ev {
+            display: flex; gap: 0.9rem; align-items: stretch; width: 100%; text-align: left; cursor: pointer;
+            background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: #fff;
+            border-radius: 18px; padding: 0.8rem 0.9rem; font-family: var(--font-family); transition: background 0.2s, transform 0.2s;
+        }
+        .dia-ev:hover { background: rgba(255,255,255,0.22); transform: translateX(3px); }
+        .dia-ev-barra { width: 6px; border-radius: 6px; flex-shrink: 0; }
+        .dia-ev-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .dia-ev-info strong { font-size: 1rem; }
+        .dia-ev-info small { font-size: 0.8rem; opacity: 0.85; }
+        .detalle-foto { width: 100%; max-height: 220px; object-fit: cover; border-radius: 18px; margin-bottom: 1rem; }
+        .detalle-fila { display: flex; gap: 0.7rem; align-items: flex-start; margin-bottom: 0.7rem; font-size: 0.95rem; color: #fff; }
+        .detalle-fila i { width: 1.2rem; text-align: center; margin-top: 0.2rem; opacity: 0.85; }
+        .detalle-barra { height: 8px; border-radius: 8px; margin-bottom: 1rem; }
+        .swatches { display: flex; gap: 0.55rem; flex-wrap: wrap; }
+        .swatch { width: 34px; height: 34px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: transform 0.18s; }
+        .swatch:hover { transform: scale(1.12); }
+        .swatch.activo { border-color: #fff; box-shadow: 0 0 0 2px rgba(0,0,0,0.35); }
+        .foto-evento { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
+        .foto-evento img { width: 120px; height: 68px; object-fit: cover; border-radius: 12px; }
+        .modal-content textarea.modal-input { min-height: 90px; resize: vertical; }
+        #flyer-modal .modal-content { max-width: 720px; }
     </style>
 </head>
 <body>
@@ -297,60 +200,45 @@
         <nav id="user-nav" class="user-nav"></nav>
     </header>
 
-
-    <!-- Franja de flyers: a todo lo ancho, pegada justo debajo del header -->
+    <!-- Franja de flyers del núcleo activo -->
     <section class="flyers-bloque">
         <div class="flyers-encabezado">
             <span class="nucleo-nombre" id="nucleo-nombre-label">—</span>
             <span class="nucleo-estado" id="nucleo-estado-label"></span>
-            <!-- Solo visible para roles que pueden ver más de un núcleo -->
-            <select id="nucleo-selector" style="display:none;"></select>
-            <button type="button" id="btn-gestionar-nucleos" class="btn-config-mini" style="display:none;" title="Crear o cambiar de núcleo">⚙️ Núcleos</button>
-            <button type="button" id="btn-reintentar-nucleos" class="btn-config-mini" style="display:none;background:#c1121f;" title="Reintentar">🔄 Reintentar</button>
         </div>
         <div class="carrusel-flyers" id="flyers-section">
-            <button class="flecha-btn" id="prev-flyer">&lt;</button>
+            <button class="flecha-btn" id="prev-flyer" aria-label="Flyers anteriores"><i class="fa-solid fa-chevron-left"></i></button>
             <div class="flyers-viewport" id="flyers-viewport"></div>
-            <button class="flecha-btn" id="next-flyer">&gt;</button>
-            <button class="carousel-edit-btn" id="edit-flyers-btn" style="display:none;">&#9881;</button>
+            <button class="flecha-btn" id="next-flyer" aria-label="Flyers siguientes"><i class="fa-solid fa-chevron-right"></i></button>
+            <button class="flyers-editar" id="edit-flyers-btn" title="Editar flyers" aria-label="Editar flyers"><i class="fa-solid fa-gear"></i></button>
         </div>
     </section>
 
-    <main class="contenido-web container">
+    <main class="contenido-web container panel-main">
         <div class="dashboard-grid">
-            <div class="calendario-container" id="calendario">
-                <div class="loader-puntos sobre-claro" id="calendario-loader" style="top:14px; left:16px;"><span></span><span></span><span></span></div>
-                <div class="calendario-header">
-                    <button id="prev-month" aria-label="Mes anterior">&lt;</button>
-                    <!-- v3.0 (G-17): el título del mes ahora es un botón que
-                         abre un selector rápido de mes/año, en vez de tener
-                         que hacer clic 11 veces en "siguiente" para llegar
-                         a diciembre desde enero. -->
-                    <button type="button" id="month-year" class="mes-anio-btn"></button>
-                    <button id="next-month" aria-label="Mes siguiente">&gt;</button>
-                    <button type="button" id="btn-hoy-calendario" class="btn-hoy-calendario" title="Ir al mes de hoy">Hoy</button>
+            <section class="cal-card" aria-label="Calendario de eventos">
+                <div class="cal-cab">
+                    <button class="cal-nav-btn" id="prev-month" aria-label="Mes anterior"><i class="fa-solid fa-chevron-left"></i></button>
+                    <button type="button" class="cal-mes" id="month-year" aria-haspopup="true"></button>
+                    <button class="cal-nav-btn" id="next-month" aria-label="Mes siguiente"><i class="fa-solid fa-chevron-right"></i></button>
+                    <span class="espacio"></span>
+                    <button type="button" class="cal-hoy" id="btn-hoy-calendario">Hoy</button>
+                    <button type="button" class="btn btn-submit cal-nuevo" id="btn-nuevo-evento"><i class="fa-solid fa-plus"></i> Evento</button>
                 </div>
-                <!-- v3.0 (G-17): selector rápido de mes/año, oculto hasta que se abre -->
-                <div class="mes-anio-popover" id="mes-anio-popover" style="display:none;">
-                    <select id="select-mes-rapido"></select>
-                    <select id="select-anio-rapido"></select>
+                <p class="cal-visibilidad" id="cal-visibilidad"></p>
+                <div class="cal-popover" id="mes-anio-popover">
+                    <select id="select-mes-rapido" aria-label="Mes"></select>
+                    <select id="select-anio-rapido" aria-label="Año"></select>
                     <button type="button" id="btn-ir-mes-rapido" class="btn btn-submit">Ir</button>
                 </div>
-                <div class="calendario-grid" id="calendario-grid">
-                    <div class="dia-semana">Lun</div><div class="dia-semana">Mar</div><div class="dia-semana">Mié</div>
-                    <div class="dia-semana">Jue</div><div class="dia-semana">Vie</div><div class="dia-semana">Sáb</div><div class="dia-semana">Dom</div>
-                </div>
-                <button class="carousel-edit-btn" id="edit-calendar-btn" style="display:none;">&#9881;</button>
-            </div>
+                <div class="cal-grid" id="calendario-grid"></div>
+            </section>
 
-            <aside class="sidebar">
-                <a href="piezas.html" class="dropdown-btn"><i class="fa-solid fa-music"></i> Piezas</a>
-                <a href="formacion.html" class="dropdown-btn"><i class="fa-solid fa-graduation-cap"></i> Formación</a>
-                <a href="miembros.html" class="dropdown-btn"><i class="fa-solid fa-users"></i> Miembros</a>
-                <!-- v3.1: se sacó el link directo a "Repertorio" del menú — no es
-                     una sección aparte, es la pantalla de detalle de una agrupación
-                     (se llega ahí SIEMPRE desde Piezas → [agrupación]). Puesta acá
-                     suelta, sin "?agrup=" en la URL, no mostraba nada útil. -->
+            <aside class="panel-lateral">
+                <a href="piezas.html" class="nav-card"><span class="nav-tile"><i class="fa-solid fa-music"></i></span><span class="nav-textos"><strong>Piezas</strong><small>Agrupaciones, repertorio y partituras</small></span><i class="fa-solid fa-chevron-right nav-flecha"></i></a>
+                <a href="formacion.html" class="nav-card"><span class="nav-tile"><i class="fa-solid fa-graduation-cap"></i></span><span class="nav-textos"><strong>Formación</strong><small>Métodos, niveles y tutor musical</small></span><i class="fa-solid fa-chevron-right nav-flecha"></i></a>
+                <a href="miembros.html" class="nav-card"><span class="nav-tile"><i class="fa-solid fa-users"></i></span><span class="nav-textos"><strong>Miembros</strong><small>Directorio institucional</small></span><i class="fa-solid fa-chevron-right nav-flecha"></i></a>
+                <div class="proximos" id="proximos"><h3>Próximos eventos</h3><div id="proximos-lista"></div></div>
             </aside>
         </div>
     </main>
@@ -359,888 +247,601 @@
         <div class="footer-contenido"><p>© 2026 Fundación Musical Simón Bolívar</p></div>
     </footer>
 
-    <!-- Modal flyers: galería con miniaturas, con el mismo editor que el Carrusel Nacional -->
+    <!-- Modal flyers -->
     <div class="modal-overlay" id="flyer-modal">
         <div class="modal-content premium-modal carousel-manager">
-            <button class="modal-close-btn" id="flyer-close-btn">&times;</button>
-            <h2><i class="fa-solid fa-images"></i> Gestión de Flyers</h2>
-
+            <button class="modal-close-btn" id="flyer-close-btn" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+            <h2><i class="fa-solid fa-images"></i> Flyers del núcleo</h2>
             <div id="flyer-empty-state" class="drop-zone">
-                <p>📌 Ingresá una imagen para comenzar</p>
-                <p style="font-size:0.8rem;color:#888;">Arrastrá un archivo o hacé clic acá</p>
+                <p>📌 Ingresa una imagen para comenzar</p>
+                <p style="font-size:0.8rem;color:#888;">Arrastrá un archivo o haz clic acá</p>
             </div>
-
             <div id="flyer-editor-body" style="display:none;">
-                <div class="preview-grande">
-                    <img id="flyer-preview-img" src="" alt="Vista previa"/>
-                </div>
-                <!-- v3.1: se sacó el vínculo flyer↔evento del calendario que
-                     había acá (G-16) — quedó descartado a propósito: mezclar
-                     dos secciones que ya funcionan bien por separado (Flyers y
-                     Calendario) sumaba un paso extra sin necesidad real. -->
-                <div class="editor-row acciones-item">
-                    <button type="button" id="btn-editar-flyer" class="btn btn-submit"><i class="fa-solid fa-pen"></i> Editar imagen</button>
-                    <button type="button" id="btn-eliminar-flyer" class="btn btn-cerrar"><i class="fa-solid fa-trash"></i> Eliminar</button>
+                <div class="preview-grande"><img id="flyer-preview-img" src="" alt="Vista previa"/></div>
+                <div class="modal-acciones" style="justify-content:flex-start;">
+                    <button type="button" id="btn-editar-flyer" class="btn btn-cerrar"><i class="fa-solid fa-crop-simple"></i> Editar imagen</button>
+                    <button type="button" id="btn-eliminar-flyer" class="btn btn-cerrar"><i class="fa-solid fa-trash"></i> Quitar</button>
                 </div>
             </div>
-
             <input type="file" id="flyer-file-input" accept="image/*" style="display:none;"/>
             <div class="thumb-strip" id="flyer-thumb-strip"></div>
-
-            <div class="crop-buttons">
-                <button id="save-flyers-btn" class="btn btn-submit">Guardar cambios</button>
-                <button id="close-flyer-modal" class="btn btn-cerrar">Cerrar</button>
+            <div class="modal-acciones">
+                <button id="save-flyers-btn" class="btn btn-submit"><i class="fa-solid fa-check"></i> Guardar cambios</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal evento -->
-    <div class="modal-overlay" id="event-modal">
-        <div class="modal-content">
-            <button class="modal-close-btn" id="event-close-btn">&times;</button>
-            <h2 id="event-modal-title">Detalles del Evento</h2>
-            <input type="hidden" id="event-id" />
-            
-            <div class="editor-row"><label>Fecha:</label><input type="date" id="event-date" class="form-control" /></div>
-            <div class="editor-row"><label>Título:</label><input type="text" id="event-title" class="form-control" /></div>
-            <div class="editor-row"><label>Hora:</label><input type="time" id="event-time" class="form-control" /></div>
-            <div class="editor-row"><label>Lugar:</label><input type="text" id="event-location" class="form-control" /></div>
-            
-            <div class="editor-row" id="event-photo-row">
-                <label>Foto:</label>
-                <input type="text" id="event-photo" class="form-control" placeholder="URL de la imagen (o suba un archivo)" />
-                <span>o</span>
-                <input type="file" id="event-photo-file" accept="image/*" />
+    <!-- Modal: eventos de un día -->
+    <div class="modal-overlay" id="dia-modal">
+        <div class="modal-content" style="max-width:520px;">
+            <button class="modal-close-btn" id="dia-close-btn" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+            <h2 id="dia-titulo"></h2>
+            <div class="dia-lista" id="dia-lista"></div>
+            <div class="modal-acciones" id="dia-acciones" style="display:none;">
+                <button type="button" class="btn btn-submit" id="btn-evento-en-dia"><i class="fa-solid fa-plus"></i> Agregar evento este día</button>
             </div>
-            <img id="event-photo-preview" />
-            <div class="editor-row"><label>Descripción:</label><textarea id="event-desc" class="form-control" rows="3"></textarea></div>
-            <div class="editor-row" id="event-color-row">
-                <label>Color:</label>
-                <div class="color-swatches" id="event-color-swatches">
-                    <div class="color-swatch" data-color="#ffeaa7" style="background:#ffeaa7;" title="Amarillo" role="button" tabindex="0" aria-label="Color amarillo"></div>
-                    <div class="color-swatch" data-color="#a7d8ff" style="background:#a7d8ff;" title="Celeste" role="button" tabindex="0" aria-label="Color celeste"></div>
-                    <div class="color-swatch" data-color="#b7f0ad" style="background:#b7f0ad;" title="Verde" role="button" tabindex="0" aria-label="Color verde"></div>
-                    <div class="color-swatch" data-color="#ffb3b3" style="background:#ffb3b3;" title="Rojo claro" role="button" tabindex="0" aria-label="Color rojo claro"></div>
-                    <div class="color-swatch" data-color="#d9b8ff" style="background:#d9b8ff;" title="Violeta" role="button" tabindex="0" aria-label="Color violeta"></div>
-                    <div class="color-swatch" data-color="#ffcf9e" style="background:#ffcf9e;" title="Naranja" role="button" tabindex="0" aria-label="Color naranja"></div>
-                </div>
-                <input type="hidden" id="event-color" value="#ffeaa7" />
-            </div>
-            
-            <div class="editor-row" id="event-group-row">
-                <label>Visible para:</label>
-                <select id="event-group" multiple style="height:90px;" class="form-control">
-                    <option value="todos">Todos</option>
-                    <option value="Profesores">Profesores</option>
-                    <option value="Estudiantes">Estudiantes</option>
-                    <!-- Las agrupaciones reales de este núcleo (desde Piezas) se agregan solas -->
-                </select>
-            </div>
+        </div>
+    </div>
 
-            <div id="admin-controls">
-                <button id="save-event-btn" class="btn btn-submit">Guardar</button>
-                <button id="delete-event-btn" class="btn btn-cerrar" style="background:var(--color-acento); color:white;">Eliminar</button>
+    <!-- Modal: ver / crear / editar un evento -->
+    <div class="modal-overlay" id="evento-modal">
+        <div class="modal-content modal-ancho">
+            <button class="modal-close-btn" id="evento-close-btn" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+            <h2 id="evento-modal-titulo">Evento</h2>
+            <div id="evento-detalle" style="display:none;"></div>
+            <div id="evento-form" style="display:none;">
+                <input type="hidden" id="event-id" />
+                <div class="campo"><label for="event-title">Título</label><input type="text" id="event-title" class="modal-input" maxlength="100" placeholder="Ej. Ensayo general" /></div>
+                <div class="campo-fila">
+                    <div class="campo"><label for="event-date">Fecha</label><input type="date" id="event-date" class="modal-input" /></div>
+                    <div class="campo"><label for="event-time">Hora</label><input type="time" id="event-time" class="modal-input" /></div>
+                </div>
+                <div class="campo"><label for="event-location">Lugar</label><input type="text" id="event-location" class="modal-input" maxlength="100" placeholder="Ej. Sala principal" /></div>
+                <div class="campo"><label for="event-desc">Descripción</label><textarea id="event-desc" class="modal-input" maxlength="600" placeholder="Detalles del evento (opcional)"></textarea></div>
+                <div class="campo">
+                    <label>Dirigido a</label>
+                    <div class="chips" id="event-audiencia"></div>
+                    <p class="campo-ayuda">Las agrupaciones salen en tiempo real de la base de datos de este núcleo.</p>
+                </div>
+                <div class="campo-fila">
+                    <div class="campo"><label>Color</label><div class="swatches" id="event-swatches"></div><input type="hidden" id="event-color" value="#ffeaa7" /></div>
+                    <div class="campo"><label>Foto (opcional)</label>
+                        <div class="foto-evento">
+                            <img id="event-photo-preview" alt="" style="display:none;" />
+                            <button type="button" class="btn btn-cerrar" id="btn-elegir-foto"><i class="fa-solid fa-image"></i> Elegir imagen</button>
+                            <button type="button" class="btn btn-cerrar" id="btn-quitar-foto" style="display:none;"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                        <input type="file" id="event-photo-file" accept="image/*" style="display:none;" />
+                    </div>
+                </div>
+                <div class="modal-acciones">
+                    <button type="button" id="delete-event-btn" class="btn btn-cerrar izquierda" style="display:none;"><i class="fa-solid fa-trash"></i> Eliminar</button>
+                    <button type="button" id="save-event-btn" class="btn btn-submit"><i class="fa-solid fa-check"></i> Guardar</button>
+                </div>
             </div>
-            <button id="close-event-modal" class="btn btn-cerrar">Cerrar</button>
         </div>
     </div>
 
     <script src="check-entorno.js" defer></script>
 
-    <script type="module" src="auth.js?v=17.0"></script>
-    <script type="module" src="ui-manager.js?v=17.0"></script>
+    <script type="module" src="auth.js?v=22.0"></script>
+    <script type="module" src="ui-manager.js?v=22.0"></script>
     <script type="module">
         import { db } from "./firebase-init.js";
-        import { abrirSelectorUbicacion, cargarTodosLosNucleos } from "./ubicaciones.js";
+        import { conNucleoActivo } from "./nucleo-activo.js";
         import { abrirEditorImagen } from "./gestor-imagenes.js";
-        import { 
+        import {
             collection, onSnapshot, getDocs, doc, writeBatch, addDoc, updateDoc, deleteDoc, query, where
         } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
 
-        // ====================== VARIABLES GLOBALES ======================
+        const $ = (id) => document.getElementById(id);
+        const esc = (t) => window._escapeHtml(t);
+        const pad = (n) => String(n).padStart(2, "0");
+        const colorSeguro = (c) => (/^#[0-9a-f]{6}$/i.test(c || "") ? c : "#ffeaa7");
+        const urlSegura = (u) => (/^https:\/\//i.test(u || "") ? u : "");
+        const fechaLocalISO = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+        const GESTORES = ["owner_supremo", "director_nacional", "director_regional", "director_nucleo", "admin"];
+
         const flyersCol = collection(db, "flyers");
         const eventosCol = collection(db, "eventos");
-        let flyerData = [];
-        // v3.3: antes, mientras Firestore todavía no contestaba la primera
-        // vez, flyerData estaba vacío y renderFlyers() ya mostraba "Sin
-        // flyers todavía" — indistinguible de un núcleo que de verdad no
-        // tiene flyers. Con esta bandera, mientras carga se ve el mismo
-        // esqueleto con puntitos que ya usa el carrusel.
-        let flyersCargados = false;
-        // v3.0 (P-26): restaura la posición del carrusel de flyers de la
-        // visita anterior en esta misma pestaña (se recorta automáticamente
-        // si la cantidad de flyers cambió, ver renderFlyers()).
+
+        function iniciar() {
+        const session = window.Auth?.getSession();
+        if (!session) { window.location.href = "index.html"; return; }
+        const sesionReal = window.Auth.getRealSession() || session;
+        const puedeGestionar = GESTORES.includes(session.role) && GESTORES.includes(sesionReal.role);
+
+        let nucleoActivo = null;                 // { nombre, estado }
+        let unsubs = [];
+        let flyerData = [], flyersCargados = false;
         let flyerStartIndex = parseInt(sessionStorage.getItem("panel_flyer_pos") || "0", 10) || 0;
         const MAX_VISIBLE = 4;
-        let events = [];
-        let currentMonth = new Date().getMonth();
-        let currentYear = new Date().getFullYear();
-        let eventPhotoUrl = "";
+        let events = [], eventosCargados = false;
+        let agrupacionesNucleo = [];
+        let currentMonth = new Date().getMonth(), currentYear = new Date().getFullYear();
+        try {
+            const g = JSON.parse(sessionStorage.getItem("panel_calendario_pos") || "null");
+            if (g && Number.isInteger(g.m) && Number.isInteger(g.y)) { currentMonth = g.m; currentYear = g.y; }
+        } catch {}
 
-        // ====================== LÓGICA DE NÚCLEOS ======================
-        // Roles que pueden VER y CAMBIAR entre núcleos (no están atados a uno solo)
-        const ROLES_MULTI_NUCLEO = ["owner_supremo", "director_nacional", "director_regional"];
-        const session = window.Auth?.getSession();
-        // Núcleo que se está mostrando ahora mismo en pantalla
-        let nucleoActivo = ROLES_MULTI_NUCLEO.includes(session?.role) ? "" : (session?.nucleus || "");
-        let unsubFlyers = null, unsubEventos = null;
+        // ============== NÚCLEO ACTIVO (se recuerda entre páginas) ==============
+        conNucleoActivo((n) => {
+            nucleoActivo = n;
+            $("nucleo-nombre-label").textContent = n ? n.nombre : "Sin núcleo seleccionado";
+            $("nucleo-estado-label").textContent = n?.estado ? `· ${n.estado}` : "";
+            suscribirTodo();
+        });
 
-        function esMultiNucleo() {
-            return ROLES_MULTI_NUCLEO.includes(session?.role);
-        }
+        function limpiarSubs() { unsubs.forEach((u) => { try { u(); } catch {} }); unsubs = []; }
 
-        function actualizarEncabezadoNucleo() {
-            document.getElementById("nucleo-nombre-label").textContent = nucleoActivo || "Sin núcleo asignado";
-            document.getElementById("nucleo-estado-label").textContent = session?.state ? `· ${session.state}` : "";
-        }
+        function suscribirTodo() {
+            limpiarSubs();
+            flyersCargados = false; eventosCargados = false; events = []; flyerData = []; agrupacionesNucleo = [];
+            renderFlyers(); renderCalendario();
+            if (!nucleoActivo) { flyersCargados = true; eventosCargados = true; renderFlyers(); renderCalendario(); return; }
+            const N = nucleoActivo.nombre;
 
-        // Para roles que ven varios núcleos: arma un selector con los núcleos que
-        // existan de verdad (usa el módulo compartido ubicaciones.js).
-        async function cargarSelectorNucleos({ forzar = false } = {}) {
-            const selector = document.getElementById("nucleo-selector");
-            const btnGestionar = document.getElementById("btn-gestionar-nucleos");
-            const btnReintentar = document.getElementById("btn-reintentar-nucleos");
-            btnReintentar.style.display = "none";
-            if (!esMultiNucleo()) { selector.style.display = "none"; btnGestionar.style.display = "none"; return; }
-            selector.style.display = "inline-block";
-            btnGestionar.style.display = "inline-block";
-            try {
-                const lista = await cargarTodosLosNucleos({ forzar });
-                selector.innerHTML = lista.length
-                    ? lista.map(n => `<option value="${n.nombre}">${n.nombre} (${n.estado})</option>`).join("")
-                    : `<option value="">(sin núcleos todavía — usá "⚙️ Núcleos" para crear uno)</option>`;
-                if (!nucleoActivo && lista.length) nucleoActivo = lista[0].nombre;
-                selector.value = nucleoActivo || (lista.length ? lista[0].nombre : "");
-            } catch (err) {
-                console.error("No se pudo cargar la lista de núcleos:", err);
-                selector.innerHTML = `<option value="">⚠️ Error al cargar — tocá "🔄 Reintentar"</option>`;
-                window._showToast?.("No se pudieron cargar los núcleos. Revisá tu conexión.", "error");
-                btnReintentar.style.display = "inline-block";
-                btnReintentar.onclick = () => cargarSelectorNucleos({ forzar: true });
-            }
-            selector.onchange = () => { nucleoActivo = selector.value; cambiarNucleoActivo(); };
-            btnGestionar.onclick = () => {
-                abrirSelectorUbicacion({
-                    nucleoInicial: nucleoActivo,
-                    onConfirmar: async ({ nucleo }) => {
-                        nucleoActivo = nucleo;
-                        await cargarSelectorNucleos({ forzar: true });
-                        cambiarNucleoActivo();
-                    },
-                });
-            };
-        }
-
-        // Vuelve a suscribirse a flyers/eventos filtrados por el núcleo activo.
-        // Se llama al cargar la página y cada vez que un director cambia de núcleo
-        // en el selector — reactivo, sin recargar la página.
-        function cambiarNucleoActivo() {
-            actualizarEncabezadoNucleo();
-            if (unsubFlyers) unsubFlyers();
-            if (unsubEventos) unsubEventos();
-
-            if (!nucleoActivo) {
+            // ---- Flyers del núcleo ----
+            unsubs.push(onSnapshot(query(flyersCol, where("nucleo", "==", N)), (snap) => {
                 flyersCargados = true;
-                flyerData = []; renderFlyers();
-                events = []; renderCalendar();
-                return;
-            }
-
-            flyersCargados = false;
-            const flyersQuery = query(flyersCol, where("nucleo", "==", nucleoActivo));
-            unsubFlyers = onSnapshot(flyersQuery, (snapshot) => {
-                flyersCargados = true;
-                flyerData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                flyerData.sort((a, b) => (a.orden || 0) - (b.orden || 0));
+                flyerData = snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (a.orden || 0) - (b.orden || 0));
                 if (flyerStartIndex >= flyerData.length) flyerStartIndex = 0;
                 renderFlyers();
-                if (flyerEditorEsperando) {
-                    flyerEditorEsperando = false;
-                    workingFlyers = flyerData.map(f => ({ ...f }));
-                    renderFlyerTodoRef?.();
-                }
-            }, (err) => {
-                flyersCargados = true;
-                console.error("No se pudieron leer los flyers de este núcleo:", err);
-                window._showToast?.("No se pudieron cargar los flyers (revisá permisos/consola)", "error");
-                renderFlyers();
-            });
+                if (flyerEditorEsperando) { flyerEditorEsperando = false; workingFlyers = flyerData.map((f) => ({ ...f })); renderFlyerTodoRef?.(); }
+            }, (err) => { flyersCargados = true; console.error("Flyers:", err); window._showToast?.("No se pudieron cargar los flyers (revisa permisos/consola)", "error"); renderFlyers(); }));
 
-            const eventosQuery = query(eventosCol, where("nucleo", "==", nucleoActivo));
-            unsubEventos = onSnapshot(eventosQuery, (snapshot) => {
-                events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                // AGREGADO 2026-09-06: apenas llegan los eventos reales de este
-                // núcleo (aunque sean cero), se oculta el indicador de carga.
-                document.getElementById("calendario-loader")?.style.setProperty("display", "none");
-                renderCalendar();
-            }, (err) => {
-                console.error("No se pudieron leer los eventos de este núcleo:", err);
-                window._showToast?.("No se pudieron cargar los eventos (revisá permisos/consola)", "error");
-            });
+            // ---- Eventos: lo que se consulta depende del rol REAL de la cuenta ----
+            // Gestores (director/admin/owner): una consulta con TODO el núcleo.
+            // Profesor / estudiante: una consulta por cada audiencia que les corresponde
+            // ("todos", su rol, su agrupación) — así las reglas de Firestore lo verifican en el servidor.
+            const porConsulta = new Map();
+            const unir = () => {
+                const mapa = new Map();
+                porConsulta.forEach((lista) => lista.forEach((e) => mapa.set(e.id, e)));
+                events = [...mapa.values()];
+                eventosCargados = true;
+                renderCalendario();
+            };
+            const alError = (err) => { eventosCargados = true; console.error("Eventos:", err); window._showToast?.("No se pudieron cargar los eventos (revisa permisos/consola)", "error"); renderCalendario(); };
+            if (GESTORES.includes(sesionReal.role)) {
+                unsubs.push(onSnapshot(query(eventosCol, where("nucleo", "==", N)), (snap) => {
+                    const lista = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+                    migrarEventosAntiguos(lista);
+                    porConsulta.set("todo", lista.map(normalizarEvento));
+                    unir();
+                }, alError));
+            } else {
+                const tokens = ["todos", sesionReal.role];
+                if (sesionReal.group) tokens.push("agr:" + sesionReal.group);
+                tokens.forEach((tk) => {
+                    unsubs.push(onSnapshot(query(eventosCol, where("nucleo", "==", N), where("audiencia", "array-contains", tk)), (snap) => {
+                        porConsulta.set(tk, snap.docs.map((d) => normalizarEvento({ id: d.id, ...d.data() })));
+                        unir();
+                    }, alError));
+                });
+            }
+
+            // ---- Agrupaciones del núcleo en tiempo real (para elegir a quién va dirigido un evento) ----
+            if (puedeGestionar) {
+                unsubs.push(onSnapshot(query(collection(db, "agrupaciones"), where("nucleo", "==", N)), (snap) => {
+                    agrupacionesNucleo = snap.docs.map((d) => d.data().nombre).filter(Boolean).sort((a, b) => a.localeCompare(b));
+                    if ($("evento-modal").style.display === "flex" && $("evento-form").style.display !== "none") pintarAudiencia();
+                }, (err) => console.error("Agrupaciones:", err)));
+            }
         }
 
-        // ====================== FLYERS (galería con miniaturas, igual que el Carrusel Nacional) ======================
+        // Eventos creados antes de v4 guardaban "groups"; ahora todo usa "audiencia".
+        function audienciaDesdeGroups(groups) {
+            const aud = (groups || []).map((g) => g === "todos" ? "todos" : g === "Profesores" ? "profesor" : g === "Estudiantes" ? "estudiante" : "agr:" + g);
+            return aud.length ? aud : ["todos"];
+        }
+        function normalizarEvento(e) { return Array.isArray(e.audiencia) ? e : { ...e, audiencia: audienciaDesdeGroups(e.groups) }; }
+        let migrando = false;
+        async function migrarEventosAntiguos(lista) {
+            if (migrando || !puedeGestionar) return;
+            const viejos = lista.filter((e) => !Array.isArray(e.audiencia));
+            if (!viejos.length) return;
+            migrando = true;
+            try {
+                const lote = writeBatch(db);
+                viejos.forEach((e) => lote.update(doc(eventosCol, e.id), { audiencia: audienciaDesdeGroups(e.groups), estado: nucleoActivo?.estado || "" }));
+                await lote.commit();
+            } catch (err) { console.warn("No se pudieron actualizar eventos antiguos:", err); }
+            finally { migrando = false; }
+        }
+
+        // Misma regla que aplican las reglas de Firestore, para el modo "vista previa" del Owner
+        // y como segunda barrera en pantalla.
+        function visibleParaMi(ev) {
+            if (GESTORES.includes(session.role)) return true;
+            const aud = ev.audiencia || [];
+            return aud.includes("todos") || aud.includes(session.role) || (!!session.group && aud.includes("agr:" + session.group));
+        }
+        const etiquetaAudiencia = (t) => t === "todos" ? "Todos" : t === "profesor" ? "Profesores" : t === "estudiante" ? "Estudiantes" : t.startsWith("agr:") ? t.slice(4) : t;
+
+        // ============== FLYERS ==============
         function renderFlyers() {
-            const container = document.getElementById("flyers-viewport");
-            if (!flyersCargados) {
-                container.innerHTML = `<div class="flyer-card-wrap"><div class="loader-puntos sobre-claro centrado"><span></span><span></span><span></span></div></div>`;
+            const cont = $("flyers-viewport");
+            if (!flyersCargados) { cont.innerHTML = `<div class="flyer-card-wrap"><div class="loader-puntos sobre-claro centrado"><span></span><span></span><span></span></div></div>`; return; }
+            if (!nucleoActivo) { cont.innerHTML = `<div class="flyers-vacio-cta"><p>Elige o crea un núcleo con el botón <strong>Núcleos</strong> (abajo a la derecha).</p></div>`; return; }
+            if (!flyerData.length) {
+                cont.innerHTML = puedeGestionar
+                    ? `<div class="flyers-vacio-cta"><p>📌 Sin flyers todavía para este núcleo</p><button type="button" id="btn-primer-flyer" class="btn btn-submit"><i class="fa-solid fa-plus"></i> Subir el primer flyer</button></div>`
+                    : `<div class="flyers-vacio-cta"><p>📌 Este núcleo todavía no tiene flyers</p></div>`;
+                $("btn-primer-flyer")?.addEventListener("click", abrirFlyerModal);
                 return;
             }
             const visible = flyerData.slice(flyerStartIndex, flyerStartIndex + MAX_VISIBLE);
-            // v3.0 (P-27): si no hay flyers Y la persona puede editarlos, se
-            // muestra un botón de acción directa en vez de solo un texto
-            // (antes había que notar el engranaje que solo aparece al pasar
-            // el mouse por encima del módulo).
-            if (!flyerData.length) {
-                const puedeEditar = window.Auth?.checkPermission && window.Auth.checkPermission("manage_users");
-                container.innerHTML = puedeEditar
-                    ? `<div class="flyers-vacio-cta">
-                         <p>📌 Sin flyers todavía para este núcleo</p>
-                         <button type="button" id="btn-primer-flyer" class="btn btn-submit"><i class="fa-solid fa-plus"></i> Subir el primer flyer</button>
-                       </div>`
-                    : "";
-                document.getElementById("btn-primer-flyer")?.addEventListener("click", abrirFlyerModal);
-                return;
-            }
-            // El "alt" queda fijo para accesibilidad (lectores de pantalla) —
-            // ya no depende de ningún campo de texto que nadie llenaba.
-            // AGREGADO 2026-09-06/07: cada flyer tiene su propio bloque tipo
-            // "esqueleto" con los puntitos CENTRADOS (no en la esquina) hasta
-            // que ESA imagen en particular termine de bajar. Además, el
-            // conjunto se acomoda como un menú/abanico: el flyer del medio
-            // queda un poco más abajo que los de los costados.
             const mid = (visible.length - 1) / 2;
-            container.innerHTML = visible.map((f, i) => {
-                const distanciaAlCentro = Math.abs(i - mid);
-                const corrimiento = Math.round((mid - distanciaAlCentro) * 9); // el centro baja, los costados suben
-                return `
-                <div class="flyer-card-wrap" style="transform:translateY(${corrimiento}px)">
+            cont.innerHTML = visible.map((f, i) => {
+                const corr = Math.round((mid - Math.abs(i - mid)) * 9);
+                return `<div class="flyer-card-wrap" style="--corrimiento:${corr}px">
                     <div class="loader-puntos sobre-claro centrado"><span></span><span></span><span></span></div>
-                    <img class="flyer-card" src="${window._escapeHtml(f.url)}" alt="Flyer" loading="lazy" tabindex="0"
-                         onload="this.previousElementSibling.style.display='none'"
-                         onerror="this.style.display='none'; this.previousElementSibling.innerHTML='<span style=&quot;font-size:1.3rem;&quot;>🖼️</span><p style=&quot;font-size:0.7rem;color:#888;margin:0.3rem 0 0;&quot;>No se pudo cargar</p>'; this.previousElementSibling.style.flexDirection='column';" />
+                    <img class="flyer-card" src="${esc(f.url)}" alt="Flyer" loading="lazy" tabindex="0" />
                 </div>`;
             }).join("");
-            // v3.0 (G-15): click (o Enter con teclado) abre el flyer a
-            // pantalla completa en vez de quedarse puramente decorativo.
-            container.querySelectorAll(".flyer-card").forEach(img => {
-                const abrir = () => abrirLightboxFlyer(img.src);
-                img.addEventListener("click", abrir);
-                img.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); abrir(); } });
+            cont.querySelectorAll(".flyer-card").forEach((img) => {
+                const loader = img.previousElementSibling;
+                const listo = () => requestAnimationFrame(() => { loader.classList.add("oculto"); img.classList.add("cargada"); setTimeout(() => (loader.style.display = "none"), 450); });
+                if (img.complete && img.naturalWidth) listo(); else img.addEventListener("load", listo);
+                img.addEventListener("error", () => { loader.innerHTML = '<span style="font-size:1.3rem;">🖼️</span>'; img.style.display = "none"; });
+                img.addEventListener("click", () => zoomImagen(img));
+                img.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); zoomImagen(img); } });
             });
         }
 
-        // v3.0 (G-15): lightbox a pantalla completa al tocar un flyer.
-        // v3.1: se sacó el botón "Ver evento" (G-16) junto con el resto del
-        // vínculo flyer↔calendario — ver nota más arriba, en el editor.
-        function abrirLightboxFlyer(url) {
-            const overlay = document.createElement("div");
-            overlay.className = "lightbox-overlay";
-            overlay.innerHTML = `
-                <button type="button" class="lightbox-cerrar" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
-                <img src="${window._escapeHtml(url)}" alt="Flyer ampliado"/>
-            `;
-            document.body.appendChild(overlay);
-            const cerrar = () => overlay.remove();
-            overlay.addEventListener("click", (e) => { if (e.target === overlay) cerrar(); });
-            overlay.querySelector(".lightbox-cerrar").addEventListener("click", cerrar);
-            const onEsc = (e) => { if (e.key === "Escape") { cerrar(); document.removeEventListener("keydown", onEsc); } };
-            document.addEventListener("keydown", onEsc);
+        // Zoom animado: la lupa aparece SOLO sobre la imagen (CSS), clic = agranda con animación,
+        // clic en la imagen = vuelve a su lugar con animación.
+        function zoomImagen(thumb) {
+            if (document.querySelector(".zoom-fondo")) return;
+            const wrap = thumb.closest(".flyer-card-wrap") || thumb;
+            const r = thumb.getBoundingClientRect();
+            const fondo = document.createElement("div"); fondo.className = "zoom-fondo";
+            const img = document.createElement("img"); img.className = "zoom-img"; img.src = thumb.currentSrc || thumb.src; img.alt = "Flyer ampliado";
+            Object.assign(img.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px", borderRadius: "14px" });
+            document.body.append(fondo, img);
+            wrap.style.visibility = "hidden";
+            const prevOverflow = document.body.style.overflow; document.body.style.overflow = "hidden";
+            const nw = thumb.naturalWidth || r.width, nh = thumb.naturalHeight || r.height;
+            const k = Math.min((innerWidth * 0.92) / nw, (innerHeight * 0.9) / nh, 2.2);
+            const w = nw * k, h = nh * k;
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                fondo.classList.add("visible");
+                Object.assign(img.style, { left: (innerWidth - w) / 2 + "px", top: (innerHeight - h) / 2 + "px", width: w + "px", height: h + "px", borderRadius: "12px" });
+            }));
+            let cerrando = false;
+            const fin = () => { if (!img.isConnected) return; img.remove(); fondo.remove(); wrap.style.visibility = ""; document.body.style.overflow = prevOverflow; };
+            const onKey = (e) => { if (e.key === "Escape") cerrar(); };
+            function cerrar() {
+                if (cerrando) return; cerrando = true;
+                document.removeEventListener("keydown", onKey);
+                fondo.classList.remove("visible");
+                const r2 = wrap.isConnected ? thumb.getBoundingClientRect() : r;
+                Object.assign(img.style, { left: r2.left + "px", top: r2.top + "px", width: r2.width + "px", height: r2.height + "px", borderRadius: "14px" });
+                img.addEventListener("transitionend", fin, { once: true });
+                setTimeout(fin, 520);
+            }
+            img.addEventListener("click", cerrar);
+            fondo.addEventListener("click", cerrar);
+            document.addEventListener("keydown", onKey);
         }
-        // La suscripción real (con filtro por núcleo) la arma cambiarNucleoActivo(),
-        // más abajo en la inicialización — así cambia en vivo si el usuario elige otro núcleo.
 
-        document.getElementById("prev-flyer").addEventListener("click", () => {
+        $("prev-flyer").addEventListener("click", () => {
             if (flyerData.length <= MAX_VISIBLE) return;
             flyerStartIndex = (flyerStartIndex - 1 + flyerData.length) % flyerData.length;
-            renderFlyers();
-            try { sessionStorage.setItem("panel_flyer_pos", String(flyerStartIndex)); } catch {}
+            renderFlyers(); try { sessionStorage.setItem("panel_flyer_pos", String(flyerStartIndex)); } catch {}
         });
-        document.getElementById("next-flyer").addEventListener("click", () => {
+        $("next-flyer").addEventListener("click", () => {
             if (flyerData.length <= MAX_VISIBLE) return;
             flyerStartIndex = (flyerStartIndex + 1) % flyerData.length;
-            renderFlyers();
-            // v3.0 (P-26): recuerda en qué flyer se estaba parado al volver
-            // a la página (antes siempre reiniciaba desde el primero).
-            try { sessionStorage.setItem("panel_flyer_pos", String(flyerStartIndex)); } catch {}
+            renderFlyers(); try { sessionStorage.setItem("panel_flyer_pos", String(flyerStartIndex)); } catch {}
         });
 
-        // Igual que el .flyer-card en pantalla (200x130 ≈ 20:13), para que lo
-        // que se recorta en el editor coincida con lo que se ve después.
+        // ----- Editor de flyers -----
         const OPCIONES_EDITOR_FLYER = { carpeta: "flyers", aspecto: 20 / 13, ancho: 800, alto: 520 };
-        // AGREGADO 2026-09-01: antes la foto de evento usaba un editor propio y
-        // viejo (abrirCropModal) que guardaba la imagen recortada tal cual, a
-        // su resolución ORIGINAL, como texto base64 directo en el documento
-        // de Firestore — sin bajarle el tamaño. Firestore tiene un límite
-        // duro de 1 MB por documento: una foto de celular normal, recortada,
-        // ya en base64 supera ese límite fácilmente, así que guardar el
-        // evento fallaba (o el documento quedaba corrupto/incompleto) apenas
-        // alguien subía una foto de buena calidad. Ahora usa el mismo editor
-        // que ya usan el Carrusel y los Flyers: reduce la imagen a un tamaño
-        // fijo y la sube a Cloudinary, guardando solo la URL (unos 80
-        // caracteres) en el documento.
         const OPCIONES_EDITOR_EVENTO = { carpeta: "eventos", aspecto: 16 / 9, ancho: 960, alto: 540 };
-
-        let workingFlyers = [];
-        let flyerSeleccionActual = 0;
-        let flyerModalListo = false;
-        // v3.3: mismo patrón que el editor del carrusel — si se abre el
-        // editor de flyers antes de que llegue la primera respuesta de
-        // Firestore, no copiamos flyerData (todavía vacío) a workingFlyers;
-        // esperamos, y cuando llega de verdad, completamos el editor ya
-        // abierto en vez de dejarlo vacío para siempre.
-        let flyerEditorEsperando = false;
-        let renderFlyerTodoRef = null;
+        let workingFlyers = [], flyerSeleccionActual = 0, flyerModalListo = false, flyerEditorEsperando = false, renderFlyerTodoRef = null;
 
         function abrirFlyerModal() {
-            if (!nucleoActivo) { window._showToast?.("Elegí un núcleo primero", "error"); return; }
-            if (!flyersCargados) {
-                flyerEditorEsperando = true;
-                workingFlyers = [];
-            } else {
-                flyerEditorEsperando = false;
-                workingFlyers = flyerData.map(f => ({ ...f }));
-            }
+            if (!nucleoActivo) { window._showToast?.("Elige un núcleo primero", "error"); return; }
+            if (!flyersCargados) { flyerEditorEsperando = true; workingFlyers = []; }
+            else { flyerEditorEsperando = false; workingFlyers = flyerData.map((f) => ({ ...f })); }
             flyerSeleccionActual = 0;
-            const modal = document.getElementById("flyer-modal");
-            const fileInput = document.getElementById("flyer-file-input");
-
-            // CORREGIDO 2026-09-05: antes había campos de "Título" y "Texto"
-            // para cada flyer, copiados del mismo patrón que usa el Carrusel
-            // Nacional — pero a diferencia del carrusel (donde SÍ se muestran
-            // como título/descripción sobre la imagen, ver main.js), acá esos
-            // dos campos nunca se mostraban en ningún lado visible: quedaban
-            // guardados solo como el atributo HTML "alt" (invisible, solo
-            // para lectores de pantalla) y "title" (un tooltip que solo
-            // aparece pasando el mouse por encima unos segundos — inútil en
-            // celular, que es como la mayoría va a ver esto). Un flyer es un
-            // afiche ya diseñado con su propio texto adentro de la imagen,
-            // así que pedir un título aparte solo hacía más lento subir uno
-            // sin ningún beneficio real. Se quitaron los dos campos; ahora
-            // es más rápido: elegís la imagen y listo.
-            // CORREGIDO 2026-09-05: antes había campos de "Título" y "Texto"
-            // para cada flyer, copiados del mismo patrón que usa el Carrusel
-            // Nacional — pero a diferencia del carrusel (donde SÍ se muestran
-            // como título/descripción sobre la imagen, ver main.js), acá esos
-            // dos campos nunca se mostraban en ningún lado visible: quedaban
-            // guardados solo como el atributo HTML "alt" (invisible, solo
-            // para lectores de pantalla) y "title" (un tooltip que solo
-            // aparece pasando el mouse por encima unos segundos — inútil en
-            // celular, que es como la mayoría va a ver esto). Un flyer es un
-            // afiche ya diseñado con su propio texto adentro de la imagen,
-            // así que pedir un título aparte solo hacía más lento subir uno
-            // sin ningún beneficio real. Se quitaron los dos campos del
-            // formulario (y toda la función que los sincronizaba); ahora es
-            // más rápido: elegís la imagen y listo.
+            const modal = $("flyer-modal"), fileInput = $("flyer-file-input");
 
             function renderThumbs() {
-                const strip = document.getElementById("flyer-thumb-strip");
-                strip.innerHTML = "";
+                const strip = $("flyer-thumb-strip"); strip.innerHTML = "";
                 workingFlyers.forEach((item, idx) => {
                     const t = document.createElement("div");
                     t.className = "thumb" + (idx === flyerSeleccionActual ? " selected" : "");
-                    t.innerHTML = item.url ? `<img src="${item.url}" alt=""/>` : `<div class="thumb-vacio"><i class="fa-solid fa-image"></i></div>`;
+                    t.innerHTML = item.url ? `<img src="${esc(item.url)}" alt=""/>` : `<div class="thumb-vacio"><i class="fa-solid fa-image"></i></div>`;
                     t.addEventListener("click", () => { flyerSeleccionActual = idx; renderTodo(); });
                     strip.appendChild(t);
                 });
-                const addBtn = document.createElement("div");
-                addBtn.className = "thumb thumb-add";
-                addBtn.innerHTML = `<i class="fa-solid fa-plus"></i>`;
-                addBtn.addEventListener("click", () => fileInput.click());
-                strip.appendChild(addBtn);
+                const add = document.createElement("div"); add.className = "thumb thumb-add"; add.innerHTML = `<i class="fa-solid fa-plus"></i>`;
+                add.addEventListener("click", () => fileInput.click()); strip.appendChild(add);
             }
-
-            renderFlyerTodoRef = renderTodo;
-
             function renderTodo() {
-                const empty = document.getElementById("flyer-empty-state");
-                const body = document.getElementById("flyer-editor-body");
-                const strip = document.getElementById("flyer-thumb-strip");
-                const saveBtnEl = document.getElementById("save-flyers-btn");
+                const empty = $("flyer-empty-state"), body = $("flyer-editor-body"), strip = $("flyer-thumb-strip"), guardar = $("save-flyers-btn");
                 if (flyerEditorEsperando) {
                     empty.style.display = "block";
-                    empty.innerHTML = `<div style="display:flex;justify-content:center;padding:1rem 0;">${window._loaderPuntosHTML ? window._loaderPuntosHTML(true, true) : "Cargando…"}</div><p style="font-size:0.85rem;color:#888;text-align:center;">Cargando los flyers actuales…</p>`;
-                    body.style.display = "none";
-                    strip.style.display = "none"; strip.innerHTML = "";
-                    if (saveBtnEl) saveBtnEl.disabled = true;
-                    return;
+                    empty.innerHTML = `<div style="display:flex;justify-content:center;padding:1rem 0;">${window._loaderPuntosHTML(true, true)}</div><p style="font-size:0.85rem;text-align:center;">Cargando los flyers actuales…</p>`;
+                    body.style.display = "none"; strip.style.display = "none"; guardar.disabled = true; return;
                 }
-                if (saveBtnEl) saveBtnEl.disabled = false;
+                guardar.disabled = false;
                 if (!workingFlyers.length) {
                     empty.style.display = "block";
-                    empty.innerHTML = `<p>📌 Ingresá una imagen para comenzar</p><p style="font-size:0.8rem;color:#888;">Arrastrá un archivo o hacé clic acá</p>`;
-                    body.style.display = "none";
-                    strip.style.display = "none"; strip.innerHTML = "";
-                    return;
+                    empty.innerHTML = `<p>📌 Ingresa una imagen para comenzar</p><p style="font-size:0.8rem;color:#888;">Arrastrá un archivo o haz clic acá</p>`;
+                    body.style.display = "none"; strip.style.display = "none"; return;
                 }
                 empty.style.display = "none"; body.style.display = "block"; strip.style.display = "flex";
                 if (flyerSeleccionActual >= workingFlyers.length) flyerSeleccionActual = workingFlyers.length - 1;
-                const item = workingFlyers[flyerSeleccionActual];
-                document.getElementById("flyer-preview-img").src = item.url || "";
+                $("flyer-preview-img").src = workingFlyers[flyerSeleccionActual].url || "";
                 renderThumbs();
             }
-
-            const agregarFlyer = (url) => {
-                workingFlyers.push({ url, alt: "", text: "" });
-                flyerSeleccionActual = workingFlyers.length - 1;
-                renderTodo();
-            };
+            renderFlyerTodoRef = renderTodo;
+            const agregarFlyer = (url) => { workingFlyers.push({ url, alt: "", text: "" }); flyerSeleccionActual = workingFlyers.length - 1; renderTodo(); };
 
             if (!flyerModalListo) {
                 flyerModalListo = true;
                 fileInput.addEventListener("change", (e) => {
-                    const file = e.target.files[0];
-                    if (file) abrirEditorImagen(file, OPCIONES_EDITOR_FLYER, url => { if (url) agregarFlyer(url); });
+                    const f = e.target.files[0];
+                    if (f) abrirEditorImagen(f, OPCIONES_EDITOR_FLYER, (url) => { if (url) agregarFlyer(url); });
                     e.target.value = "";
                 });
-                const empty = document.getElementById("flyer-empty-state");
-                ["dragenter", "dragover", "dragleave", "drop"].forEach(ev =>
-                    empty.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); })
-                );
+                const empty = $("flyer-empty-state");
+                ["dragenter", "dragover", "dragleave", "drop"].forEach((ev) => empty.addEventListener(ev, (e) => { e.preventDefault(); e.stopPropagation(); }));
                 empty.addEventListener("dragenter", () => empty.classList.add("active"));
                 empty.addEventListener("dragleave", () => empty.classList.remove("active"));
-                empty.addEventListener("drop", e => {
-                    empty.classList.remove("active");
-                    const files = e.dataTransfer.files;
-                    if (files.length) abrirEditorImagen(files[0], OPCIONES_EDITOR_FLYER, url => { if (url) agregarFlyer(url); });
-                });
+                empty.addEventListener("drop", (e) => { empty.classList.remove("active"); const f = e.dataTransfer.files[0]; if (f) abrirEditorImagen(f, OPCIONES_EDITOR_FLYER, (url) => { if (url) agregarFlyer(url); }); });
                 empty.addEventListener("click", () => fileInput.click());
-                document.getElementById("btn-editar-flyer").addEventListener("click", () => {
-                    const item = workingFlyers[flyerSeleccionActual];
-                    if (!item || !item.url) return;
-                    fetch(item.url).then(r => r.blob()).then(blob => {
+                $("btn-editar-flyer").addEventListener("click", () => {
+                    const item = workingFlyers[flyerSeleccionActual]; if (!item?.url) return;
+                    fetch(item.url).then((r) => r.blob()).then((blob) => {
                         const file = new File([blob], "flyer.jpg", { type: blob.type || "image/jpeg" });
-                        abrirEditorImagen(file, OPCIONES_EDITOR_FLYER, url => { if (url) { workingFlyers[flyerSeleccionActual].url = url; renderTodo(); } });
-                    });
+                        abrirEditorImagen(file, OPCIONES_EDITOR_FLYER, (url) => { if (url) { workingFlyers[flyerSeleccionActual].url = url; renderTodo(); } });
+                    }).catch(() => window._showToast?.("No se pudo abrir la imagen para editarla", "error"));
                 });
-                document.getElementById("btn-eliminar-flyer").addEventListener("click", () => {
-                    workingFlyers.splice(flyerSeleccionActual, 1);
-                    flyerSeleccionActual = Math.max(0, flyerSeleccionActual - 1);
-                    renderTodo();
-                });
-                document.getElementById("close-flyer-modal").onclick = () => { flyerEditorEsperando = false; modal.style.display = "none"; };
-                document.getElementById("flyer-close-btn").onclick = () => { flyerEditorEsperando = false; modal.style.display = "none"; };
+                $("btn-eliminar-flyer").addEventListener("click", () => { workingFlyers.splice(flyerSeleccionActual, 1); flyerSeleccionActual = Math.max(0, flyerSeleccionActual - 1); renderTodo(); });
+                $("flyer-close-btn").onclick = () => { flyerEditorEsperando = false; modal.style.display = "none"; };
             }
-
-            const saveBtn = document.getElementById("save-flyers-btn");
-            const saveBtnTextoOriginal = saveBtn.textContent;
+            const saveBtn = $("save-flyers-btn");
             saveBtn.onclick = async () => {
-                saveBtn.disabled = true;
-                saveBtn.textContent = "Guardando...";
-                try {
-                    await guardarFlyersEnFirestore(workingFlyers);
-                    window._showToast?.("Flyers guardados correctamente", "success");
-                    modal.style.display = "none";
-                } catch (err) {
-                    console.error("Error al guardar los flyers:", err);
-                    window._showToast?.("No se pudieron guardar los flyers. Mirá la consola (F12) para más detalle.", "error");
-                } finally {
-                    saveBtn.disabled = false;
-                    saveBtn.textContent = saveBtnTextoOriginal;
-                }
+                saveBtn.disabled = true; const original = saveBtn.innerHTML; saveBtn.textContent = "Guardando…";
+                try { await guardarFlyers(workingFlyers); window._showToast?.("Flyers guardados correctamente", "success"); modal.style.display = "none"; }
+                catch (err) { console.error(err); window._showToast?.("No se pudieron guardar los flyers: " + err.message, "error"); }
+                finally { saveBtn.disabled = false; saveBtn.innerHTML = original; }
             };
-
             renderTodo();
             modal.style.display = "flex";
         }
-
-        async function guardarFlyersEnFirestore(nuevosDatos) {
-            if (!nucleoActivo) { window._showToast?.("Elegí un núcleo antes de guardar", "error"); return; }
-            // Solo tocamos los flyers de ESTE núcleo — nunca los de otros.
-            const snapshot = await getDocs(query(flyersCol, where("nucleo", "==", nucleoActivo)));
+        async function guardarFlyers(nuevos) {
+            const snap = await getDocs(query(flyersCol, where("nucleo", "==", nucleoActivo.nombre)));
             const batch = writeBatch(db);
-            snapshot.docs.forEach(d => batch.delete(doc(db, "flyers", d.id)));
-            nuevosDatos.forEach((item, idx) => {
-                const nuevoDoc = doc(flyersCol);
-                batch.set(nuevoDoc, { url: item.url, alt: item.alt || "", text: item.text || "", orden: idx, nucleo: nucleoActivo });
-            });
+            snap.docs.forEach((d) => batch.delete(doc(db, "flyers", d.id)));
+            nuevos.forEach((it, idx) => batch.set(doc(flyersCol), { url: it.url, alt: it.alt || "", text: it.text || "", orden: idx, nucleo: nucleoActivo.nombre }));
             await batch.commit();
         }
+        $("edit-flyers-btn").addEventListener("click", abrirFlyerModal);
 
-        document.getElementById("edit-flyers-btn").addEventListener("click", abrirFlyerModal);
-
-        // ====================== CALENDARIO DE EVENTOS (Reactivo) ======================
-        function renderCalendar() {
-            const session = window.Auth?.getSession(); // uso seguro con window
-            const grid = document.getElementById("calendario-grid");
-            const title = document.getElementById("month-year");
-            const months = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-            
-            // Limpiar días anteriores
-            grid.querySelectorAll(".dia-numero").forEach(d => d.remove());
-            
-            title.textContent = `${months[currentMonth]} ${currentYear}`;
-
-            const firstDay = new Date(currentYear, currentMonth, 1).getDay() || 7;
-            const daysInMonth = new Date(currentYear, currentMonth+1, 0).getDate();
-            const daysInPrevMonth = new Date(currentYear, currentMonth, 0).getDate();
-
-            let eventosVisibles;
-            if (session && window.Auth?.checkPermission && window.Auth.checkPermission("manage_users")) {
-                eventosVisibles = events;
-            } else {
-                // Filtrar eventos según el grupo/rol del usuario
-                const rolNormalizado = session?.role === "estudiante" ? ["Estudiantes", "Estudiante"] :
-                                     session?.role === "profesor" ? ["Profesores", "Profesor"] :
-                                     [session?.role];
-                const grupoNormalizado = session?.group ? [session.group] : [];
-                eventosVisibles = events.filter(ev => {
-                    const grupos = ev.groups;
-                    return grupos.some(g => g === "todos" || rolNormalizado.includes(g) || grupoNormalizado.includes(g));
-                });
-            }
-
-            let html = "";
-            for (let i = firstDay-1; i > 0; i--) {
-                html += `<div class="dia-numero otro-mes">${daysInPrevMonth - i + 1}</div>`;
-            }
-            // v3.0 (P-25): marca visualmente el día de HOY dentro de la
-            // grilla del mes, para ubicarse más rápido de un vistazo.
-            const hoyStr = new Date().toISOString().slice(0, 10);
-            for (let d = 1; d <= daysInMonth; d++) {
-                const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                const dayEvents = eventosVisibles.filter(ev => ev.date === dateStr);
-                // v3.0 (P-28): si hay muchos eventos el mismo día, se muestran
-                // los primeros 3 y un "+N más" en vez de una celda gigante.
-                const MAX_VISIBLES_POR_DIA = 3;
-                let eventoHtml = dayEvents.slice(0, MAX_VISIBLES_POR_DIA).map(ev => {
-                    let icon = ev.photo?.trim() ? `<img src="${ev.photo}" style="width:16px;height:16px;border-radius:50%;vertical-align:middle;" />` :
-                        ({"todos":"👥","Profesores":"👩‍🏫","Estudiantes":"👦","Orquesta Infantil":"🎻","Orquesta Juvenil":"🎺"}[ev.groups[0]] || "👥");
-                    return `<span class="evento" style="background:${ev.color}" data-eventid="${ev.id}">${icon} ${ev.title}</span>`;
-                }).join("");
-                if (dayEvents.length > MAX_VISIBLES_POR_DIA) {
-                    eventoHtml += `<span class="evento-mas" data-date="${dateStr}">+${dayEvents.length - MAX_VISIBLES_POR_DIA} más</span>`;
-                }
-                const esHoy = dateStr === hoyStr ? " es-hoy" : "";
-                html += `<div class="dia-numero${esHoy}" data-date="${dateStr}">${d}${esHoy ? '<span class="badge-hoy-punto" title="Hoy"></span>' : ""}${eventoHtml}</div>`;
-            }
-            const totalCells = firstDay-1 + daysInMonth;
-            const nextDays = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
-            for (let i = 1; i <= nextDays; i++) {
-                html += `<div class="dia-numero otro-mes">${i}</div>`;
-            }
-            grid.innerHTML += html;
+        // ============== CALENDARIO 2.0 ==============
+        function textoVisibilidad() {
+            if (!nucleoActivo) return "";
+            if (GESTORES.includes(session.role)) return `<i class="fa-solid fa-eye"></i> Viendo todos los eventos de ${esc(nucleoActivo.nombre)}`;
+            const quien = session.role === "profesor" ? "profesores" : "estudiantes";
+            return `<i class="fa-solid fa-eye"></i> Viendo los eventos para ${quien}${session.group ? ", para " + esc(session.group)  : ""} y los dirigidos a todos`;
         }
-        // La suscripción real (con filtro por núcleo) la arma cambiarNucleoActivo().
 
-        // Modal de evento
-        document.getElementById("calendario-grid").addEventListener("click", (e) => {
-            const eventoEl = e.target.closest(".evento");
-            if (eventoEl) {
-                const eventId = eventoEl.dataset.eventid;
-                const esAdmin = window.Auth?.checkPermission && window.Auth.checkPermission("manage_users");
-                abrirModalEvento(eventId, esAdmin);
-                return;
+        function renderCalendario() {
+            const grid = $("calendario-grid");
+            $("month-year").innerHTML = `${MESES[currentMonth]} ${currentYear} <i class="fa-solid fa-chevron-down"></i>`;
+            $("cal-visibilidad").innerHTML = textoVisibilidad();
+            $("btn-nuevo-evento").style.display = puedeGestionar && nucleoActivo ? "inline-flex" : "none";
+
+            let html = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map((d) => `<div class="cal-sem">${d}</div>`).join("");
+            if (!eventosCargados) {
+                html += Array.from({ length: 35 }, () => `<div class="skeleton cal-esqueleto"></div>`).join("");
+                grid.innerHTML = html; return;
             }
-            // v3.0 (P-28): "+N más" abre la lista completa de eventos de ese día
-            const masEl = e.target.closest(".evento-mas");
-            if (masEl) mostrarEventosDelDia(masEl.dataset.date);
+            const visibles = events.filter(visibleParaMi);
+            const porDia = new Map();
+            visibles.forEach((e) => { if (!porDia.has(e.date)) porDia.set(e.date, []); porDia.get(e.date).push(e); });
+            porDia.forEach((l) => l.sort((a, b) => (a.time || "99").localeCompare(b.time || "99")));
+
+            const primero = new Date(currentYear, currentMonth, 1).getDay() || 7;
+            const dias = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const diasPrev = new Date(currentYear, currentMonth, 0).getDate();
+            const hoy = fechaLocalISO();
+            for (let i = primero - 1; i > 0; i--) html += `<div class="cal-dia otro-mes"><span class="cal-num">${diasPrev - i + 1}</span></div>`;
+            for (let d = 1; d <= dias; d++) {
+                const ds = `${currentYear}-${pad(currentMonth + 1)}-${pad(d)}`;
+                const lista = porDia.get(ds) || [];
+                const MAX = 2;
+                const pills = lista.slice(0, MAX).map((e) => `<span class="cal-ev" style="background:${colorSeguro(e.color)}" data-id="${esc(e.id)}" title="${esc(e.title)}">${e.time ? esc(e.time) + " " : ""}${esc(e.title)}</span>`).join("");
+                const mas = lista.length > MAX ? `<span class="cal-mas">+${lista.length - MAX} más</span>` : "";
+                const puntos = lista.length ? `<span class="cal-puntos">${lista.slice(0, 4).map((e) => `<i style="background:${colorSeguro(e.color)}"></i>`).join("")}</span>` : "";
+                html += `<div class="cal-dia${ds === hoy ? " es-hoy" : ""}" data-date="${ds}" tabindex="0" role="button" aria-label="${d} de ${MESES[currentMonth]}${lista.length ? ", " + lista.length + " evento(s)" : ""}"><span class="cal-num">${d}</span>${pills}${mas}${puntos}</div>`;
+            }
+            const usadas = primero - 1 + dias;
+            const resto = usadas % 7 === 0 ? 0 : 7 - (usadas % 7);
+            for (let i = 1; i <= resto; i++) html += `<div class="cal-dia otro-mes"><span class="cal-num">${i}</span></div>`;
+            grid.innerHTML = html;
+            renderProximos(visibles);
+        }
+
+        function renderProximos(visibles) {
+            const hoy = fechaLocalISO();
+            const prox = visibles.filter((e) => e.date >= hoy).sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || ""))).slice(0, 4);
+            $("proximos-lista").innerHTML = prox.length ? prox.map((e) => {
+                const [y, m, d] = e.date.split("-");
+                return `<button type="button" class="proximo-item" data-id="${esc(e.id)}">
+                    <span class="proximo-fecha" style="background:${colorSeguro(e.color)}"><b>${parseInt(d, 10)}</b><small>${MESES[parseInt(m, 10) - 1].slice(0, 3)}</small></span>
+                    <span class="proximo-info"><strong>${esc(e.title)}</strong><small>${e.time ? esc(e.time) : "Todo el día"}${e.location ? " · " + esc(e.location) : ""}</small></span></button>`;
+            }).join("") : `<p class="proximos-vacio">No hay eventos próximos.</p>`;
+        }
+        $("proximos-lista").addEventListener("click", (e) => { const b = e.target.closest(".proximo-item"); if (b) abrirEvento(b.dataset.id); });
+
+        $("calendario-grid").addEventListener("click", (e) => {
+            const pill = e.target.closest(".cal-ev");
+            if (pill) { abrirEvento(pill.dataset.id); return; }
+            const dia = e.target.closest(".cal-dia[data-date]");
+            if (dia) abrirDia(dia.dataset.date);
+        });
+        $("calendario-grid").addEventListener("keydown", (e) => {
+            if (e.key !== "Enter" && e.key !== " ") return;
+            const dia = e.target.closest(".cal-dia[data-date]"); if (dia) { e.preventDefault(); abrirDia(dia.dataset.date); }
         });
 
-        function mostrarEventosDelDia(dateStr) {
-            const esAdmin = window.Auth?.checkPermission && window.Auth.checkPermission("manage_users");
-            const delDia = events.filter(ev => ev.date === dateStr);
-            const [y, m, d] = dateStr.split("-");
-            const fechaLegible = `${d}/${m}/${y}`;
-            const overlay = document.createElement("div");
-            overlay.className = "modal-overlay dialogo-overlay";
-            overlay.style.cssText = "display:flex;z-index:10500;";
-            overlay.innerHTML = `
-                <div class="modal-content dialogo-content" style="text-align:left;max-width:380px;">
-                    <h3 style="text-align:center;"><i class="fa-solid fa-calendar-day"></i> Eventos del ${fechaLegible}</h3>
-                    <div style="display:flex;flex-direction:column;gap:0.5rem;margin:1rem 0;">
-                        ${delDia.map(ev => `
-                            <button type="button" class="btn-config-mini evento-del-dia-item" data-id="${ev.id}" style="justify-content:flex-start;background:${ev.color};color:#1a1a1a;">
-                                ${window._escapeHtml(ev.title)}${ev.time ? " · " + ev.time : ""}
-                            </button>`).join("")}
-                    </div>
-                    <div class="dialogo-botones"><button type="button" class="btn btn-cerrar" id="cerrar-eventos-dia">Cerrar</button></div>
-                </div>`;
-            document.body.appendChild(overlay);
-            const cerrar = () => overlay.remove();
-            overlay.addEventListener("click", (e) => { if (e.target === overlay) cerrar(); });
-            overlay.querySelector("#cerrar-eventos-dia").addEventListener("click", cerrar);
-            overlay.querySelectorAll(".evento-del-dia-item").forEach(btn => {
-                btn.addEventListener("click", () => { cerrar(); abrirModalEvento(btn.dataset.id, esAdmin); });
-            });
-        }
-
-        function abrirNuevoEvento() {
-            if (!nucleoActivo) { window._showToast?.("Elegí un núcleo primero", "error"); return; }
-            abrirModalEvento(null, true);
-        }
-
-        document.querySelectorAll("#event-color-swatches .color-swatch").forEach(sw => {
-            const elegir = () => {
-                document.getElementById("event-color").value = sw.dataset.color;
-                document.querySelectorAll("#event-color-swatches .color-swatch").forEach(s => s.classList.remove("activo"));
-                sw.classList.add("activo");
-            };
-            sw.addEventListener("click", elegir);
-            // v3.0 (P-31/accesibilidad): operable con teclado (Enter/Espacio)
-            sw.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); elegir(); } });
+        function guardarPosicion() { try { sessionStorage.setItem("panel_calendario_pos", JSON.stringify({ m: currentMonth, y: currentYear })); } catch {} }
+        $("prev-month").addEventListener("click", () => { if (currentMonth === 0) { currentMonth = 11; currentYear--; } else currentMonth--; renderCalendario(); guardarPosicion(); });
+        $("next-month").addEventListener("click", () => { if (currentMonth === 11) { currentMonth = 0; currentYear++; } else currentMonth++; renderCalendario(); guardarPosicion(); });
+        $("btn-hoy-calendario").addEventListener("click", () => { currentMonth = new Date().getMonth(); currentYear = new Date().getFullYear(); renderCalendario(); guardarPosicion(); });
+        $("month-year").addEventListener("click", () => {
+            const pop = $("mes-anio-popover");
+            if (pop.style.display === "flex") { pop.style.display = "none"; return; }
+            $("select-mes-rapido").innerHTML = MESES.map((m, i) => `<option value="${i}" ${i === currentMonth ? "selected" : ""}>${m}</option>`).join("");
+            const a0 = new Date().getFullYear(); const anios = []; for (let a = a0 - 3; a <= a0 + 3; a++) anios.push(a);
+            $("select-anio-rapido").innerHTML = anios.map((a) => `<option value="${a}" ${a === currentYear ? "selected" : ""}>${a}</option>`).join("");
+            pop.style.display = "flex";
+        });
+        $("btn-ir-mes-rapido").addEventListener("click", () => {
+            currentMonth = parseInt($("select-mes-rapido").value, 10); currentYear = parseInt($("select-anio-rapido").value, 10);
+            renderCalendario(); guardarPosicion(); $("mes-anio-popover").style.display = "none";
         });
 
-        // Trae las agrupaciones REALES del núcleo activo (las mismas que se
-        // crean en Piezas) para poder marcar un evento visible solo para
-        // "Orquesta Juvenil" o la que sea, en vez de una lista fija inventada.
-        async function cargarAgrupacionesEnSelectorEvento() {
-            const select = document.getElementById("event-group");
-            // Quitamos las agrupaciones cargadas antes (dejamos las 3 fijas: todos/profesores/estudiantes)
-            [...select.querySelectorAll("option[data-agrupacion]")].forEach(o => o.remove());
-            if (!nucleoActivo) return;
-            try {
-                const snap = await getDocs(query(collection(db, "agrupaciones"), where("nucleo", "==", nucleoActivo)));
-                snap.docs.forEach(d => {
-                    const opt = document.createElement("option");
-                    opt.value = d.data().nombre;
-                    opt.textContent = d.data().nombre;
-                    opt.dataset.agrupacion = "1";
-                    select.appendChild(opt);
-                });
-            } catch (err) {
-                console.error("No se pudieron cargar las agrupaciones para el evento:", err);
-            }
+        // ----- Eventos de un día -----
+        let diaAbierto = "";
+        function abrirDia(ds) {
+            diaAbierto = ds;
+            const [y, m, d] = ds.split("-").map(Number);
+            const larga = new Date(y, m - 1, d).toLocaleDateString("es-VE", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+            $("dia-titulo").textContent = larga.charAt(0).toUpperCase() + larga.slice(1);
+            const lista = events.filter((e) => e.date === ds && visibleParaMi(e)).sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
+            $("dia-lista").innerHTML = lista.length ? lista.map((e) => `
+                <button type="button" class="dia-ev" data-id="${esc(e.id)}">
+                    <span class="dia-ev-barra" style="background:${colorSeguro(e.color)}"></span>
+                    <span class="dia-ev-info"><strong>${esc(e.title)}</strong>
+                    <small>${e.time ? '<i class="fa-regular fa-clock"></i> ' + esc(e.time) : "Todo el día"}${e.location ? " · " + esc(e.location) : ""}</small>
+                    <small>${(e.audiencia || []).map(etiquetaAudiencia).map(esc).join(" · ")}</small></span>
+                </button>`).join("") : `<p class="campo-ayuda" style="font-size:0.95rem;">No hay eventos este día.</p>`;
+            $("dia-acciones").style.display = puedeGestionar && nucleoActivo ? "flex" : "none";
+            $("dia-modal").style.display = "flex";
         }
+        $("dia-lista").addEventListener("click", (e) => { const b = e.target.closest(".dia-ev"); if (b) { $("dia-modal").style.display = "none"; abrirEvento(b.dataset.id); } });
+        $("dia-close-btn").addEventListener("click", () => ($("dia-modal").style.display = "none"));
+        $("btn-evento-en-dia").addEventListener("click", () => { $("dia-modal").style.display = "none"; abrirEvento(null, diaAbierto); });
+        $("btn-nuevo-evento").addEventListener("click", () => abrirEvento(null, fechaLocalISO()));
 
-        async function abrirModalEvento(eventId, esEdicion) {
-            const esAdmin = window.Auth?.checkPermission && window.Auth.checkPermission("manage_users");
-            const ev = eventId ? events.find(e => String(e.id) === String(eventId)) : null;
+        // ----- Ver / crear / editar un evento -----
+        let audienciaElegida = new Set();
+        const SWATCHES = [["#ffeaa7","Amarillo"],["#a7d8ff","Celeste"],["#b7f0ad","Verde"],["#ffb3b3","Rojo claro"],["#d9b8ff","Violeta"],["#ffcf9e","Naranja"]];
+        $("event-swatches").innerHTML = SWATCHES.map(([c, n]) => `<div class="swatch" data-color="${c}" style="background:${c}" title="${n}" role="button" tabindex="0" aria-label="Color ${n}"></div>`).join("");
+        function elegirColor(c) { $("event-color").value = c; document.querySelectorAll("#event-swatches .swatch").forEach((s) => s.classList.toggle("activo", s.dataset.color === c)); }
+        $("event-swatches").addEventListener("click", (e) => { const s = e.target.closest(".swatch"); if (s) elegirColor(s.dataset.color); });
+        $("event-swatches").addEventListener("keydown", (e) => { const s = e.target.closest(".swatch"); if (s && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); elegirColor(s.dataset.color); } });
 
-            document.getElementById("event-id").value = eventId || "";
-            document.getElementById("event-date").value = ev ? ev.date : "";
-            document.getElementById("event-title").value = ev ? ev.title : "";
-            document.getElementById("event-time").value = ev ? (ev.time || "") : "";
-            document.getElementById("event-location").value = ev ? (ev.location || "") : "";
-            document.getElementById("event-photo").value = ev ? (ev.photo || "") : "";
-            document.getElementById("event-desc").value = ev ? (ev.desc || "") : "";
-            document.getElementById("event-color").value = ev ? (ev.color || "#ffeaa7") : "#ffeaa7";
-            document.querySelectorAll("#event-color-swatches .color-swatch").forEach(sw => {
-                sw.classList.toggle("activo", sw.dataset.color === document.getElementById("event-color").value);
-            });
-            document.getElementById("event-photo-file").value = "";
-            eventPhotoUrl = ev ? (ev.photo || "") : "";
-
-            const photoRow = document.getElementById("event-photo-row");
-            const colorRow = document.getElementById("event-color-row");
-            const groupRow = document.getElementById("event-group-row");
-            const preview = document.getElementById("event-photo-preview");
-
-            if (esAdmin && esEdicion) {
-                photoRow.style.display = "flex";
-                colorRow.style.display = "flex";
-                groupRow.style.display = "flex";
-            } else {
-                photoRow.style.display = "none";
-                colorRow.style.display = "none";
-                groupRow.style.display = "none";
-            }
-            if (ev?.photo?.trim()) {
-                preview.src = ev.photo;
-                preview.style.display = "block";
-            } else {
-                preview.style.display = "none";
-            }
-
-            if (esAdmin && esEdicion) {
-                await cargarAgrupacionesEnSelectorEvento();
-                const groupSelect = document.getElementById("event-group");
-                [...groupSelect.options].forEach(opt => opt.selected = ev ? ev.groups.includes(opt.value) : false);
-            }
-
-            const campos = document.querySelectorAll("#event-modal .form-control");
-            const fileInput = document.getElementById("event-photo-file");
-            campos.forEach(c => c.disabled = !(esAdmin && esEdicion));
-            if (fileInput) fileInput.disabled = !(esAdmin && esEdicion);
-            
-            document.getElementById("admin-controls").style.display = (esAdmin && esEdicion) ? "flex" : "none";
-            document.getElementById("event-modal-title").textContent = ev ? (esAdmin && esEdicion ? "Editar Evento" : "Detalles del Evento") : "Agregar Evento";
-            document.getElementById("event-modal").style.display = "flex";
+        function pintarAudiencia() {
+            const opciones = [["todos", "Todos"], ["profesor", "Profesores"], ["estudiante", "Estudiantes"], ...agrupacionesNucleo.map((a) => ["agr:" + a, a])];
+            [...audienciaElegida].forEach((t) => { if (!opciones.some(([v]) => v === t)) opciones.push([t, etiquetaAudiencia(t)]); });
+            $("event-audiencia").innerHTML = opciones.map(([v, l]) => `<button type="button" class="chip ${audienciaElegida.has(v) ? "activo" : ""}" data-v="${esc(v)}">${v === "todos" ? '<i class="fa-solid fa-users"></i>' : v.startsWith("agr:") ? '<i class="fa-solid fa-music"></i>' : '<i class="fa-solid fa-user"></i>'} ${esc(l)}</button>`).join("");
         }
-
-        document.getElementById("event-photo-file").addEventListener("change", function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            abrirEditorImagen(file, OPCIONES_EDITOR_EVENTO, (url) => {
-                if (url) {
-                    document.getElementById("event-photo").value = url;
-                    eventPhotoUrl = url;
-                    document.getElementById("event-photo-preview").src = url;
-                    document.getElementById("event-photo-preview").style.display = "block";
-                }
-                e.target.value = "";
-            });
+        $("event-audiencia").addEventListener("click", (e) => {
+            const c = e.target.closest(".chip"); if (!c) return;
+            const v = c.dataset.v;
+            if (v === "todos") { audienciaElegida = new Set(["todos"]); }
+            else { audienciaElegida.delete("todos"); audienciaElegida.has(v) ? audienciaElegida.delete(v) : audienciaElegida.add(v); }
+            pintarAudiencia();
         });
 
-        document.getElementById("save-event-btn").addEventListener("click", async () => {
-            if (!window.Auth?.checkPermission || !window.Auth.checkPermission("manage_users")) return;
-            const id = document.getElementById("event-id").value;
-            if (!nucleoActivo) { window._showToast?.("Elegí un núcleo antes de guardar", "error"); return; }
+        let eventPhotoUrl = "";
+        function mostrarFoto(url) {
+            eventPhotoUrl = url || "";
+            const img = $("event-photo-preview");
+            img.style.display = url ? "block" : "none"; if (url) img.src = url;
+            $("btn-quitar-foto").style.display = url ? "inline-flex" : "none";
+        }
+        $("btn-elegir-foto").addEventListener("click", () => $("event-photo-file").click());
+        $("btn-quitar-foto").addEventListener("click", () => mostrarFoto(""));
+        $("event-photo-file").addEventListener("change", (e) => {
+            const f = e.target.files[0]; if (!f) return;
+            abrirEditorImagen(f, OPCIONES_EDITOR_EVENTO, (url) => { if (url) mostrarFoto(url); e.target.value = ""; });
+        });
+
+        function abrirEvento(id, fechaNueva) {
+            const ev = id ? events.find((e) => String(e.id) === String(id)) : null;
+            const editable = puedeGestionar && nucleoActivo;
+            if (id && !ev) return;
+            if (!ev && !editable) return;
+            if (ev && !visibleParaMi(ev)) return;
+            if (editable) {
+                $("evento-detalle").style.display = "none"; $("evento-form").style.display = "block";
+                $("evento-modal-titulo").textContent = ev ? "Editar evento" : "Nuevo evento";
+                $("event-id").value = ev?.id || "";
+                $("event-title").value = ev?.title || "";
+                $("event-date").value = ev?.date || fechaNueva || fechaLocalISO();
+                $("event-time").value = ev?.time || "";
+                $("event-location").value = ev?.location || "";
+                $("event-desc").value = ev?.desc || "";
+                elegirColor(colorSeguro(ev?.color));
+                mostrarFoto(urlSegura(ev?.photo));
+                audienciaElegida = new Set(ev?.audiencia?.length ? ev.audiencia : ["todos"]);
+                pintarAudiencia();
+                $("delete-event-btn").style.display = ev ? "inline-flex" : "none";
+            } else {
+                $("evento-form").style.display = "none"; $("evento-detalle").style.display = "block";
+                $("evento-modal-titulo").textContent = ev.title;
+                const [y, m, d] = ev.date.split("-").map(Number);
+                const larga = new Date(y, m - 1, d).toLocaleDateString("es-VE", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+                $("evento-detalle").innerHTML = `
+                    <div class="detalle-barra" style="background:${colorSeguro(ev.color)}"></div>
+                    ${urlSegura(ev.photo) ? `<img class="detalle-foto" src="${esc(ev.photo)}" alt="">` : ""}
+                    <div class="detalle-fila"><i class="fa-regular fa-calendar"></i><span>${esc(larga)}${ev.time ? " · " + esc(ev.time) : ""}</span></div>
+                    ${ev.location ? `<div class="detalle-fila"><i class="fa-solid fa-location-dot"></i><span>${esc(ev.location)}</span></div>` : ""}
+                    ${ev.desc ? `<div class="detalle-fila"><i class="fa-solid fa-align-left"></i><span>${esc(ev.desc).replace(/\n/g, "<br>")}</span></div>` : ""}
+                    <div class="chips" style="margin-top:0.6rem;">${(ev.audiencia || []).map((t) => `<span class="chip activo" style="cursor:default;">${esc(etiquetaAudiencia(t))}</span>`).join("")}</div>`;
+            }
+            $("evento-modal").style.display = "flex";
+        }
+        $("evento-close-btn").addEventListener("click", () => ($("evento-modal").style.display = "none"));
+
+        $("save-event-btn").addEventListener("click", async () => {
+            if (!puedeGestionar || !nucleoActivo) return;
+            const id = $("event-id").value;
             const evento = {
-                date: document.getElementById("event-date").value,
-                title: document.getElementById("event-title").value,
-                time: document.getElementById("event-time").value,
-                location: document.getElementById("event-location").value,
-                photo: eventPhotoUrl || document.getElementById("event-photo").value,
-                desc: document.getElementById("event-desc").value,
-                color: document.getElementById("event-color").value,
-                groups: [...document.getElementById("event-group").selectedOptions].map(o => o.value),
-                nucleo: nucleoActivo
+                date: $("event-date").value, title: $("event-title").value.trim(), time: $("event-time").value,
+                location: $("event-location").value.trim(), desc: $("event-desc").value.trim(),
+                photo: eventPhotoUrl, color: colorSeguro($("event-color").value),
+                audiencia: [...audienciaElegida], nucleo: nucleoActivo.nombre, estado: nucleoActivo.estado || ""
             };
-            // v3.0 (G-02/P-29): reemplaza el alert() nativo por un toast, y
-            // ahora también avisa cuando SÍ se guarda bien (antes el modal
-            // se cerraba en silencio y no quedaba claro si había funcionado).
-            if (!evento.date || !evento.title) { window._showToast?.("Fecha y título son obligatorios.", "error"); return; }
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(evento.date) || !evento.title) { window._showToast?.("La fecha y el título son obligatorios.", "error"); return; }
+            if (!evento.audiencia.length) { window._showToast?.("Elige a quién va dirigido el evento.", "error"); return; }
+            const btn = $("save-event-btn"); btn.disabled = true;
             try {
-                if (id) {
-                    await updateDoc(doc(eventosCol, id), evento);
-                } else {
-                    await addDoc(eventosCol, evento);
-                }
-                document.getElementById("event-modal").style.display = "none";
+                if (id) await updateDoc(doc(eventosCol, id), { ...evento, editadoPor: sesionReal.uid, fechaEdicion: new Date().toISOString() });
+                else await addDoc(eventosCol, { ...evento, creadoPor: sesionReal.uid, creadoPorNombre: sesionReal.nombre || "", fechaCreacion: new Date().toISOString() });
+                $("evento-modal").style.display = "none";
                 window._showToast?.("Evento guardado correctamente", "success");
-            } catch (err) { window._showToast?.("Error: " + err.message, "error"); }
+            } catch (err) { window._showToast?.("No se pudo guardar: " + err.message, "error"); }
+            finally { btn.disabled = false; }
+        });
+        $("delete-event-btn").addEventListener("click", async () => {
+            const id = $("event-id").value; if (!id || !puedeGestionar) return;
+            const titulo = $("event-title").value || "este evento";
+            const ok = await window._confirmDialog(`Vas a eliminar <strong>"${esc(titulo)}"</strong>. Esta acción no se puede deshacer.`, { titulo: "¿Eliminar evento?", peligroso: true, textoOk: "Sí, eliminar" });
+            if (!ok) return;
+            try { await deleteDoc(doc(eventosCol, id)); $("evento-modal").style.display = "none"; window._showToast?.("Evento eliminado", "success"); }
+            catch (err) { window._showToast?.("No se pudo eliminar: " + err.message, "error"); }
         });
 
-        document.getElementById("delete-event-btn").addEventListener("click", async () => {
-            if (!window.Auth?.checkPermission || !window.Auth.checkPermission("manage_users")) return;
-            const id = document.getElementById("event-id").value;
-            if (!id) return;
-            // v3.0 (G-02): reemplaza el confirm() nativo por el diálogo
-            // estilizado del sitio.
-            const tituloEvento = document.getElementById("event-title").value || "este evento";
-            const ok = await window._confirmDialog(`Vas a eliminar <strong>"${tituloEvento}"</strong>. Esta acción no se puede deshacer.`, { titulo: "¿Eliminar evento?", peligroso: true, textoOk: "Sí, eliminar" });
-            if (ok) {
-                try {
-                    await deleteDoc(doc(eventosCol, id));
-                    document.getElementById("event-modal").style.display = "none";
-                    window._showToast?.("Evento eliminado", "success");
-                } catch (err) { window._showToast?.("Error: " + err.message, "error"); }
-            }
-        });
-
-        document.getElementById("close-event-modal").addEventListener("click", () => document.getElementById("event-modal").style.display = "none");
-        document.getElementById("event-close-btn").addEventListener("click", () => document.getElementById("event-modal").style.display = "none");
-
-        document.getElementById("prev-month").addEventListener("click", () => {
-            if (currentMonth === 0) { currentMonth = 11; currentYear--; }
-            else currentMonth--;
-            renderCalendar();
-            guardarPosicionCalendario();
-        });
-        document.getElementById("next-month").addEventListener("click", () => {
-            if (currentMonth === 11) { currentMonth = 0; currentYear++; }
-            else currentMonth++;
-            renderCalendar();
-            guardarPosicionCalendario();
-        });
-
-        // v3.0 (P-26): recuerda el mes que se estaba viendo al volver a la
-        // página (antes siempre reiniciaba al mes actual).
-        function guardarPosicionCalendario() {
-            try { sessionStorage.setItem("panel_calendario_pos", JSON.stringify({ m: currentMonth, y: currentYear })); } catch {}
-        }
-        (function restaurarPosicionCalendario() {
-            try {
-                const guardado = JSON.parse(sessionStorage.getItem("panel_calendario_pos") || "null");
-                if (guardado && Number.isInteger(guardado.m) && Number.isInteger(guardado.y)) {
-                    currentMonth = guardado.m; currentYear = guardado.y;
-                }
-            } catch {}
-        })();
-
-        // v3.0 (G-17): botón "Hoy" + selector rápido de mes/año.
-        document.getElementById("btn-hoy-calendario").addEventListener("click", () => {
-            currentMonth = new Date().getMonth();
-            currentYear = new Date().getFullYear();
-            renderCalendar();
-            guardarPosicionCalendario();
-        });
-        const popoverMesAnio = document.getElementById("mes-anio-popover");
-        document.getElementById("month-year").addEventListener("click", () => {
-            const abierto = popoverMesAnio.style.display === "flex";
-            if (abierto) { popoverMesAnio.style.display = "none"; return; }
-            const months = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-            const selMes = document.getElementById("select-mes-rapido");
-            const selAnio = document.getElementById("select-anio-rapido");
-            selMes.innerHTML = months.map((m, i) => `<option value="${i}" ${i === currentMonth ? "selected" : ""}>${m}</option>`).join("");
-            const anioActual = new Date().getFullYear();
-            const anios = []; for (let a = anioActual - 3; a <= anioActual + 2; a++) anios.push(a);
-            selAnio.innerHTML = anios.map(a => `<option value="${a}" ${a === currentYear ? "selected" : ""}>${a}</option>`).join("");
-            popoverMesAnio.style.display = "flex";
-        });
-        document.getElementById("btn-ir-mes-rapido").addEventListener("click", () => {
-            currentMonth = parseInt(document.getElementById("select-mes-rapido").value, 10);
-            currentYear = parseInt(document.getElementById("select-anio-rapido").value, 10);
-            renderCalendar();
-            guardarPosicionCalendario();
-            popoverMesAnio.style.display = "none";
-        });
-
-        document.getElementById("edit-calendar-btn").addEventListener("click", abrirNuevoEvento);
-
-        // ====================== MIGRACIÓN DE DATOS ANTIGUOS (localStorage → Firestore) ======================
-        (async function migrar() {
-            try {
-                // Migrar flyers
-                const oldFlyers = localStorage.getItem("sistemaOrquestas_flyers");
-                if (oldFlyers) {
-                    const flyersArray = JSON.parse(oldFlyers);
-                    const snap = await getDocs(flyersCol);
-                    if (snap.empty) {
-                        const batch = writeBatch(db);
-                        flyersArray.forEach((f, i) => {
-                            const newDoc = doc(flyersCol);
-                            batch.set(newDoc, { url: f.src || "", alt: f.alt || "", text: f.text || "", orden: i });
-                        });
-                        await batch.commit();
-                    }
-                    localStorage.removeItem("sistemaOrquestas_flyers");
-                }
-
-                // Migrar eventos
-                const oldEvents = localStorage.getItem("sistemaOrquestas_events");
-                if (oldEvents) {
-                    const eventsArray = JSON.parse(oldEvents);
-                    const snap = await getDocs(eventosCol);
-                    if (snap.empty) {
-                        const batch = writeBatch(db);
-                        eventsArray.forEach(ev => {
-                            const newDoc = doc(eventosCol);
-                            batch.set(newDoc, ev); // preserva la estructura antigua
-                        });
-                        await batch.commit();
-                    }
-                    localStorage.removeItem("sistemaOrquestas_events");
-                }
-            } catch (error) { console.warn("Migración omitida:", error); }
-        })();
-
-        // ====================== INICIALIZACIÓN FINAL (corrección de carrera) ======================
-        if (window.UI?.render) {
-            window.UI.render();
+        // ============== ARRANQUE ==============
+        window.UI?.render?.();
+        renderCalendario();
+        if (puedeGestionar) $("edit-flyers-btn").style.display = "flex";
         }
 
-        // Pinta el calendario YA (con lo que haya, aunque sea vacío) para que
-        // nunca se quede "incompleto" esperando a que Firestore responda.
-        renderCalendar();
-        actualizarEncabezadoNucleo();
-        (async () => {
-            await cargarSelectorNucleos();
-            actualizarEncabezadoNucleo();
-            cambiarNucleoActivo();
-        })();
-
-        setTimeout(() => {
-            // Mismo permiso que realmente usan los botones de guardar (manage_users),
-            // así no aparece un botón que después no deja hacer nada.
-            if (window.Auth?.checkPermission && window.Auth.checkPermission("manage_users")) {
-                const btnFlyers = document.getElementById("edit-flyers-btn");
-                const btnCalendar = document.getElementById("edit-calendar-btn");
-                if (btnFlyers) btnFlyers.style.display = "block";
-                if (btnCalendar) btnCalendar.style.display = "block";
-            }
-        }, 0);
+        if (window.Auth?.getSession()) iniciar();
+        else window.addEventListener("auth-ready", iniciar, { once: true });
     </script>
 </body>
 </html>

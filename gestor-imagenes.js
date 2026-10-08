@@ -32,7 +32,7 @@ export async function subirACloudinary(blob, carpeta = "general") {
     // Maximum is 10485760."), que no dice nada útil para alguien que no
     // sabe qué es Cloudinary. Ahora se avisa antes de mandar nada, en
     // español y en MB.
-    throw new Error(`El archivo pesa ${formatoMB(blob.size)} MB y el máximo permitido es ${TAMANO_MAXIMO_MB} MB. Probá con un archivo más liviano (por ejemplo, escaneando en menor resolución o comprimiendo el PDF).`);
+    throw new Error(`El archivo pesa ${formatoMB(blob.size)} MB y el máximo permitido es ${TAMANO_MAXIMO_MB} MB. Prueba con un archivo más liviano (por ejemplo, escaneando en menor resolución o comprimiendo el PDF).`);
   }
   const fd = new FormData();
   fd.append("file", blob);
@@ -52,7 +52,7 @@ export async function subirACloudinary(blob, carpeta = "general") {
     // igual en vez de mostrar el bytes crudo en inglés.
     const coincideTamano = detalle.match(/File size too large\.\s*Got\s*(\d+)\.\s*Maximum is\s*(\d+)/i);
     if (coincideTamano) {
-      detalle = `El archivo pesa ${formatoMB(Number(coincideTamano[1]))} MB y el máximo permitido es ${formatoMB(Number(coincideTamano[2]))} MB. Probá con un archivo más liviano.`;
+      detalle = `El archivo pesa ${formatoMB(Number(coincideTamano[1]))} MB y el máximo permitido es ${formatoMB(Number(coincideTamano[2]))} MB. Prueba con un archivo más liviano.`;
     }
     throw new Error(detalle || "No se pudo subir el archivo a Cloudinary");
   }

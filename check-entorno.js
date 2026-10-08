@@ -13,9 +13,9 @@
       "text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);";
     aviso.innerHTML =
       "⚠️ Abriste este archivo directamente (file://). Los inicios de sesión y menús " +
-      "NO funcionan así por seguridad del navegador. Usá la extensión <b>Live Server</b> " +
+      "NO funcionan así por seguridad del navegador. Usa la extensión <b>Live Server</b> " +
       "de VS Code (clic derecho → \"Open with Live Server\") o corré " +
-      "<code>python3 -m http.server</code> y entrá por http://localhost.";
+      "<code>python3 -m http.server</code> y entra por http://localhost.";
     document.body.prepend(aviso);
   });
 })();
@@ -60,7 +60,7 @@
       var nav = document.getElementById("user-nav") || document.getElementById("login-area");
       if (nav && !nav.innerHTML.trim()) {
         nav.innerHTML = '<a href="login.html" class="btn btn-nav btn-login">Iniciar Sesión</a>';
-        console.warn("⚠️ Se activó el botón de login de emergencia (check-entorno.js). Esto significa que ui-manager.js no llegó a ejecutarse — revisá el cartel de error de arriba.");
+        console.warn("⚠️ Se activó el botón de login de emergencia (check-entorno.js). Esto significa que ui-manager.js no llegó a ejecutarse — revisa el cartel de error de arriba.");
       }
     }, 2500);
   });

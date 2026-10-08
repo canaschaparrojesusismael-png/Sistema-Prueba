@@ -1,230 +1,98 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es-VE">
 <head>
 <script>if(localStorage.getItem("darkMode")==="true")document.documentElement.classList.add("dark-mode");</script>
-
 <script>
-  if (!sessionStorage.getItem("sistemaOrquestas_session") && !localStorage.getItem("sistemaOrquestas_session")) {
-    window.location.href = "login.html";
-  }
+  if (!sessionStorage.getItem("sistemaOrquestas_session") && !localStorage.getItem("sistemaOrquestas_session")) { window.location.href = "login.html"; }
 </script>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Recurso – Sistema de Orquestas</title>
-    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=17.0">
-    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=17.0">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=17.0">
-    <meta property="og:title" content="Recurso de Formación — Sistema de Orquestas">
-    <meta property="og:description" content="Material de estudio del Sistema de Orquestas.">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=22.0">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=22.0">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=22.0">
+    <meta property="og:title" content="Recurso — Sistema de Orquestas">
+    <meta property="og:description" content="Recurso de formación.">
     <meta property="og:type" content="website">
     <meta property="og:image" content="icon-512.png">
-    <link rel="stylesheet" href="estilos.css?v=17.0">
+    <link rel="stylesheet" href="estilos.css?v=22.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /*
-          v3.0 (G-20): página secundaria de detalle de un recurso, pedida
-          explícitamente para no depender solo de un modal chico. Sigue el
-          mismo criterio de diseño que el resto del sitio (mismas variables
-          de color, mismas tarjetas), definido acá igual que en las demás
-          páginas — ver G-01 en el plan para la consolidación futura de
-          estos bloques <style> repetidos en un solo lugar.
-        */        .back-link { display: inline-block; margin: 1.5rem 0 1rem; color: var(--color-primario); font-weight: 600; text-decoration: none; align-self: flex-start; width: fit-content; text-align: left; }
-        .back-link:hover { text-decoration: underline; }
-
-        .recurso-header {
-            display: flex; align-items: flex-start; gap: 1rem; flex-wrap: wrap;
-            margin-bottom: 0.6rem;
-        }
-        .recurso-icono-grande {
-            font-size: 2.4rem; line-height: 1; flex-shrink: 0;
-            width: 64px; height: 64px; border-radius: var(--border-radius);
-            background: var(--color-secundario); display: flex; align-items: center; justify-content: center;
-        }
-        .recurso-titulo-wrap h1 { font-size: 1.5rem; color: var(--color-primario); margin: 0 0 0.35rem; }
-        .recurso-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; font-size: 0.8rem; color: var(--color-texto-claro); }
-        .recurso-meta .tipo-badge {
-            font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
-            padding: 0.2rem 0.55rem; border-radius: 999px; background: var(--color-secundario); color: var(--color-primario);
-        }
-        .recurso-descripcion { color: var(--color-texto); max-width: 700px; margin: 0.9rem 0 1.4rem; line-height: 1.55; }
-
-        .recurso-visor {
-            background: var(--color-blanco); border: 1px solid var(--color-borde); border-radius: var(--border-radius);
-            box-shadow: var(--shadow-card); overflow: hidden; margin-bottom: 1.6rem;
-        }
-        .recurso-visor iframe { width: 100%; height: 78vh; border: none; display: block; background: #525659; }
-        .recurso-visor-fallback { padding: 2.2rem; text-align: center; color: var(--color-texto-claro); }
-        .recurso-abrir-externo {
-            display: inline-flex; align-items: center; gap: 0.5rem; margin-top: 0.8rem;
-            padding: 0.7rem 1.4rem; border-radius: 999px; background: var(--color-primario); color: #fff;
-            text-decoration: none; font-weight: 700; font-size: 0.9rem;
-        }
-        .recurso-abrir-externo:hover { filter: brightness(1.1); }
-        .recurso-contenido-texto {
-            background: var(--color-blanco); border: 1px solid var(--color-borde); border-radius: var(--border-radius);
-            box-shadow: var(--shadow-card); padding: 1.6rem; margin-bottom: 1.6rem;
-            white-space: pre-wrap; line-height: 1.7; font-size: 0.95rem; color: var(--color-texto);
-        }
-
-        .relacionados-titulo { font-size: 1.05rem; font-weight: 800; color: var(--color-primario); margin: 0 0 0.8rem; }
-        .relacionados-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 2rem; }
-        .relacionado-card {
-            background: var(--color-blanco); border: 1px solid var(--color-borde); border-radius: 12px;
-            padding: 0.9rem; display: flex; align-items: center; gap: 0.6rem; text-decoration: none;
-            color: var(--color-texto); font-weight: 600; font-size: 0.85rem; transition: var(--transition-fast);
-        }
-        .relacionado-card:hover { border-color: var(--color-primario); transform: translateY(-2px); }
-
-        .recurso-cargando { padding: 3rem; text-align: center; color: var(--color-texto-claro); }
-        .recurso-no-encontrado { padding: 3rem; text-align: center; color: var(--color-texto-claro); }
-
-        @media (max-width: 640px) {
-            .recurso-visor iframe { height: 60vh; }
-            .recurso-titulo-wrap h1 { font-size: 1.2rem; }
-        }
-    </style>
+        .detalle-cab { display: flex; gap: 1rem; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; width: 100%; }
+        .detalle-meta { font-size: 0.88rem; color: var(--color-texto-claro); margin-top: 0.4rem; }
+        .detalle-texto { background: var(--color-blanco); border: 1px solid var(--color-borde); border-radius: 22px; padding: 1.4rem 1.6rem; line-height: 1.7; width: 100%; box-sizing: border-box; box-shadow: var(--shadow-card); }
+        .enlace-externo { display: flex; align-items: center; gap: 1rem; padding: 1.2rem 1.4rem; background: var(--color-blanco); border: 1px solid var(--color-borde); border-radius: 22px; box-shadow: var(--shadow-card); width: 100%; box-sizing: border-box; }
+        .enlace-externo i.big { font-size: 2rem; color: var(--color-primario); }
+        #visor-host { width: 100%; }
+</style>
 </head>
 <body>
     <header class="barra-superior">
         <img src="datos.png" alt="Gobierno de Venezuela" style="max-height:50px;" />
         <nav id="user-nav" class="user-nav"></nav>
     </header>
-
-    <main class="contenido-web container" id="recurso-container">
-        <a class="back-link" href="formacion.html">&larr; Volver a Formación</a>
-        <div id="recurso-cuerpo">
-            <p class="recurso-cargando"><i class="fa-solid fa-spinner fa-spin"></i> Cargando recurso…</p>
+    <div class="volver-barra"><a class="back-link" id="volver" href="formacion.html"><i class="fa-solid fa-arrow-left"></i> Volver a Formación</a></div>
+    <main class="contenido-web container pagina-interior" id="detalle-main">
+        <div class="detalle-cab">
+            <div><span class="eyebrow" id="d-tipo">&nbsp;</span><h1 class="pagina-titulo" id="d-nombre">…</h1><p class="pagina-sub" id="d-desc"></p><p class="detalle-meta" id="d-meta"></p></div>
+            <div class="btn-fila" id="d-acciones" style="display:none;">
+                <button type="button" class="btn btn-cerrar btn-sm" id="d-editar"><i class="fa-solid fa-pen"></i> Editar</button>
+                <button type="button" class="btn btn-cerrar btn-sm" id="d-eliminar"><i class="fa-solid fa-trash"></i> Eliminar</button>
+            </div>
         </div>
+        <div id="visor-host"></div>
+        <div id="d-extra" style="width:100%;display:flex;flex-direction:column;gap:1rem;"></div>
     </main>
-
-    <footer class="pie-pagina">
-        <div class="footer-contenido"><p>© 2026 Fundación Musical Simón Bolívar</p></div>
-    </footer>
+    <footer class="pie-pagina"><div class="footer-contenido"><p>© 2026 Fundación Musical Simón Bolívar</p></div></footer>
 
     <script src="check-entorno.js" defer></script>
-    <script type="module" src="auth.js?v=17.0"></script>
-    <script type="module" src="ui-manager.js?v=17.0"></script>
+    <script type="module" src="auth.js?v=22.0"></script>
+    <script type="module" src="ui-manager.js?v=22.0"></script>
     <script type="module">
+
         import { db } from "./firebase-init.js";
-        import { collection, doc, getDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+        import { esc } from "./ui-componentes.js";
+        import { abrirFormularioRecurso, eliminarRecurso, esPDF } from "./recursos-form.js";
+        import { montarVisorPDF } from "./visor-pdf.js";
+        import { collection, onSnapshot, doc } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
 
-        // v3.0 (G-23): "agregado hace 3 días" en vez de solo una fecha seca.
-        function tiempoRelativo(iso) {
-            if (!iso) return "";
-            const dias = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-            if (dias <= 0) return "agregado hoy";
-            if (dias === 1) return "agregado ayer";
-            if (dias < 30) return `agregado hace ${dias} días`;
-            const meses = Math.floor(dias / 30);
-            return `agregado hace ${meses} mes${meses > 1 ? "es" : ""}`;
-        }
+        const $ = (id) => document.getElementById(id);
+        const GESTORES = ["owner_supremo", "director_nacional", "director_regional", "director_nucleo", "admin"];
+        const id = new URLSearchParams(location.search).get("id");
 
-        async function initRecursoDetalle() {
+        function iniciar() {
             const session = window.Auth?.getSession();
             if (!session) { window.location.href = "index.html"; return; }
+            const real = window.Auth.getRealSession() || session;
+            if (!id) { window.location.href = "formacion.html"; return; }
+            const puedeEditar = GESTORES.includes(session.role) && GESTORES.includes(real.role);
+            let recurso = null, niveles = [], visor = null, urlMostrada = null;
 
-            const params = new URLSearchParams(window.location.search);
-            const id = params.get("id");
-            const cuerpo = document.getElementById("recurso-cuerpo");
+            onSnapshot(collection(db, "formacion_niveles"), (s) => { niveles = s.docs.map((d) => d.data()).sort((a, b) => (a.orden ?? 99) - (b.orden ?? 99)).map((d) => d.nombre); }, () => {});
+            onSnapshot(doc(db, "formacion_modulos", id), (s) => {
+                if (!s.exists()) { $("detalle-main").innerHTML = `<div class="estado-vacio"><i class="fa-solid fa-circle-question"></i><h3>Este recurso ya no existe</h3><a class="btn btn-submit" href="formacion.html">Volver a Formación</a></div>`; visor?.destruir?.(); return; }
+                recurso = { id: s.id, ...s.data() }; pintar();
+            }, (e) => { console.error(e); window._showToast?.("No se pudo abrir el recurso", "error"); });
 
-            if (!id) {
-                cuerpo.innerHTML = `<p class="recurso-no-encontrado">No se especificó qué recurso mostrar. <a href="formacion.html">Volver a Formación</a>.</p>`;
-                return;
+            function pintar() {
+                const r = recurso; document.title = `${r.nombre} – Sistema de Orquestas`;
+                $("d-tipo").textContent = r.tipo || "Recurso"; $("d-nombre").textContent = r.nombre; $("d-desc").textContent = r.descripcion || "";
+                $("d-meta").innerHTML = `<i class="fa-solid fa-layer-group"></i> ${esc(r.nivel || "")}${r.autor ? ` · <i class="fa-solid fa-user-pen"></i> ${esc(r.autor)}` : ""}${r.fechaCreacion ? ` · ${esc(new Date(r.fechaCreacion).toLocaleDateString("es-VE"))}` : ""}`;
+                $("d-acciones").style.display = puedeEditar ? "flex" : "none";
+                const extra = $("d-extra"); extra.innerHTML = "";
+                if (r.url && esPDF(r.url)) { if (urlMostrada !== r.url) { urlMostrada = r.url; visor?.destruir?.(); montarVisorPDF($("visor-host"), { url: r.url, nombre: r.nombre, nombreDescarga: r.nombre }).then((v) => (visor = v)); } }
+                else { visor?.destruir?.(); visor = null; urlMostrada = null; $("visor-host").innerHTML = "";
+                    if (r.url && /^https:\/\//i.test(r.url)) { let host = ""; try { host = new URL(r.url).hostname; } catch {} extra.innerHTML = `<div class="enlace-externo"><i class="fa-solid fa-arrow-up-right-from-square big"></i><div style="flex:1;min-width:0"><strong>Enlace externo</strong><br><small style="color:var(--color-texto-claro)">${esc(host)}</small></div><a class="btn btn-submit btn-sm" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">Abrir</a></div>`; } }
+                if (r.contenido) extra.insertAdjacentHTML("beforeend", `<div class="detalle-texto">${esc(r.contenido).replace(/\n/g, "<br>")}</div>`);
+                if (!r.url && !r.contenido) extra.innerHTML = `<div class="estado-vacio"><i class="fa-solid fa-file"></i><h3>Este recurso todavía no tiene contenido</h3>${puedeEditar ? "<p>Usa “Editar” para subir un PDF o agregar texto.</p>" : ""}</div>`;
             }
-
-            let snap;
-            try {
-                snap = await getDoc(doc(db, "formacion_modulos", id));
-            } catch (err) {
-                console.error("No se pudo leer el recurso:", err);
-                cuerpo.innerHTML = `<p class="recurso-no-encontrado">No se pudo cargar este recurso (revisá tu conexión o permisos).</p>`;
-                return;
-            }
-            if (!snap.exists()) {
-                cuerpo.innerHTML = `<p class="recurso-no-encontrado">Este recurso ya no existe o fue eliminado. <a href="formacion.html">Volver a Formación</a>.</p>`;
-                return;
-            }
-            const r = { id: snap.id, ...snap.data() };
-            document.title = `${r.nombre || "Recurso"} – Sistema de Orquestas`;
-
-            const esPdf = r.url && /\.pdf(\?|$)/i.test(r.url);
-            const puedeEditar = window.Auth.checkPermission("manage_users");
-
-            let visorHtml = "";
-            if (esPdf) {
-                // v3.0 (G-19): visor de PDF embebido en vez de abrir una
-                // pestaña nueva — mantiene a la persona dentro del sitio.
-                // El link "Abrir en pestaña nueva" queda como respaldo para
-                // navegadores móviles que no siempre renderizan bien un PDF
-                // dentro de un iframe.
-                visorHtml = `
-                    <div class="recurso-visor">
-                        <iframe src="${window._escapeHtml(r.url)}" title="${window._escapeHtml(r.nombre || "PDF")}" loading="lazy"></iframe>
-                    </div>
-                    <a class="recurso-abrir-externo" href="${window._escapeHtml(r.url)}" target="_blank" rel="noopener">
-                        <i class="fa-solid fa-up-right-from-square"></i> Abrir en una pestaña nueva
-                    </a>`;
-            } else if (r.url) {
-                visorHtml = `
-                    <div class="recurso-visor">
-                        <div class="recurso-visor-fallback">
-                            <i class="fa-solid fa-link" style="font-size:2rem;color:var(--color-primario);"></i>
-                            <p style="margin-top:0.8rem;">Este recurso es un enlace externo.</p>
-                            <a class="recurso-abrir-externo" href="${window._escapeHtml(r.url)}" target="_blank" rel="noopener">
-                                <i class="fa-solid fa-up-right-from-square"></i> Abrir enlace
-                            </a>
-                        </div>
-                    </div>`;
-            } else if (r.contenido) {
-                visorHtml = `<div class="recurso-contenido-texto">${window._escapeHtml(r.contenido)}</div>`;
-            } else {
-                visorHtml = `<div class="recurso-visor"><div class="recurso-visor-fallback">Este recurso todavía no tiene contenido cargado.</div></div>`;
-            }
-
-            cuerpo.innerHTML = `
-                <div class="recurso-header">
-                    <div class="recurso-icono-grande">${window._escapeHtml(r.icono) || "📄"}</div>
-                    <div class="recurso-titulo-wrap">
-                        <h1>${window._escapeHtml(r.nombre || "Recurso")}</h1>
-                        <div class="recurso-meta">
-                            <span class="tipo-badge">${window._escapeHtml(r.tipo) || "Recurso"}</span>
-                            <span><i class="fa-solid fa-layer-group"></i> ${window._escapeHtml(r.nivel || "—")}</span>
-                            ${r.autor ? `<span><i class="fa-solid fa-user-pen"></i> ${window._escapeHtml(r.autor)}</span>` : ""}
-                            ${r.fechaCreacion ? `<span><i class="fa-solid fa-clock"></i> ${tiempoRelativo(r.fechaCreacion)}</span>` : ""}
-                        </div>
-                    </div>
-                    ${puedeEditar ? `<a href="formacion.html?editar=${encodeURIComponent(r.id)}" class="btn-config-mini" style="margin-left:auto;"><i class="fa-solid fa-pen"></i> Editar</a>` : ""}
-                </div>
-                ${r.descripcion ? `<p class="recurso-descripcion">${window._escapeHtml(r.descripcion)}</p>` : ""}
-                ${visorHtml}
-                <div id="relacionados-wrap"></div>
-            `;
-
-            // v3.0 (aporte real a G-22, cross-link Formación): en vez de
-            // "múltiples adjuntos" en un mismo documento (cambiaría el
-            // modelo de datos), se listan otros recursos DEL MISMO NIVEL
-            // como material relacionado — así el estudiante no tiene que
-            // volver atrás y buscar de nuevo.
-            try {
-                const relSnap = await getDocs(query(collection(db, "formacion_modulos"), where("nivel", "==", r.nivel)));
-                const relacionados = relSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.id !== r.id);
-                if (relacionados.length) {
-                    document.getElementById("relacionados-wrap").innerHTML = `
-                        <h2 class="relacionados-titulo"><i class="fa-solid fa-layer-group"></i> Más de ${window._escapeHtml(r.nivel)}</h2>
-                        <div class="relacionados-grid">
-                            ${relacionados.slice(0, 8).map(x => `
-                                <a class="relacionado-card" href="recurso-detalle.html?id=${encodeURIComponent(x.id)}">
-                                    <span style="font-size:1.3rem;">${window._escapeHtml(x.icono) || "📄"}</span>
-                                    <span>${window._escapeHtml(x.nombre)}</span>
-                                </a>`).join("")}
-                        </div>`;
-                }
-            } catch (err) { console.error("No se pudieron cargar recursos relacionados:", err); }
+            // Editar: el panel se abre ENCIMA del documento (no te saca de la página).
+            $("d-editar").addEventListener("click", () => recurso && abrirFormularioRecurso({ recurso, niveles: niveles.length ? niveles : [recurso.nivel], sesion: real }));
+            $("d-eliminar").addEventListener("click", async () => { if (recurso && (await eliminarRecurso(recurso))) setTimeout(() => (location.href = "formacion.html"), 500); });
+            window.UI?.render?.();
         }
+        if (window.Auth?.getSession()) iniciar(); else window.addEventListener("auth-ready", iniciar, { once: true });
 
-        window.addEventListener("auth-ready", initRecursoDetalle);
-        if (window.Auth?.getSession()) initRecursoDetalle();
     </script>
 </body>
 </html>

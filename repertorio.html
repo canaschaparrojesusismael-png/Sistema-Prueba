@@ -1,439 +1,409 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es-VE">
 <head>
 <script>if(localStorage.getItem("darkMode")==="true")document.documentElement.classList.add("dark-mode");</script>
-
 <script>
-  if (!sessionStorage.getItem("sistemaOrquestas_session") && !localStorage.getItem("sistemaOrquestas_session")) {
-    window.location.href = "login.html";
-  }
+  if (!sessionStorage.getItem("sistemaOrquestas_session") && !localStorage.getItem("sistemaOrquestas_session")) { window.location.href = "login.html"; }
 </script>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Repertorio – Sistema de Orquestas</title>
-        <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=17.0">
-    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=17.0">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=17.0">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=22.0">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=22.0">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=22.0">
     <meta property="og:title" content="Repertorio — Sistema de Orquestas">
-    <meta property="og:description" content="Piezas, partituras e instrumentación de la agrupación.">
+    <meta property="og:description" content="Piezas y partituras de la agrupación.">
     <meta property="og:type" content="website">
     <meta property="og:image" content="icon-512.png">
-<link rel="stylesheet" href="estilos.css?v=17.0">
+    <link rel="stylesheet" href="estilos.css?v=22.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .back-link { display: inline-block; margin: 1.5rem 0; color: var(--color-primario); font-weight: 600; text-decoration: none; align-self: flex-start; width: fit-content; text-align: left; }
-        .back-link:hover { text-decoration: underline; }
-
-        .pieza-card {
-            background: var(--color-blanco);
-            border: 1px solid var(--color-borde);
-            border-radius: var(--border-radius);
-            padding: 25px;
-            margin-bottom: 25px;
-            box-shadow: var(--shadow-card);
-            transition: var(--transition-normal);
-        }
-        .pieza-card:hover { box-shadow: var(--shadow-hover); }
-
-        .instrumentos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-top: 15px; }
-        .instrumento-wrap { position: relative; }
-        .btn-instrumento {
-            width: 100%; padding: 12px; background: #f0eeff; border: 2px solid var(--color-primario);
-            border-radius: 12px; font-weight: 600; color: var(--color-primario); cursor: pointer;
-            transition: var(--transition-normal); text-align: center;
-        }
-        .btn-instrumento:hover { background: var(--color-primario); color: white; transform: scale(1.03); }
-        .btn-instrumento.sin-partitura { background: transparent; border-style: dashed; opacity: 0.75; }
-        .btn-instrumento.btn-agregar-instrumento { background: transparent; border-style: dashed; color: var(--color-texto-claro); border-color: var(--color-texto-claro); }
-        .btn-instrumento.btn-agregar-instrumento:hover { background: var(--color-primario); border-color: var(--color-primario); color: white; }
-        .btn-reemplazar-partitura {
-            position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; border-radius: 50%;
-            background: var(--color-acento); color: white; border: 2px solid var(--color-blanco);
-            font-size: 0.65rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
-        }
-
-        .form-control { width: 100%; padding: 0.5rem; margin-top: 0.3rem; border: 1px solid #ccc; border-radius: 8px; }
-
-        @media (max-width: 768px) {
-            .pieza-card { padding: 15px; margin-bottom: 15px; }
-            .instrumentos-grid { grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); gap: 8px; }
-            .btn-instrumento { padding: 9px; font-size: 0.85rem; }
-        }
-    </style>
+        .rep-cab-acciones { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+        .piezas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 22px; width: 100%; }
+        .pieza-portada { height: 120px; background-size: cover; background-position: top center; background-color: var(--color-primario); }
+        .pieza-portada .fa-file-pdf { font-size: 2.4rem; opacity: 0.9; }
+        .chips-inst { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.8rem 0 0.9rem; }
+        .chip-inst { display: inline-flex; align-items: stretch; border-radius: 999px; background: var(--color-superficie-suave); border: 1.5px solid var(--color-borde); overflow: hidden; transition: border-color .18s; }
+        .chip-inst:hover { border-color: var(--color-primario); }
+        .chip-inst button { border: none; background: none; cursor: pointer; font: 700 0.8rem var(--font-family); color: var(--color-texto); padding: 0.4rem 0.7rem; }
+        .chip-inst button:hover { background: rgba(65, 56, 169, 0.12); }
+        .chip-inst .chip-ver { padding-right: 0.5rem; }
+        .chip-inst .chip-dl, .chip-inst .chip-mas { padding: 0.4rem 0.55rem; color: var(--color-texto-claro); }
+        .chip-inst.mio { background: var(--color-primario); border-color: var(--color-primario); }
+        .chip-inst.mio button { color: #fff; } .chip-inst.mio button:hover { background: rgba(255, 255, 255, 0.18); }
+        .chip-agregar { border: 1.5px dashed var(--color-borde); background: none; border-radius: 999px; padding: 0.4rem 0.8rem; font: 700 0.8rem var(--font-family); color: var(--color-texto-claro); cursor: pointer; }
+        .chip-agregar:hover { border-color: var(--color-primario); color: var(--color-primario); }
+        .pieza-sin-pdf { font-size: 0.82rem; color: var(--color-texto-claro); margin: 0.6rem 0; }
+        .fila-part { display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.5rem; align-items: center; background: rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 0.6rem; margin-bottom: 0.6rem; }
+        .fila-part .archivo { display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; min-width: 0; }
+        .fila-part .archivo span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .fila-part .btn-archivo { border: none; border-radius: 999px; padding: 0.55rem 0.9rem; background: var(--negro); color: #fff; font: 700 0.8rem var(--font-family); cursor: pointer; flex-shrink: 0; }
+        .fila-part .quitar { width: 34px; height: 34px; border-radius: 50%; border: none; background: rgba(255, 255, 255, 0.18); color: #fff; cursor: pointer; }
+        .fila-part .progreso { grid-column: 1 / -1; height: 5px; border-radius: 5px; background: rgba(255, 255, 255, 0.2); overflow: hidden; display: none; }
+        .fila-part .progreso i { display: block; height: 100%; width: 0; background: #fff; transition: width .2s; }
+        .fila-part .err { grid-column: 1 / -1; color: #ffd0d4; font-size: 0.8rem; font-weight: 600; margin: 0; }
+        .zona-soltar { border: 2px dashed rgba(255, 255, 255, 0.45); border-radius: 18px; padding: 1.1rem; text-align: center; font-size: 0.88rem; cursor: pointer; margin-bottom: 0.8rem; transition: background .2s, border-color .2s; }
+        .zona-soltar.activa, .zona-soltar:hover { background: rgba(255, 255, 255, 0.12); border-color: #fff; }
+        .visor-contenido { width: min(1100px, 96vw); max-width: none; padding: 0; background: transparent; box-shadow: none; }
+        .visor-contenido .modal-close-btn { top: 10px; right: 10px; z-index: 5; }
+        .visor-contenido .visor-pdf-paginas { max-height: 80vh; }
+        @media (max-width: 560px) { .fila-part { grid-template-columns: 1fr; } .piezas-grid { grid-template-columns: 1fr; } }
+</style>
 </head>
 <body>
     <header class="barra-superior">
         <img src="datos.png" alt="Gobierno de Venezuela" style="max-height:50px;" />
         <nav id="user-nav" class="user-nav"></nav>
     </header>
-
-
-    <main class="contenido-web container" id="agrupacion-container">
-        <a class="back-link" href="piezas.html">&larr; Volver a Agrupaciones</a>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
-            <h2 id="agrupacion-titulo" style="color: var(--color-primario); font-weight: 800;">Cargando...</h2>
-            <button type="button" id="btn-nueva-pieza" class="btn btn-submit" style="display:none;"><i class="fa-solid fa-plus"></i> Nueva pieza</button>
+    <div class="volver-barra"><a class="back-link" id="volver" href="piezas.html"><i class="fa-solid fa-arrow-left"></i> Volver a Agrupaciones</a></div>
+    <main class="contenido-web container pagina-interior">
+        <div class="pagina-cab">
+            <div><span class="eyebrow">Agrupación</span><h1 class="pagina-titulo" id="titulo-agr">…</h1><p class="pagina-sub" id="sub-agr"></p></div>
+            <div class="rep-cab-acciones">
+                <button type="button" class="btn btn-cerrar btn-sm" id="btn-mis" style="display:none;"><i class="fa-solid fa-user-music"></i> Mis partituras</button>
+                <button type="button" class="btn btn-cerrar btn-sm" id="btn-zip-agr" style="display:none;"><i class="fa-solid fa-file-zipper"></i> Descargar todo</button>
+                <button type="button" class="btn btn-submit" id="btn-nueva-pieza" style="display:none;"><i class="fa-solid fa-plus"></i> Nueva pieza</button>
+            </div>
         </div>
-        <!-- v3.0 (G-32): buscador dentro de la agrupación — filtra piezas e
-             instrumentos sin tener que volver a Piezas. -->
-        <div class="buscador-caja" id="buscador-repertorio-caja">
-            <i class="fa-solid fa-magnifying-glass"></i>
-            <input type="text" id="buscador-repertorio" placeholder="Buscar pieza o instrumento…">
-            <button type="button" class="buscador-limpiar" id="buscador-repertorio-limpiar" aria-label="Limpiar búsqueda"><i class="fa-solid fa-xmark"></i></button>
+        <div class="barra-herramientas">
+            <label class="buscador-caja buscador-grande" for="q"><i class="fa-solid fa-magnifying-glass"></i><input id="q" type="search" placeholder="Buscar pieza, compositor o instrumento…" autocomplete="off"></label>
+            <select id="filtro-inst" aria-label="Filtrar por instrumento"><option value="">Todos los instrumentos</option></select>
         </div>
-        <div id="piezas-container"></div>
+        <div class="piezas-grid" id="grid" aria-live="polite"></div>
     </main>
-
-    <!-- Modal para crear una pieza nueva -->
-    <div class="modal-overlay" id="modal-pieza">
-        <div class="modal-content">
-            <button class="modal-close-btn" id="pieza-close-btn">&times;</button>
-            <h2>Nueva pieza</h2>
-            <div class="editor-row">
-                <label>Título:</label>
-                <input type="text" id="pieza-titulo" class="modal-input" placeholder="Ej. Sinfonía n.º 5" />
-            </div>
-            <p style="font-size:0.8rem;color:var(--color-texto-claro);margin:-0.5rem 0 1rem;">No hace falta escribir los instrumentos ahora — después vas a agregar cada partitura desde la tarjeta de la pieza, y el instrumento se agrega solo en ese momento.</p>
-            <button id="btn-guardar-pieza" class="btn btn-submit">Crear pieza</button>
-            <button id="btn-cerrar-modal-pieza" class="btn btn-cerrar">Cancelar</button>
-        </div>
-    </div>
-
-    <!-- Modal para subir partitura -->
-    <div class="modal-overlay" id="modal-partitura">
-        <div class="modal-content">
-            <button class="modal-close-btn" id="partitura-close-btn">&times;</button>
-            <h2>Subir Partitura</h2>
-            <input type="hidden" id="partitura-pieza-id" />
-            <div class="editor-row">
-                <label>Instrumento:</label>
-                <input type="text" id="partitura-instrumento" class="modal-input" placeholder="Ej. Violín 1" />
-            </div>
-            <div class="editor-row">
-                <label>Archivo PDF:</label>
-                <input type="file" id="partitura-archivo" accept=".pdf" class="modal-input" />
-            </div>
-            <button id="btn-subir-partitura" class="btn btn-submit">Subir</button>
-            <button id="btn-cerrar-modal-partitura" class="btn btn-cerrar">Cancelar</button>
-        </div>
-    </div>
+    <footer class="pie-pagina"><div class="footer-contenido"><p>© 2026 Fundación Musical Simón Bolívar</p></div></footer>
 
     <script src="check-entorno.js" defer></script>
-
-    <script type="module" src="auth.js?v=17.0"></script>
-    <script type="module" src="ui-manager.js?v=17.0"></script>
+    <script type="module" src="auth.js?v=22.0"></script>
+    <script type="module" src="ui-manager.js?v=22.0"></script>
     <script type="module">
+
         import { db } from "./firebase-init.js";
-        import { collection, query, where, onSnapshot, addDoc, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
-        // v3.0 (G-31): antes este archivo tenía su PROPIA copia de la
-        // función que sube a Cloudinary (con su propio CLOUD_NAME/UPLOAD_
-        // PRESET repetidos) en vez de usar el mismo módulo compartido que
-        // ya usan Carrusel/Flyers/Eventos/Formación. Ahora usa ese mismo
-        // módulo — si el día de mañana cambia el proveedor de almacenamiento,
-        // se cambia en un solo lugar en vez de en cinco.
-        import { subirACloudinary } from "./gestor-imagenes.js";
+        import { resolverNucleoActivo, establecerNucleoActivo } from "./nucleo-activo.js";
+        import { abrirPanel, menuContextual, borrarConDeshacer, esc } from "./ui-componentes.js";
+        import { opcionesInstrumentoHTML, enlazarSelectInstrumento } from "./instrumentos.js";
+        import { subirArchivo, validarPDF, descargarArchivo, descargarZip, formatoTamano } from "./almacen.js";
+        import { montarVisorPDF, dibujarMiniaturaPDF } from "./visor-pdf.js";
+        import { aplicarEnLotes } from "./agrupaciones.js";
+        import { collection, query, where, onSnapshot, getDoc, getDocs, doc, addDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
 
-        // ==================== OBTENER PARÁMETRO DE LA URL ====================
-        const urlParams = new URLSearchParams(window.location.search);
-        const agrupacionId = urlParams.get("agrup") || urlParams.get("id");
-        if (!agrupacionId) {
-            document.getElementById("agrupacion-titulo").textContent = "Error: falta el identificador de la agrupación.";
-        } else {
-            document.getElementById("agrupacion-titulo").textContent = decodeURIComponent(agrupacionId);
-        }
+        const $ = (id) => document.getElementById(id);
+        const EDITORES = ["owner_supremo", "director_nacional", "director_regional", "director_nucleo", "admin", "profesor"];
+        const norm = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+        const idAgr = new URLSearchParams(location.search).get("id");
 
-        // ==================== NÚCLEO DE LA AGRUPACIÓN ====================
-        // Las piezas y partituras nuevas necesitan guardar a qué núcleo
-        // pertenecen (así lo exigen las reglas de seguridad de Firestore).
-        // Preferimos el parámetro de la URL si vino (más rápido), pero si
-        // falta — por ejemplo, alguien entró con un enlace viejo — lo
-        // buscamos en Firestore para que la página funcione igual.
-        let nucleoDeAgrupacion = urlParams.get("nucleo") || "";
-        async function resolverNucleo() {
-            if (nucleoDeAgrupacion || !agrupacionId) return;
-            try {
-                const snap = await getDocs(query(collection(db, "agrupaciones"), where("nombre", "==", agrupacionId)));
-                if (!snap.empty) nucleoDeAgrupacion = snap.docs[0].data().nucleo || "";
-            } catch (err) {
-                console.error("No se pudo determinar el núcleo de esta agrupación:", err);
-            }
-        }
-
-        // ==================== COLECCIONES ====================
-        const piezasCol = collection(db, "piezas");
-        const partiturasCol = collection(db, "partituras");
-
-        // ==================== RENDERIZADO DE PIEZAS ====================
-        const piezasContainer = document.getElementById("piezas-container");
-        let piezasActuales = [];
-        let partiturasPorPieza = new Map(); // piezaId -> Map(instrumento -> partituraDoc)
-        let textoBusquedaRepertorio = "";
-
-        // v3.0 (G-32): filtra tarjetas de pieza + instrumentos ya renderizados
-        document.getElementById("buscador-repertorio").addEventListener("input", (e) => {
-            textoBusquedaRepertorio = e.target.value.trim().toLowerCase();
-            document.getElementById("buscador-repertorio-caja").classList.toggle("con-texto", !!textoBusquedaRepertorio);
-            renderizarPiezas(piezasActuales);
-        });
-        document.getElementById("buscador-repertorio-limpiar").addEventListener("click", () => {
-            document.getElementById("buscador-repertorio").value = "";
-            textoBusquedaRepertorio = "";
-            document.getElementById("buscador-repertorio-caja").classList.remove("con-texto");
-            renderizarPiezas(piezasActuales);
-        });
-
-        function renderizarPiezas(piezas) {
-            piezasActuales = piezas;
-            piezasContainer.innerHTML = "";
-            if (piezas.length === 0) {
-                piezasContainer.innerHTML = `<p>No hay piezas registradas para esta agrupación.</p>`;
-                return;
-            }
-
+        async function iniciar() {
             const session = window.Auth?.getSession();
-            const puedeEditar = session && (window.Auth?.checkPermission("manage_users") || session.role === "profesor");
+            if (!session) { window.location.href = "index.html"; return; }
+            const real = window.Auth.getRealSession() || session;
+            if (!idAgr) { window.location.href = "piezas.html"; return; }
+            const puedeEditar = EDITORES.includes(session.role) && EDITORES.includes(real.role);
+            const miInstrumento = session.instrument || real.instrument || "";
+            const coincideMio = (instr) => !!miInstrumento && (norm(instr) === norm(miInstrumento) || norm(instr).startsWith(norm(miInstrumento) + " "));
 
-            // Orden alfabético hecho acá (no en la consulta) para no necesitar
-            // un índice compuesto en Firestore.
-            let piezasOrdenadas = [...piezas].sort((a, b) => (a.titulo || "").localeCompare(b.titulo || ""));
+            // ---- la agrupación (y su núcleo) ----
+            let agr;
+            try {
+                const s = await getDoc(doc(db, "agrupaciones", idAgr));
+                if (!s.exists()) throw new Error("no existe");
+                agr = { id: s.id, ...s.data() };
+            } catch (e) {
+                $("grid").innerHTML = `<div class="estado-vacio"><i class="fa-solid fa-circle-question"></i><h3>No se encontró esta agrupación</h3><p>Pudo haberse eliminado o no tienes acceso.</p><a class="btn btn-submit" href="piezas.html">Ir a Agrupaciones</a></div>`;
+                window.UI?.render?.(); return;
+            }
+            await resolverNucleoActivo();
+            const activo = window.NucleoActivo?.obtener();
+            if (window.NucleoActivo?.esMulti() && (!activo || activo.nombre !== agr.nucleo)) establecerNucleoActivo({ nombre: agr.nucleo, estado: agr.estado || "" });
+            window.addEventListener("nucleo-activo-cambiado", () => { window.location.href = "piezas.html"; });
 
-            // v3.0 (G-32): si hay texto de búsqueda, se queda solo con las
-            // piezas cuyo título O algún instrumento coincidan.
-            if (textoBusquedaRepertorio) {
-                piezasOrdenadas = piezasOrdenadas.filter(pieza => {
-                    const partiturasDeEstaPieza = partiturasPorPieza.get(pieza.id) || new Map();
-                    const nombresInstrumentos = [...new Set([...(pieza.instrumentos || []), ...partiturasDeEstaPieza.keys()])];
-                    return (pieza.titulo || "").toLowerCase().includes(textoBusquedaRepertorio) ||
-                        nombresInstrumentos.some(i => i.toLowerCase().includes(textoBusquedaRepertorio));
+            $("titulo-agr").textContent = agr.nombre; document.title = `${agr.nombre} – Sistema de Orquestas`;
+            $("sub-agr").textContent = `${agr.nucleo}${agr.estado ? " · " + agr.estado : ""}`;
+            $("btn-nueva-pieza").style.display = puedeEditar ? "inline-flex" : "none";
+            if (miInstrumento) $("btn-mis").style.display = "inline-flex";
+
+            let piezas = [], partituras = [], ocultas = new Set(), listoP = false, listoS = false, miniaturas = new Map();
+            const base = [where("nucleo", "==", agr.nucleo), where("agrupacionId", "==", agr.id)];
+            onSnapshot(query(collection(db, "piezas"), ...base), (s) => { piezas = s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => a.titulo.localeCompare(b.titulo)); listoP = true; pintar(); }, (e) => { listoP = true; console.error(e); window._showToast?.("No se pudieron cargar las piezas", "error"); pintar(); });
+            onSnapshot(query(collection(db, "partituras"), ...base), (s) => { partituras = s.docs.map((d) => ({ id: d.id, ...d.data() })); listoS = true; pintar(); }, (e) => { listoS = true; console.error(e); pintar(); });
+
+            const partsDe = (pid) => partituras.filter((p) => p.piezaId === pid && !ocultas.has("p:" + p.id)).sort((a, b) => a.instrumento.localeCompare(b.instrumento, "es", { numeric: true }));
+            const visibles = () => piezas.filter((p) => !ocultas.has("z:" + p.id));
+
+            function pintar() {
+                const grid = $("grid");
+                // filtro de instrumentos
+                const sel = $("filtro-inst"), actual = sel.value;
+                const instr = [...new Set(partituras.map((p) => p.instrumento))].sort((a, b) => a.localeCompare(b, "es", { numeric: true }));
+                sel.innerHTML = `<option value="">Todos los instrumentos</option>` + instr.map((i) => `<option value="${esc(i)}" ${i === actual ? "selected" : ""}>${esc(i)}</option>`).join("");
+                $("btn-zip-agr").style.display = partituras.length ? "inline-flex" : "none";
+                if (!listoP || !listoS) { grid.innerHTML = Array.from({ length: 3 }, () => `<div class="skeleton" style="height:260px;border-radius:22px;"></div>`).join(""); return; }
+                const q = norm($("q").value), f = sel.value;
+                const lista = visibles().filter((pz) => {
+                    const ps = partsDe(pz.id);
+                    if (f && !ps.some((p) => p.instrumento === f)) return false;
+                    if (!q) return true;
+                    return norm(pz.titulo).includes(q) || norm(pz.compositor).includes(q) || ps.some((p) => norm(p.instrumento).includes(q));
                 });
-                if (!piezasOrdenadas.length) {
-                    piezasContainer.innerHTML = `<p>Ninguna pieza o instrumento coincide con "${window._escapeHtml(textoBusquedaRepertorio)}".</p>`;
-                    return;
+                if (!visibles().length) {
+                    grid.innerHTML = `<div class="estado-vacio"><i class="fa-solid fa-file-pdf"></i><h3>Todavía no hay piezas en ${esc(agr.nombre)}</h3><p>Sube la primera pieza con sus partituras en PDF, una por instrumento.</p>${puedeEditar ? `<button type="button" class="btn btn-submit" id="vacio-crear"><i class="fa-solid fa-plus"></i> Crear la primera pieza</button>` : ""}</div>`;
+                    $("vacio-crear")?.addEventListener("click", () => abrirPieza(null)); return;
                 }
+                if (!lista.length) { grid.innerHTML = `<div class="estado-vacio"><i class="fa-solid fa-magnifying-glass"></i><h3>Sin resultados</h3><p>Ninguna pieza coincide con tu búsqueda.</p></div>`; return; }
+                grid.innerHTML = lista.map((pz, i) => {
+                    const ps = partsDe(pz.id), peso = ps.reduce((s, p) => s + (p.bytes || 0), 0);
+                    const mia = ps.find((p) => coincideMio(p.instrumento)) || ps[0];
+                    const mini = mia && miniaturas.get(mia.url);
+                    return `<article class="pin-card pieza" data-id="${esc(pz.id)}" style="animation-delay:${Math.min(i, 8) * 40}ms">
+                        <div class="pin-portada pieza-portada" data-mini="${esc(mia?.url || "")}" ${mini ? `style="background-image:url('${mini}')"` : ""}>${mini ? "" : '<i class="fa-solid fa-file-pdf"></i>'}</div>
+                        <div class="pin-body">
+                            <span class="eyebrow">${ps.length} ${ps.length === 1 ? "instrumento" : "instrumentos"}</span>
+                            <h3>${esc(pz.titulo)}</h3>
+                            <p class="pin-meta">${esc([pz.compositor, peso ? formatoTamano(peso) : ""].filter(Boolean).join(" · ")) || "&nbsp;"}</p>
+                            <div class="chips-inst">
+                                ${ps.map((p) => `<span class="chip-inst ${coincideMio(p.instrumento) ? "mio" : ""}" ${coincideMio(p.instrumento) ? 'title="Tu instrumento"' : ""}>
+                                    <button type="button" class="chip-ver" data-ver="${esc(p.id)}" title="Ver partitura">${esc(p.instrumento)}</button>
+                                    <button type="button" class="chip-dl" data-dl="${esc(p.id)}" title="Descargar PDF" aria-label="Descargar ${esc(p.instrumento)}"><i class="fa-solid fa-download"></i></button>
+                                    ${puedeEditar ? `<button type="button" class="chip-mas" data-chipmenu="${esc(p.id)}" title="Opciones" aria-label="Opciones de ${esc(p.instrumento)}" aria-haspopup="menu"><i class="fa-solid fa-ellipsis"></i></button>` : ""}
+                                </span>`).join("")}
+                                ${puedeEditar ? `<button type="button" class="chip-agregar" data-add="${esc(pz.id)}"><i class="fa-solid fa-plus"></i> Instrumento</button>` : ""}
+                            </div>
+                            ${ps.length ? `<button type="button" class="btn btn-cerrar btn-sm" data-zip="${esc(pz.id)}"><i class="fa-solid fa-file-zipper"></i> Descargar todo</button>` : `<p class="pieza-sin-pdf">Esta pieza todavía no tiene partituras.</p>`}
+                        </div>
+                        ${puedeEditar ? `<div class="card-acciones"><button type="button" class="btn-mas" data-piezamenu="${esc(pz.id)}" aria-label="Opciones de ${esc(pz.titulo)}" aria-haspopup="menu"><i class="fa-solid fa-ellipsis"></i></button></div>` : ""}
+                    </article>`;
+                }).join("");
+                cargarMiniaturas();
             }
 
-            piezasOrdenadas.forEach(pieza => {
-                const card = document.createElement("section");
-                card.className = "pieza-card";
-                const h3 = document.createElement("h3");
-                h3.style.color = "var(--color-primario)";
-                h3.textContent = pieza.titulo;
-                card.appendChild(h3);
+            // portada = primera página del PDF (se dibuja al verse la tarjeta; si el PDF no abre, queda el ícono)
+            const observador = new IntersectionObserver((es) => es.forEach(async (e) => {
+                if (!e.isIntersecting) return; const el = e.target; observador.unobserve(el);
+                const url = el.dataset.mini; if (!url || miniaturas.has(url) || miniaturas.get(url) === false) return;
+                const c = document.createElement("canvas");
+                if (await dibujarMiniaturaPDF(c, url, 320)) { const d = c.toDataURL("image/jpeg", 0.72); miniaturas.set(url, d); if (el.isConnected) { el.style.backgroundImage = `url('${d}')`; el.innerHTML = ""; } }
+                else miniaturas.set(url, false);
+            }), { rootMargin: "200px" });
+            function cargarMiniaturas() { $("grid").querySelectorAll(".pieza-portada[data-mini]").forEach((el) => { if (el.dataset.mini && !miniaturas.get(el.dataset.mini)) observador.observe(el); }); }
 
-                const grid = document.createElement("div");
-                grid.className = "instrumentos-grid";
+            $("q").addEventListener("input", pintar); $("filtro-inst").addEventListener("change", pintar);
 
-                const partiturasDeEstaPieza = partiturasPorPieza.get(pieza.id) || new Map();
-                // Unimos: instrumentos que ya tienen una partitura subida +
-                // instrumentos definidos "a mano" en piezas viejas (antes se
-                // pedía escribir la lista completa al crear la pieza).
-                const nombresInstrumentos = [...new Set([...(pieza.instrumentos || []), ...partiturasDeEstaPieza.keys()])];
+            // ---------- acciones ----------
+            $("grid").addEventListener("click", (e) => {
+                const t = e.target.closest("button"); if (!t) return;
+                if (t.dataset.ver) return verPartitura(t.dataset.ver);
+                if (t.dataset.dl) { const p = partituras.find((x) => x.id === t.dataset.dl); return p && descargarArchivo(p.url, `${tituloDe(p.piezaId)} - ${p.instrumento}`); }
+                if (t.dataset.zip) return zipPieza(t.dataset.zip);
+                if (t.dataset.add) return abrirInstrumento(t.dataset.add);
+                if (t.dataset.chipmenu) return menuChip(t, partituras.find((x) => x.id === t.dataset.chipmenu));
+                if (t.dataset.piezamenu) return menuPieza(t, piezas.find((x) => x.id === t.dataset.piezamenu));
+            });
+            const tituloDe = (pid) => piezas.find((x) => x.id === pid)?.titulo || "Pieza";
 
-                nombresInstrumentos.sort((a, b) => a.localeCompare(b)); // v3.0 (P-51)
+            function verPartitura(pid) {
+                const p = partituras.find((x) => x.id === pid); if (!p) return;
+                const nombre = `${tituloDe(p.piezaId)} · ${p.instrumento}`;
+                const ov = document.createElement("div"); ov.className = "modal-overlay"; ov.style.display = "flex";
+                ov.innerHTML = `<div class="modal-content visor-contenido" role="dialog" aria-modal="true" aria-label="${esc(nombre)}"><button class="modal-close-btn" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button><div id="visor-host"></div></div>`;
+                document.body.appendChild(ov);
+                let visor = null; const cerrar = () => { visor?.destruir?.(); ov.remove(); document.removeEventListener("keydown", tecla); };
+                const tecla = (e) => { if (e.key === "Escape") cerrar(); };
+                document.addEventListener("keydown", tecla);
+                ov.querySelector(".modal-close-btn").addEventListener("click", cerrar);
+                ov.addEventListener("mousedown", (e) => { if (e.target === ov) cerrar(); });
+                montarVisorPDF(ov.querySelector("#visor-host"), { url: p.url, nombre, nombreDescarga: nombre }).then((v) => (visor = v));
+            }
 
-                nombresInstrumentos.forEach(inst => {
-                    const partitura = partiturasDeEstaPieza.get(inst);
-                    const wrap = document.createElement("div");
-                    wrap.className = "instrumento-wrap";
+            async function zipPieza(pid) {
+                const ps = partsDe(pid); const t = tituloDe(pid);
+                await zipConAviso(ps.map((p) => ({ url: p.url, ruta: `${p.instrumento}.pdf` })), t);
+            }
+            async function zipConAviso(archivos, nombre) {
+                window._showToast?.("Preparando el ZIP…", "info");
+                try { await descargarZip(archivos, nombre.replace(/[\\/:*?"<>|]/g, "-")); window._showToast?.("ZIP listo", "success"); }
+                catch (e) { window._showToast?.(e.message, "error"); }
+            }
+            $("btn-zip-agr").addEventListener("click", () => zipConAviso(visibles().flatMap((pz) => partsDe(pz.id).map((p) => ({ url: p.url, ruta: `${pz.titulo}/${p.instrumento}.pdf` }))), agr.nombre));
+            $("btn-mis").addEventListener("click", () => {
+                const lista = visibles().flatMap((pz) => partsDe(pz.id).filter((p) => coincideMio(p.instrumento)).map((p) => ({ url: p.url, ruta: `${pz.titulo} - ${p.instrumento}.pdf` })));
+                if (!lista.length) { window._showToast?.(`No hay partituras de ${miInstrumento} en esta agrupación todavía.`, "info"); return; }
+                zipConAviso(lista, `Mis partituras - ${miInstrumento}`);
+            });
 
-                    const btn = document.createElement("button");
-                    btn.type = "button";
-                    btn.className = "btn-instrumento" + (partitura ? " tiene-partitura" : " sin-partitura");
-                    btn.innerHTML = `<i class="fa-solid ${partitura ? "fa-file-pdf" : "fa-hourglass-half"}"></i> ${window._escapeHtml(inst)}`;
-                    // v3.0 (P-49): fecha de la última actualización — el
-                    // campo ya se guardaba pero no se mostraba en ningún lado.
-                    const fechaMs = partitura?.fecha?.toMillis?.();
-                    if (fechaMs) btn.title = `Actualizada el ${new Date(fechaMs).toLocaleDateString("es-VE")}`;
-                    btn.addEventListener("click", () => {
-                        if (partitura) window.open(partitura.url, "_blank", "noopener");
-                        else if (puedeEditar) abrirModalPartitura(pieza.id, inst);
-                        else window._showToast?.("Todavía no hay partitura subida para este instrumento.", "info");
+            // ---------- menús ----------
+            function menuPieza(btn, pz) {
+                if (!pz) return;
+                menuContextual(btn, [
+                    { icono: "fa-pen", texto: "Editar título y compositor", onClick: () => abrirPieza(pz) },
+                    { icono: "fa-plus", texto: "Agregar instrumento", onClick: () => abrirInstrumento(pz.id) },
+                    { separador: true },
+                    { icono: "fa-trash", texto: "Eliminar pieza", peligro: true, onClick: () => eliminarPieza(pz) },
+                ]);
+            }
+            function menuChip(btn, p) {
+                if (!p) return;
+                menuContextual(btn, [
+                    { icono: "fa-eye", texto: "Ver", onClick: () => verPartitura(p.id) },
+                    { icono: "fa-download", texto: "Descargar", onClick: () => descargarArchivo(p.url, `${tituloDe(p.piezaId)} - ${p.instrumento}`) },
+                    { separador: true },
+                    { icono: "fa-guitar", texto: "Cambiar instrumento", onClick: () => cambiarInstrumento(p) },
+                    { icono: "fa-file-arrow-up", texto: "Reemplazar PDF", onClick: () => reemplazarPDF(p) },
+                    { separador: true },
+                    { icono: "fa-trash", texto: "Quitar este instrumento", peligro: true, onClick: () => eliminarPartitura(p) },
+                ]);
+            }
+
+            // ---------- crear / editar pieza ----------
+            const SELECCION = (n) => `<select class="sel-inst" aria-label="Instrumento">${opcionesInstrumentoHTML(n, { vacio: "Instrumento…" })}</select>`;
+            function adivinarInstrumento(nombre) {
+                const n = norm(nombre.replace(/\.pdf$/i, "")); const cat = [...document.querySelectorAll("#__cat option")].map((o) => o.value);
+                return cat.find((c) => c && n.includes(norm(c))) || "";
+            }
+            function abrirPieza(pz) {
+                const editando = !!pz;
+                const p = abrirPanel({
+                    titulo: editando ? "Editar pieza" : "Nueva pieza", ancho: editando ? "normal" : "amplio",
+                    subtitulo: `<i class="fa-solid fa-music"></i> ${esc(agr.nombre)}`,
+                    cuerpoHTML: `<label for="pz-titulo">Título</label><input id="pz-titulo" type="text" maxlength="120" value="${esc(pz?.titulo || "")}" placeholder="Ej. Himno de la Alegría" autocomplete="off"><p class="error-campo" id="pz-err" role="alert"></p>
+                        <label for="pz-comp">Compositor <span style="text-transform:none;opacity:.8;">(opcional)</span></label><input id="pz-comp" type="text" maxlength="80" value="${esc(pz?.compositor || "")}" placeholder="Ej. L. v. Beethoven" autocomplete="off">
+                        ${editando ? "" : `<label>Partituras (PDF)</label>
+                        <div class="zona-soltar" id="pz-soltar" tabindex="0" role="button"><i class="fa-solid fa-cloud-arrow-up"></i> Arrastra uno o varios PDF aquí, o haz clic para elegirlos<br><small>Un PDF por instrumento · máx. 10 MB c/u</small></div>
+                        <input type="file" id="pz-files" accept="application/pdf,.pdf" multiple hidden>
+                        <div id="pz-filas"></div><p class="ayuda">También puedes crear la pieza sin PDF y agregarlos después.</p>`}`,
+                    pieHTML: `<button type="button" class="btn btn-cerrar" id="pz-cancelar">Cancelar</button><button type="button" class="btn btn-submit" id="pz-guardar">${editando ? "Guardar" : "Crear pieza"}</button>`,
+                });
+                p.panel.querySelector("#pz-cancelar").addEventListener("click", p.cerrar);
+                const err = p.panel.querySelector("#pz-err"), btn = p.panel.querySelector("#pz-guardar"), filasEl = p.panel.querySelector("#pz-filas");
+                const filas = []; // { file, fila }
+                if (!editando) {
+                    const cat = document.createElement("select"); cat.id = "__cat"; cat.hidden = true; cat.innerHTML = opcionesInstrumentoHTML(""); document.body.appendChild(cat); p.fondo.addEventListener("remove", () => cat.remove());
+                    const agregar = (files) => [...files].forEach((file) => {
+                        try { validarPDF(file); } catch (e) { err.textContent = e.message; return; }
+                        const div = document.createElement("div"); div.className = "fila-part";
+                        div.innerHTML = `${SELECCION(adivinarInstrumento(file.name))}<div class="archivo"><i class="fa-solid fa-file-pdf"></i><span title="${esc(file.name)}">${esc(file.name)}</span><small>${formatoTamano(file.size)}</small></div><button type="button" class="quitar" aria-label="Quitar"><i class="fa-solid fa-xmark"></i></button><div class="progreso"><i></i></div><p class="err" hidden></p>`;
+                        enlazarSelectInstrumento(div.querySelector("select"));
+                        const item = { file, div }; filas.push(item);
+                        div.querySelector(".quitar").addEventListener("click", () => { filas.splice(filas.indexOf(item), 1); div.remove(); });
+                        filasEl.appendChild(div);
                     });
-                    wrap.appendChild(btn);
-
-                    if (partitura && puedeEditar) {
-                        const btnReemplazar = document.createElement("button");
-                        btnReemplazar.type = "button";
-                        btnReemplazar.className = "btn-reemplazar-partitura";
-                        btnReemplazar.title = "Reemplazar este PDF";
-                        btnReemplazar.innerHTML = `<i class="fa-solid fa-pen"></i>`;
-                        // v3.0 (P-50): confirmación explícita antes de reemplazar
-                        // (antes abría el modal directo y sobreescribía al guardar).
-                        btnReemplazar.addEventListener("click", async (e) => {
-                            e.stopPropagation();
-                            const ok = await window._confirmDialog(`Vas a reemplazar el PDF de <strong>${window._escapeHtml(inst)}</strong> en "${window._escapeHtml(pieza.titulo)}".`, { titulo: "¿Reemplazar partitura?", textoOk: "Sí, reemplazar" });
-                            if (ok) abrirModalPartitura(pieza.id, inst);
-                        });
-                        wrap.appendChild(btnReemplazar);
-                    }
-                    grid.appendChild(wrap);
-                });
-
-                if (puedeEditar) {
-                    const btnAgregar = document.createElement("button");
-                    btnAgregar.type = "button";
-                    btnAgregar.className = "btn-instrumento btn-agregar-instrumento";
-                    btnAgregar.innerHTML = `<i class="fa-solid fa-plus"></i> Agregar partitura`;
-                    btnAgregar.addEventListener("click", () => abrirModalPartitura(pieza.id, ""));
-                    grid.appendChild(btnAgregar);
-                } else if (!nombresInstrumentos.length) {
-                    grid.innerHTML = `<p style="color:var(--color-texto-claro);font-size:0.85rem;">Todavía no hay partituras cargadas para esta pieza.</p>`;
+                    const files = p.panel.querySelector("#pz-files"), zona = p.panel.querySelector("#pz-soltar");
+                    zona.addEventListener("click", () => files.click()); zona.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); files.click(); } });
+                    files.addEventListener("change", () => { agregar(files.files); files.value = ""; });
+                    ["dragenter", "dragover"].forEach((n) => zona.addEventListener(n, (e) => { e.preventDefault(); zona.classList.add("activa"); }));
+                    ["dragleave", "drop"].forEach((n) => zona.addEventListener(n, (e) => { e.preventDefault(); zona.classList.remove("activa"); }));
+                    zona.addEventListener("drop", (e) => agregar(e.dataTransfer.files));
                 }
-
-                card.appendChild(grid);
-                piezasContainer.appendChild(card);
-            });
-        }
-
-        function actualizarPartiturasPorPieza(partituras) {
-            const nuevoMapa = new Map();
-            partituras.forEach(p => {
-                if (!nuevoMapa.has(p.piezaId)) nuevoMapa.set(p.piezaId, new Map());
-                const porInstrumento = nuevoMapa.get(p.piezaId);
-                const existente = porInstrumento.get(p.instrumento);
-                // Si hay más de una subida para el mismo instrumento (reemplazos
-                // viejos que no se borraron), nos quedamos con la más reciente.
-                const fechaNueva = p.fecha?.toMillis?.() ?? 0;
-                const fechaVieja = existente?.fecha?.toMillis?.() ?? -1;
-                if (!existente || fechaNueva >= fechaVieja) porInstrumento.set(p.instrumento, p);
-            });
-            partiturasPorPieza = nuevoMapa;
-            renderizarPiezas(piezasActuales);
-        }
-
-        const qPiezas = query(piezasCol, where("agrupacionId", "==", agrupacionId));
-        onSnapshot(qPiezas, (snapshot) => {
-            const piezas = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-            renderizarPiezas(piezas);
-        }, (err) => {
-            console.error("No se pudieron cargar las piezas:", err);
-            piezasContainer.innerHTML = `<p style="color:var(--color-acento);">No se pudieron cargar las piezas: ${window._escapeHtml(err.message)}</p>`;
-        });
-
-        const qPartituras = query(partiturasCol, where("agrupacionId", "==", agrupacionId));
-        onSnapshot(qPartituras, (snapshot) => {
-            const partituras = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-            actualizarPartiturasPorPieza(partituras);
-        }, (err) => {
-            console.error("No se pudieron cargar las partituras:", err);
-        });
-
-        // v3.0 (G-31): la función local que subía a Cloudinary se sacó de
-        // acá — ahora usa el módulo compartido importado arriba
-        // (subirACloudinary), que hace exactamente lo mismo con el mismo
-        // CLOUD_NAME/preset, pero en un solo lugar para todo el sitio.
-
-        // ==================== MODAL DE PARTITURA ====================
-        function abrirModalPartitura(piezaId, instrumento) {
-            document.getElementById("partitura-pieza-id").value = piezaId;
-            document.getElementById("partitura-instrumento").value = instrumento || "";
-            document.getElementById("partitura-archivo").value = "";
-            document.getElementById("modal-partitura").style.display = "flex";
-        }
-
-        document.getElementById("btn-cerrar-modal-partitura").addEventListener("click", () => {
-            document.getElementById("modal-partitura").style.display = "none";
-        });
-        document.getElementById("partitura-close-btn").addEventListener("click", () => {
-            document.getElementById("modal-partitura").style.display = "none";
-        });
-
-        document.getElementById("btn-subir-partitura").addEventListener("click", async () => {
-            const piezaId = document.getElementById("partitura-pieza-id").value;
-            const instrumento = document.getElementById("partitura-instrumento").value.trim();
-            const archivo = document.getElementById("partitura-archivo").files[0];
-
-            // v3.0 (P-48): reemplaza el alert() nativo
-            if (!instrumento || !archivo) {
-                window._showToast?.("Indicá el instrumento y seleccioná un PDF.", "error");
-                return;
+                const guardar = async () => {
+                    err.textContent = ""; const titulo = p.panel.querySelector("#pz-titulo").value.trim(), comp = p.panel.querySelector("#pz-comp").value.trim();
+                    if (!titulo) { err.textContent = "Escribe el título de la pieza."; p.panel.querySelector("#pz-titulo").focus(); return; }
+                    if (piezas.some((x) => x.id !== pz?.id && norm(x.titulo) === norm(titulo))) { err.textContent = "Ya existe una pieza con ese título en esta agrupación."; return; }
+                    if (editando) {
+                        btn.disabled = true; btn.textContent = "Guardando…";
+                        try { await updateDoc(doc(db, "piezas", pz.id), { titulo, compositor: comp }); window._showToast?.("Pieza actualizada", "success"); p.cerrar(); }
+                        catch (e) { err.textContent = "No se pudo guardar: " + e.message; btn.disabled = false; btn.textContent = "Guardar"; }
+                        return;
+                    }
+                    const instr = filas.map((f) => f.div.querySelector("select").value);
+                    if (instr.some((i) => !i || i === "__otro__")) { err.textContent = "Elige el instrumento de cada PDF."; return; }
+                    if (new Set(instr.map(norm)).size !== instr.length) { err.textContent = "Hay dos PDF para el mismo instrumento. Deja uno solo."; return; }
+                    btn.disabled = true; btn.textContent = "Creando…";
+                    let piezaId;
+                    try {
+                        const r = await addDoc(collection(db, "piezas"), { titulo, compositor: comp, agrupacionId: agr.id, agrupacion: agr.nombre, nucleo: agr.nucleo, estado: agr.estado || "", creadoPor: real.uid, fechaCreacion: new Date().toISOString() });
+                        piezaId = r.id;
+                    } catch (e) { err.textContent = "No se pudo crear la pieza: " + e.message; btn.disabled = false; btn.textContent = "Crear pieza"; return; }
+                    let fallos = 0;
+                    for (let i = 0; i < filas.length; i++) {
+                        const { file, div } = filas[i], prog = div.querySelector(".progreso"), barra = prog.firstElementChild, e1 = div.querySelector(".err");
+                        prog.style.display = "block"; btn.textContent = `Subiendo ${i + 1} de ${filas.length}…`;
+                        try {
+                            const a = await subirArchivo(file, { carpeta: `partituras/${agr.nucleo}`.replace(/[^\w/ -]/g, ""), onProgreso: (x) => (barra.style.width = `${Math.round(x * 100)}%`) });
+                            await addDoc(collection(db, "partituras"), { piezaId, agrupacionId: agr.id, nucleo: agr.nucleo, instrumento: instr[i], url: a.url, nombreArchivo: file.name, bytes: a.bytes, proveedor: a.proveedor, publicId: a.publicId, subidoPor: real.uid, subidoPorNombre: real.nombre || "", fecha: new Date().toISOString() });
+                            div.remove();
+                        } catch (e) { fallos++; e1.hidden = false; e1.textContent = e.message; prog.style.display = "none"; }
+                    }
+                    if (!fallos) { window._showToast?.("Pieza creada", "success"); p.cerrar(); }
+                    else { window._showToast?.(`La pieza se creó, pero ${fallos} PDF no se pudieron subir. Puedes reintentarlos desde “Agregar instrumento”.`, "error"); btn.disabled = false; btn.textContent = "Cerrar"; btn.onclick = p.cerrar; }
+                };
+                btn.addEventListener("click", guardar);
+                p.panel.querySelector("#pz-titulo").addEventListener("keydown", (e) => { if (e.key === "Enter") guardar(); });
             }
+            $("btn-nueva-pieza").addEventListener("click", () => abrirPieza(null));
 
-            const btn = document.getElementById("btn-subir-partitura");
-            btn.disabled = true;
-            btn.textContent = "Subiendo...";
-
-            try {
-                await resolverNucleo();
-                const url = await subirACloudinary(archivo, "partituras");
-                const session = window.Auth?.getSession();
-                await addDoc(partiturasCol, {
-                    piezaId,
-                    instrumento,
-                    url,
-                    nombre: archivo.name,
-                    agrupacionId,
-                    nucleo: nucleoDeAgrupacion,
-                    subidoPor: session?.uid || "desconocido",
-                    fecha: new Date()
+            // ---------- agregar instrumento a una pieza ----------
+            function abrirInstrumento(pid) {
+                const pz = piezas.find((x) => x.id === pid); if (!pz) return;
+                const p = abrirPanel({
+                    titulo: "Agregar instrumento", subtitulo: `<i class="fa-solid fa-music"></i> ${esc(pz.titulo)}`,
+                    cuerpoHTML: `<label for="in-sel">Instrumento</label>${SELECCION("").replace('class="sel-inst"', 'class="sel-inst" id="in-sel"')}
+                        <label for="in-file">Partitura (PDF)</label><input type="file" id="in-file" accept="application/pdf,.pdf"><p class="ayuda">Máx. 10 MB.</p><div class="progreso-gen" id="in-prog" style="display:none;height:6px;border-radius:6px;background:rgba(255,255,255,.2);margin-top:.8rem;overflow:hidden"><i style="display:block;height:100%;width:0;background:#fff"></i></div><p class="error-campo" id="in-err" role="alert"></p>`,
+                    pieHTML: `<button type="button" class="btn btn-cerrar" id="in-cancelar">Cancelar</button><button type="button" class="btn btn-submit" id="in-guardar">Subir partitura</button>`,
                 });
-
-                window._showToast?.("Partitura subida correctamente.", "success");
-                document.getElementById("modal-partitura").style.display = "none";
-            } catch (error) {
-                window._showToast?.("Error al subir: " + error.message, "error");
-            } finally {
-                btn.disabled = false;
-                btn.textContent = "Subir";
-            }
-        });
-
-        // ==================== MODAL DE NUEVA PIEZA ====================
-        // Quien puede subir partituras (admins/directores/profesor) también
-        // puede crear piezas nuevas — mismo criterio que ya usa "Subir PDF".
-        (async () => {
-            await resolverNucleo();
-            const session = window.Auth?.getSession();
-            const puedeCrear = session && (window.Auth?.checkPermission("manage_users") || session.role === "profesor");
-            if (puedeCrear) document.getElementById("btn-nueva-pieza").style.display = "inline-flex";
-        })();
-
-        document.getElementById("btn-nueva-pieza").addEventListener("click", () => {
-            document.getElementById("pieza-titulo").value = "";
-            document.getElementById("modal-pieza").style.display = "flex";
-        });
-        document.getElementById("pieza-close-btn").addEventListener("click", () => {
-            document.getElementById("modal-pieza").style.display = "none";
-        });
-        document.getElementById("btn-cerrar-modal-pieza").addEventListener("click", () => {
-            document.getElementById("modal-pieza").style.display = "none";
-        });
-
-        document.getElementById("btn-guardar-pieza").addEventListener("click", async () => {
-            const titulo = document.getElementById("pieza-titulo").value.trim();
-
-            if (!titulo) { window._showToast?.("Ponele un título a la pieza.", "error"); return; }
-            await resolverNucleo();
-            if (!nucleoDeAgrupacion) {
-                window._showToast?.("No se pudo determinar el núcleo de esta agrupación — recargá la página desde Piezas.", "error");
-                return;
-            }
-
-            const btn = document.getElementById("btn-guardar-pieza");
-            const textoOriginal = btn.textContent;
-            btn.disabled = true;
-            btn.textContent = "Creando...";
-            try {
-                await addDoc(piezasCol, {
-                    titulo,
-                    instrumentos: [], // se completa solo, a medida que se suben partituras
-                    agrupacionId,
-                    nucleo: nucleoDeAgrupacion,
+                enlazarSelectInstrumento(p.panel.querySelector("#in-sel"));
+                p.panel.querySelector("#in-cancelar").addEventListener("click", p.cerrar);
+                const err = p.panel.querySelector("#in-err"), btn = p.panel.querySelector("#in-guardar");
+                btn.addEventListener("click", async () => {
+                    err.textContent = ""; const instr = p.panel.querySelector("#in-sel").value, file = p.panel.querySelector("#in-file").files[0];
+                    if (!instr || instr === "__otro__") { err.textContent = "Elige el instrumento."; return; }
+                    try { validarPDF(file); } catch (e) { err.textContent = e.message; return; }
+                    const existente = partsDe(pid).find((x) => norm(x.instrumento) === norm(instr));
+                    if (existente && !(await window._confirmDialog(`${esc(pz.titulo)} ya tiene una partitura de <strong>${esc(instr)}</strong>. ¿Quieres reemplazarla por este PDF?`, { titulo: "Instrumento repetido", textoOk: "Sí, reemplazar" }))) return;
+                    btn.disabled = true; btn.textContent = "Subiendo…"; const prog = p.panel.querySelector("#in-prog"); prog.style.display = "block";
+                    try {
+                        const a = await subirArchivo(file, { carpeta: `partituras/${agr.nucleo}`.replace(/[^\w/ -]/g, ""), onProgreso: (x) => (prog.firstElementChild.style.width = `${Math.round(x * 100)}%`) });
+                        const datos = { url: a.url, nombreArchivo: file.name, bytes: a.bytes, proveedor: a.proveedor, publicId: a.publicId, subidoPor: real.uid, subidoPorNombre: real.nombre || "", fecha: new Date().toISOString() };
+                        if (existente) await updateDoc(doc(db, "partituras", existente.id), datos);
+                        else await addDoc(collection(db, "partituras"), { piezaId: pid, agrupacionId: agr.id, nucleo: agr.nucleo, instrumento: instr, ...datos });
+                        window._showToast?.("Partitura guardada", "success"); p.cerrar();
+                    } catch (e) { err.textContent = e.message; btn.disabled = false; btn.textContent = "Subir partitura"; prog.style.display = "none"; }
                 });
-                window._showToast?.("Pieza creada. Ahora agregale partituras desde su tarjeta.", "success");
-                document.getElementById("modal-pieza").style.display = "none";
-            } catch (err) {
-                console.error("No se pudo crear la pieza:", err);
-                window._showToast?.("No se pudo crear la pieza: " + err.message, "error");
-            } finally {
-                btn.disabled = false;
-                btn.textContent = textoOriginal;
             }
-        });
 
-        // ==================== INICIALIZACIÓN ====================
-        UI.render();
+            function cambiarInstrumento(part) {
+                const p = abrirPanel({
+                    titulo: "Cambiar instrumento", subtitulo: `${esc(tituloDe(part.piezaId))} · actualmente ${esc(part.instrumento)}`,
+                    cuerpoHTML: `<label for="ci-sel">Nuevo instrumento</label><select id="ci-sel">${opcionesInstrumentoHTML(part.instrumento)}</select><p class="error-campo" id="ci-err" role="alert"></p>`,
+                    pieHTML: `<button type="button" class="btn btn-cerrar" id="ci-c">Cancelar</button><button type="button" class="btn btn-submit" id="ci-g">Guardar</button>`,
+                });
+                enlazarSelectInstrumento(p.panel.querySelector("#ci-sel")); p.panel.querySelector("#ci-c").addEventListener("click", p.cerrar);
+                p.panel.querySelector("#ci-g").addEventListener("click", async () => {
+                    const nuevo = p.panel.querySelector("#ci-sel").value, err = p.panel.querySelector("#ci-err");
+                    if (!nuevo || nuevo === "__otro__") { err.textContent = "Elige un instrumento."; return; }
+                    if (partsDe(part.piezaId).some((x) => x.id !== part.id && norm(x.instrumento) === norm(nuevo))) { err.textContent = "Esa pieza ya tiene una partitura para ese instrumento."; return; }
+                    try { await updateDoc(doc(db, "partituras", part.id), { instrumento: nuevo }); window._showToast?.("Instrumento actualizado", "success"); p.cerrar(); } catch (e) { err.textContent = e.message; }
+                });
+            }
+            function reemplazarPDF(part) {
+                const inp = document.createElement("input"); inp.type = "file"; inp.accept = "application/pdf,.pdf";
+                inp.addEventListener("change", async () => {
+                    const file = inp.files[0]; if (!file) return;
+                    try { validarPDF(file); window._showToast?.("Subiendo el nuevo PDF…", "info");
+                        const a = await subirArchivo(file, { carpeta: `partituras/${agr.nucleo}`.replace(/[^\w/ -]/g, "") });
+                        await updateDoc(doc(db, "partituras", part.id), { url: a.url, nombreArchivo: file.name, bytes: a.bytes, proveedor: a.proveedor, publicId: a.publicId, subidoPor: real.uid, subidoPorNombre: real.nombre || "", fecha: new Date().toISOString() });
+                        window._showToast?.("PDF reemplazado", "success");
+                    } catch (e) { window._showToast?.(e.message, "error"); }
+                });
+                inp.click();
+            }
+
+            // ---------- eliminar (con “Deshacer”) ----------
+            function eliminarPartitura(part) {
+                borrarConDeshacer({ mensaje: `Se quitó ${part.instrumento} de ${tituloDe(part.piezaId)}`,
+                    aplicarUI: () => { ocultas.add("p:" + part.id); pintar(); }, revertirUI: () => { ocultas.delete("p:" + part.id); pintar(); },
+                    ejecutar: async () => { await aplicarEnLotes([["delete", doc(db, "partituras", part.id)]]); ocultas.delete("p:" + part.id); } });
+            }
+            function eliminarPieza(pz) {
+                const ps = partsDe(pz.id);
+                borrarConDeshacer({ mensaje: `Se eliminó “${pz.titulo}”${ps.length ? ` y sus ${ps.length} partitura(s)` : ""}`,
+                    aplicarUI: () => { ocultas.add("z:" + pz.id); pintar(); }, revertirUI: () => { ocultas.delete("z:" + pz.id); pintar(); },
+                    ejecutar: async () => {
+                        const s = await getDocs(query(collection(db, "partituras"), where("nucleo", "==", agr.nucleo), where("piezaId", "==", pz.id)));
+                        await aplicarEnLotes([...s.docs.map((d) => ["delete", d.ref]), ["delete", doc(db, "piezas", pz.id)]]); ocultas.delete("z:" + pz.id);
+                    } });
+            }
+            window.UI?.render?.();
+        }
+        if (window.Auth?.getSession()) iniciar(); else window.addEventListener("auth-ready", iniciar, { once: true });
+
     </script>
 </body>
 </html>

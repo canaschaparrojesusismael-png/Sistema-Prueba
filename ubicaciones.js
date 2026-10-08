@@ -55,8 +55,10 @@ export async function cargarTodosLosNucleos({ forzar = false } = {}) {
     if (cache) return cache;
   }
   const snap = await getDocs(collection(db, "nucleos"));
-  const lista = [...new Map(snap.docs.map((d) => [d.data().nombre, { nombre: d.data().nombre, estado: d.data().estado }])).values()]
-    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  // v4.0: se distingue por NOMBRE + ESTADO (antes solo por nombre y "Libertador" de
+  // Táchira desaparecía detrás de "Libertador" de Cojedes).
+  const lista = [...new Map(snap.docs.map((d) => [`${d.data().estado}|${d.data().nombre}`, { id: d.id, nombre: d.data().nombre, estado: d.data().estado }])).values()]
+    .sort((a, b) => a.nombre.localeCompare(b.nombre) || (a.estado || "").localeCompare(b.estado || ""));
   guardarCacheSesion(cacheKey, lista);
   return lista;
 }
@@ -100,7 +102,7 @@ export async function crearNucleo(nombre, estado) {
     (d) => (d.data().nombre || "").trim().toLowerCase() === nombreLimpio.toLowerCase()
   );
   if (yaExiste) {
-    const err = new Error(`Ya existe un núcleo llamado "${nombreLimpio}" (puede ser en otro estado). Elegí un nombre distinto para evitar que se mezclen sus datos.`);
+    const err = new Error(`Ya existe un núcleo llamado "${nombreLimpio}" (puede ser en otro estado). Elige un nombre distinto para evitar que se mezclen sus datos.`);
     err.categoria = "nombre_duplicado";
     throw err;
   }
@@ -119,10 +121,18 @@ const COLECCIONES_CON_NUCLEO = ["usuarios", "agrupaciones", "piezas", "partitura
 // Cuenta cuántos documentos en total (de todas las colecciones de arriba)
 // quedarían huérfanos si se renombra este núcleo sin actualizarlos en
 // cascada — se usa para avisar antes de confirmar el renombre.
-export async function contarDocumentosDeNucleo(nombreNucleo) {
+// v4.0: las reglas de Firestore solo dejan listar "usuarios" si la consulta
+// demuestra el alcance — por eso a esa colección se le suma el filtro de estado.
+function consultaPorNucleo(nombreCol, nombreNucleo, estado) {
+  const base = [collection(db, nombreCol), where("nucleo", "==", nombreNucleo)];
+  if (nombreCol === "usuarios" && estado) base.push(where("estado", "==", estado));
+  return query(...base);
+}
+
+export async function contarDocumentosDeNucleo(nombreNucleo, estado) {
   const conteos = await Promise.all(
     COLECCIONES_CON_NUCLEO.map((col) =>
-      getDocs(query(collection(db, col), where("nucleo", "==", nombreNucleo))).then((s) => s.size).catch(() => 0)
+      getDocs(consultaPorNucleo(col, nombreNucleo, estado)).then((s) => s.size).catch(() => 0)
     )
   );
   return conteos.reduce((a, b) => a + b, 0);
@@ -151,7 +161,7 @@ export async function renombrarNucleo(id, nuevoNombre, estado) {
   if (nombreViejo && nombreViejo !== nombreLimpio) {
     const refsAActualizar = [];
     for (const nombreCol of COLECCIONES_CON_NUCLEO) {
-      const snap = await getDocs(query(collection(db, nombreCol), where("nucleo", "==", nombreViejo)));
+      const snap = await getDocs(consultaPorNucleo(nombreCol, nombreViejo, estado));
       snap.docs.forEach((d) => refsAActualizar.push(d.ref));
     }
     const TAMANO_LOTE = 400;
@@ -174,194 +184,12 @@ export async function eliminarNucleo(id, estado) {
   invalidarCacheSesionNucleos();
 }
 
+export { invalidarCacheSesionNucleos };
+
 // Cuenta cuántos usuarios tienen asignado este núcleo — para avisar antes de
 // borrarlo (borrar el núcleo NO borra ni desvincula a esos usuarios, solo
 // hace que el nombre deje de aparecer en los selectores para elegir de nuevo).
-export async function contarUsuariosEnNucleo(nombreNucleo) {
-  const snap = await getDocs(query(collection(db, "usuarios"), where("nucleo", "==", nombreNucleo)));
+export async function contarUsuariosEnNucleo(nombreNucleo, estado) {
+  const snap = await getDocs(consultaPorNucleo("usuarios", nombreNucleo, estado));
   return snap.size;
-}
-
-/**
- * Abre un modal elegante (misma estética que el resto del sitio) para elegir
- * o crear Estado + Núcleo. Se puede usar desde cualquier página.
- *
- * options:
- *  - estadoInicial / nucleoInicial: preseleccionar valores
- *  - soloEstado: true → oculta el paso de núcleo (para roles que ven todo un estado)
- *  - permitirCrearNucleo: false → oculta el botón de "+ nuevo núcleo" (roles sin permiso)
- *  - onConfirmar({estado, nucleo}): callback al confirmar
- */
-export function abrirSelectorUbicacion(options = {}) {
-  const {
-    estadoInicial = "", nucleoInicial = "", soloEstado = false,
-    permitirCrearNucleo = true, onConfirmar = () => {},
-  } = options;
-
-  document.getElementById("ubicacion-modal-overlay")?.remove();
-
-  const overlay = document.createElement("div");
-  overlay.id = "ubicacion-modal-overlay";
-  overlay.className = "modal-overlay";
-  overlay.style.display = "flex";
-  overlay.innerHTML = `
-    <div class="modal-content ubicacion-modal">
-      <button type="button" class="modal-close-btn" id="ubicacion-close-btn">&times;</button>
-      <h2><i class="fa-solid fa-location-dot"></i> Elegir ubicación</h2>
-      <div class="editor-row">
-        <label>Estado</label>
-        <select id="ubicacion-select-estado" class="modal-input">
-          <option value="">Seleccione un estado…</option>
-          ${ESTADOS_VENEZUELA.map(e => `<option value="${e}" ${e === estadoInicial ? "selected" : ""}>${e}</option>`).join("")}
-        </select>
-      </div>
-      <div class="editor-row" id="ubicacion-row-nucleo" style="${soloEstado ? "display:none;" : ""}">
-        <label>Núcleo</label>
-        <div style="display:flex;gap:0.5rem;align-items:center;">
-          <select id="ubicacion-select-nucleo" class="modal-input" ${estadoInicial ? "" : "disabled"} style="flex:1;">
-            <option value="">${estadoInicial ? "Cargando…" : "Elegí un estado primero"}</option>
-          </select>
-          <button type="button" id="ubicacion-btn-reintentar-nucleo" class="btn-config-mini" title="Reintentar" style="flex-shrink:0;display:none;background:#c1121f;"><i class="fa-solid fa-rotate-right"></i> Reintentar</button>
-          ${permitirCrearNucleo ? `
-            <button type="button" id="ubicacion-btn-renombrar-nucleo" class="btn-config-mini" title="Renombrar este núcleo" style="flex-shrink:0;"><i class="fa-solid fa-pen"></i></button>
-            <button type="button" id="ubicacion-btn-borrar-nucleo" class="btn-config-mini" title="Eliminar este núcleo" style="flex-shrink:0;background:#c1121f;"><i class="fa-solid fa-trash"></i></button>
-            <button type="button" id="ubicacion-btn-nuevo-nucleo" class="btn-config-mini" title="Crear núcleo nuevo" style="flex-shrink:0;">+ Nuevo</button>
-          ` : ""}
-        </div>
-        <div id="ubicacion-crear-nucleo-form" style="display:none;margin-top:0.6rem;gap:0.5rem;">
-          <input type="text" id="ubicacion-input-nuevo-nucleo" class="modal-input" placeholder="Nombre del nuevo núcleo…" style="margin-bottom:0.5rem;" />
-          <div style="display:flex;gap:0.5rem;">
-            <button type="button" id="ubicacion-btn-guardar-nucleo" class="btn btn-submit" style="flex:1;">Crear</button>
-            <button type="button" id="ubicacion-btn-cancelar-nucleo" class="btn btn-cerrar" style="flex:1;">Cancelar</button>
-          </div>
-        </div>
-      </div>
-      <button type="button" id="ubicacion-btn-confirmar" class="btn btn-submit config-btn-full">Confirmar</button>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-
-  const selEstado = document.getElementById("ubicacion-select-estado");
-  const filaNucleo = document.getElementById("ubicacion-row-nucleo");
-  const selNucleo = document.getElementById("ubicacion-select-nucleo");
-  const formCrear = document.getElementById("ubicacion-crear-nucleo-form");
-  const btnReintentar = document.getElementById("ubicacion-btn-reintentar-nucleo");
-
-  async function refrescarNucleos(estado, preseleccionar = "") {
-    btnReintentar.style.display = "none";
-    if (!estado) { selNucleo.disabled = true; selNucleo.innerHTML = `<option value="">Elegí un estado primero</option>`; return; }
-    selNucleo.disabled = true;
-    selNucleo.innerHTML = `<option value="">Cargando…</option>`;
-    try {
-      // forzar:true a propósito: esta pantalla es justo donde se administran
-      // los núcleos, así que priorizamos datos frescos sobre velocidad.
-      const lista = await cargarNucleosConIdPorEstado(estado, { forzar: true });
-      selNucleo.innerHTML = lista.length
-        ? lista.map(n => `<option value="${n.nombre}" data-id="${n.id}" ${n.nombre === preseleccionar ? "selected" : ""}>${n.nombre}</option>`).join("")
-        : `<option value="">(sin núcleos en este estado todavía)</option>`;
-      selNucleo.disabled = false;
-    } catch (err) {
-      console.error("No se pudo cargar la lista de núcleos:", err);
-      selNucleo.innerHTML = `<option value="">⚠️ No se pudo cargar — tocá "Reintentar"</option>`;
-      selNucleo.disabled = true;
-      window._showToast?.("No se pudieron cargar los núcleos. Revisá tu conexión.", "error");
-      btnReintentar.style.display = "inline-flex";
-    }
-  }
-
-  if (estadoInicial && !soloEstado) refrescarNucleos(estadoInicial, nucleoInicial);
-
-  selEstado.addEventListener("change", () => {
-    formCrear.style.display = "none";
-    if (!soloEstado) refrescarNucleos(selEstado.value);
-  });
-
-  btnReintentar.addEventListener("click", () => refrescarNucleos(selEstado.value, selNucleo.value));
-
-  document.getElementById("ubicacion-btn-nuevo-nucleo")?.addEventListener("click", () => {
-    if (!selEstado.value) { window._showToast?.("Elegí un estado primero", "error"); return; }
-    formCrear.style.display = "flex";
-    formCrear.style.flexDirection = "column";
-    document.getElementById("ubicacion-input-nuevo-nucleo").value = "";
-    document.getElementById("ubicacion-input-nuevo-nucleo").focus();
-  });
-  document.getElementById("ubicacion-btn-cancelar-nucleo")?.addEventListener("click", () => {
-    formCrear.style.display = "none";
-  });
-  document.getElementById("ubicacion-btn-guardar-nucleo")?.addEventListener("click", async () => {
-    const nombre = document.getElementById("ubicacion-input-nuevo-nucleo").value.trim();
-    if (!nombre) return;
-    const btn = document.getElementById("ubicacion-btn-guardar-nucleo");
-    btn.disabled = true; btn.textContent = "Creando…";
-    try {
-      await crearNucleo(nombre, selEstado.value);
-      window._showToast?.(`Núcleo "${nombre}" creado`, "success");
-      formCrear.style.display = "none";
-      await refrescarNucleos(selEstado.value, nombre);
-    } catch (err) {
-      window._showToast?.("No se pudo crear: " + err.message, "error");
-    } finally {
-      btn.disabled = false; btn.textContent = "Crear";
-    }
-  });
-
-  // ---- Renombrar el núcleo seleccionado ----
-  document.getElementById("ubicacion-btn-renombrar-nucleo")?.addEventListener("click", async () => {
-    const opt = selNucleo.selectedOptions[0];
-    const id = opt?.dataset.id;
-    if (!id) { window._showToast?.("Elegí un núcleo primero", "error"); return; }
-    // v3.0 (G-02): reemplaza el prompt() nativo del navegador
-    const nuevoNombre = await window._promptDialog("Nuevo nombre para este núcleo:", opt.value, { titulo: "Renombrar núcleo" });
-    if (!nuevoNombre || !nuevoNombre.trim() || nuevoNombre.trim() === opt.value) return;
-    // CORREGIDO 2026-09-01: avisamos cuántos registros (usuarios, piezas,
-    // eventos, etc.) se van a actualizar, para que quien renombra sepa el
-    // alcance real de la acción antes de confirmarla.
-    const cantidad = await contarDocumentosDeNucleo(opt.value).catch(() => null);
-    const aviso = cantidad
-      ? `Esto va a actualizar ${cantidad} registro(s) que ya pertenecen a "${opt.value}" (usuarios, agrupaciones, piezas, partituras, flyers y eventos) para que pasen a "${nuevoNombre.trim()}".`
-      : `¿Renombrar "${opt.value}" a "${nuevoNombre.trim()}"?`;
-    const ok = await window._confirmDialog(aviso, { titulo: "¿Confirmar renombre?" });
-    if (!ok) return;
-    try {
-      const { actualizados } = await renombrarNucleo(id, nuevoNombre, selEstado.value);
-      window._showToast?.(`Núcleo renombrado (${actualizados} registro(s) actualizados)`, "success");
-      await refrescarNucleos(selEstado.value, nuevoNombre.trim());
-    } catch (err) {
-      window._showToast?.("No se pudo renombrar: " + err.message, "error");
-    }
-  });
-
-  // ---- Eliminar el núcleo seleccionado ----
-  document.getElementById("ubicacion-btn-borrar-nucleo")?.addEventListener("click", async () => {
-    const opt = selNucleo.selectedOptions[0];
-    const id = opt?.dataset.id;
-    if (!id) { window._showToast?.("Elegí un núcleo primero", "error"); return; }
-    const cantidad = await contarUsuariosEnNucleo(opt.value).catch(() => 0);
-    const aviso = cantidad > 0
-      ? `Este núcleo tiene ${cantidad} usuario(s) asignados. Borrarlo NO los borra a ellos ni sus datos, pero el nombre dejará de aparecer en los selectores. ¿Eliminar igual "${opt.value}"?`
-      : `¿Eliminar el núcleo "${opt.value}"? Esta acción no se puede deshacer.`;
-    // v3.0 (G-02): reemplaza el confirm() nativo del navegador
-    const ok = await window._confirmDialog(aviso, { titulo: "¿Eliminar núcleo?", peligroso: true, textoOk: "Sí, eliminar" });
-    if (!ok) return;
-    try {
-      await eliminarNucleo(id, selEstado.value);
-      window._showToast?.("Núcleo eliminado", "success");
-      await refrescarNucleos(selEstado.value);
-    } catch (err) {
-      window._showToast?.("No se pudo eliminar: " + err.message, "error");
-    }
-  });
-
-  const cerrar = () => overlay.remove();
-  document.getElementById("ubicacion-close-btn").addEventListener("click", cerrar);
-  overlay.addEventListener("click", (e) => { if (e.target === overlay) cerrar(); });
-
-  document.getElementById("ubicacion-btn-confirmar").addEventListener("click", () => {
-    const estado = selEstado.value;
-    const nucleo = soloEstado ? "" : selNucleo.value;
-    if (!estado) { window._showToast?.("Elegí un estado", "error"); return; }
-    if (!soloEstado && !nucleo) { window._showToast?.("Elegí un núcleo (o creá uno nuevo)", "error"); return; }
-    onConfirmar({ estado, nucleo });
-    cerrar();
-  });
 }

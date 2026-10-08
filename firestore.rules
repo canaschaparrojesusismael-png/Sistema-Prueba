@@ -1,213 +1,204 @@
 rules_version = '2';
+// ====================================================================
+//  REGLAS DE FIRESTORE — Sistema de Orquestas v4.0
+//
+//  Estas reglas son la ÚNICA barrera de seguridad real: todo lo que el
+//  navegador "oculta" (botones, roles, pestañas) se puede saltar desde la
+//  consola del navegador; lo que se decide acá, no.
+//
+//  Cambios respecto a v3 (resumen):
+//   · usuarios: ya NO todo usuario logueado puede leer a todo el país.
+//     Cada rol lee solo su alcance (su núcleo / su estado / todo si es nacional).
+//   · usuarios: crear y borrar solo lo hace el backend (Admin SDK). Un
+//     director_nacional ya no puede borrar ni editar a un owner_supremo.
+//   · usuarios: lista blanca de campos editables (nadie se cambia su propio
+//     rol, ni reactiva su cuenta, ni se cambia el correo).
+//   · Cuenta desactivada = sin acceso a NINGUNA colección, aunque su sesión
+//     siga abierta.
+//   · flyers / eventos / agrupaciones / piezas / partituras: ya no escribe
+//     cualquier admin en cualquier núcleo; solo en el suyo (nacional y
+//     regional siguen pudiendo en todos).
+//   · eventos: visibilidad por audiencia verificada en el servidor
+//     (profesor / estudiante / agrupación), no solo en el navegador.
+//   · Se elimina /contenido (las citas de la portada ya no son editables).
+//
+//  Después de publicarlas, probalas en Firebase Console → Firestore →
+//  Reglas → "Simulador de reglas".
+// ====================================================================
 service cloud.firestore {
   match /databases/{database}/documents {
-    function getRequester() {
-      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+
+    // ---------- Utilidades ----------
+    function signedIn() { return request.auth != null; }
+    function perfilPath() { return /databases/$(database)/documents/usuarios/$(request.auth.uid); }
+    function activo() {
+      return signedIn() && exists(perfilPath()) && get(perfilPath()).data.cuentaActiva != false;
     }
-    function esOwner() {
-      return getRequester().rango == 'owner_supremo';
+    function me() { return get(perfilPath()).data; }
+    function rol() { return me().rango; }
+
+    function esOwner()     { return rol() == 'owner_supremo'; }
+    function esNacional()  { return rol() in ['owner_supremo', 'director_nacional']; }
+    function esRegional()  { return rol() == 'director_regional'; }
+    function esDirNucleo() { return rol() == 'director_nucleo'; }
+    function esAdmin()     { return rol() == 'admin'; }
+    // "Gestores": quienes crean/editan contenido (= permiso manage_users del front)
+    function esGestor() {
+      return rol() in ['owner_supremo', 'director_nacional', 'director_regional', 'director_nucleo', 'admin'];
     }
-    function esDirectorNacional() {
-      return getRequester().rango == 'director_nacional';
+    // Nacional y regional operan sobre varios núcleos; el resto, solo sobre el propio.
+    function multiNucleo() { return esNacional() || esRegional(); }
+    function esMiNucleo(nucleo) { return me().nucleo != '' && nucleo == me().nucleo; }
+
+    // ---------- USUARIOS ----------
+    function puedeLeerUsuario(u) {
+      return esNacional()
+        || esMiNucleo(u.nucleo)
+        || (esRegional() && me().estado != '' && u.estado == me().estado)
+        || (esRegional() && u.rango == 'director_nacional')
+        || (esDirNucleo() && me().estado != '' && u.rango == 'director_regional' && u.estado == me().estado);
+    }
+    function camposCambiados() {
+      return request.resource.data.diff(resource.data).affectedKeys();
     }
 
     match /usuarios/{userId} {
-      // Lectura: cualquier usuario autenticado puede leer
-      allow read: if request.auth != null;
-      // Creación: roles con permisos en su ámbito geográfico
-      allow create: if request.auth != null && (
-        getRequester().rango == 'owner_supremo' ||
-        getRequester().rango == 'director_nacional' ||
-        (getRequester().rango == 'director_regional' && request.resource.data.estado == getRequester().estado) ||
-        (getRequester().rango == 'director_nucleo' && request.resource.data.nucleo == getRequester().nucleo)
-      );
-      // Actualización: jerarquía respetada, rango solo owner, validación de ámbito
-      allow update: if request.auth != null && (
-        // Cualquier usuario puede actualizar SU PROPIA sesión al iniciar/cerrar
-        // sesión o cambiar su contraseña (isOnline, currentSessionId, lastLogin,
-        // requiresPasswordChange). Nunca puede tocar su propio rango, estado,
-        // núcleo, agrupación ni reactivarse la cuenta — eso evita que alguien
-        // se autoascienda o se reactive solo.
+      allow get:  if activo() && (request.auth.uid == userId || puedeLeerUsuario(resource.data));
+      allow list: if activo() && puedeLeerUsuario(resource.data);
+
+      // Alta y baja: SOLO el backend (api/crear-usuario, api/eliminar-usuario, api/estado-cuenta).
+      allow create, delete: if false;
+
+      allow update: if activo() && (
+        // Uno mismo: únicamente su estado de sesión.
         (request.auth.uid == userId &&
-         request.resource.data.rango == resource.data.rango &&
-         request.resource.data.estado == resource.data.estado &&
-         request.resource.data.nucleo == resource.data.nucleo &&
-         request.resource.data.agrupacion == resource.data.agrupacion &&
-         request.resource.data.cuentaActiva == resource.data.cuentaActiva) ||
-        // Owner supremo puede editar cualquier campo de cualquiera
-        esOwner() ||
-        // Director nacional puede editar cualquier campo excepto rango
-        (getRequester().rango == 'director_nacional' &&
-         request.resource.data.rango == resource.data.rango) ||
-        // Director regional puede editar usuarios de su estado, pero no el campo rango ni el estado mismo
-        (getRequester().rango == 'director_regional' &&
-         resource.data.estado == getRequester().estado &&
-         request.resource.data.rango == resource.data.rango &&
-         request.resource.data.estado == resource.data.estado) ||
-        // Director de núcleo puede editar usuarios de su núcleo, sin cambiar rango, estado ni núcleo
-        (getRequester().rango == 'director_nucleo' &&
-         resource.data.nucleo == getRequester().nucleo &&
-         request.resource.data.rango == resource.data.rango &&
-         request.resource.data.estado == resource.data.estado &&
-         request.resource.data.nucleo == resource.data.nucleo) ||
-        // Admin: puede editar/desactivar profesores y estudiantes de su núcleo
-        (getRequester().rango == 'admin' &&
-         resource.data.nucleo == getRequester().nucleo &&
-         resource.data.rango in ['profesor','estudiante'] &&
-         request.resource.data.rango == resource.data.rango &&
-         request.resource.data.estado == resource.data.estado &&
-         request.resource.data.nucleo == resource.data.nucleo)
-      );
-      // Eliminación: Owner Supremo, Director Nacional, o administradores locales limitados a su jurisdicción
-      allow delete: if request.auth != null && (
-        getRequester().rango in ['owner_supremo', 'director_nacional'] ||
-        (getRequester().rango in ['director_nucleo', 'admin'] && 
-         resource.data.nucleo == getRequester().nucleo && 
-         resource.data.rango in ['profesor', 'estudiante'])
+          camposCambiados().hasOnly(['isOnline', 'currentSessionId', 'lastLogin']))
+        // Owner: puede editar todo salvo cuenta/correo (eso lo maneja el backend).
+        || (esOwner() &&
+          camposCambiados().hasOnly(['nombre', 'edad', 'agrupacion', 'instrumento', 'estado', 'nucleo', 'rango']))
+        // Gestores: solo roles ESTRICTAMENTE inferiores; nunca tocan rango ni cuenta.
+        || (camposCambiados().hasOnly(['nombre', 'edad', 'agrupacion', 'instrumento', 'estado', 'nucleo']) && (
+              (rol() == 'director_nacional' &&
+                resource.data.rango in ['director_regional', 'director_nucleo', 'admin', 'profesor', 'estudiante'])
+           || (esRegional() && me().estado != '' && resource.data.estado == me().estado &&
+                request.resource.data.estado == resource.data.estado &&
+                resource.data.rango in ['director_nucleo', 'admin', 'profesor', 'estudiante'])
+           || (esDirNucleo() && esMiNucleo(resource.data.nucleo) &&
+                request.resource.data.nucleo == resource.data.nucleo &&
+                request.resource.data.estado == resource.data.estado &&
+                resource.data.rango in ['admin', 'profesor', 'estudiante'])
+           || (esAdmin() && esMiNucleo(resource.data.nucleo) &&
+                request.resource.data.nucleo == resource.data.nucleo &&
+                request.resource.data.estado == resource.data.estado &&
+                resource.data.rango in ['profesor', 'estudiante'])
+        ))
       );
     }
 
-    // ---------- CARRUSEL (nacional) ----------
+    // ---------- CARRUSEL NACIONAL (portada pública) ----------
     match /carrusel/{docId} {
-      // Público: index.html lo muestra sin necesidad de sesión.
       allow read: if true;
-      // Solo Owner Supremo y Director Nacional pueden modificar el carrusel nacional
-      allow write: if request.auth != null && (esOwner() || esDirectorNacional());
+      allow write: if activo() && esNacional();
     }
 
-    // ---------- CITAS DE LA PORTADA (v3.0 — G-07) ----------
-    // Mismo criterio que el carrusel nacional: son contenido público de
-    // index.html, editable solo por Owner Supremo / Director Nacional.
-    match /contenido/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null && (esOwner() || esDirectorNacional());
-    }
-
-    // ---------- FLYERS y EVENTOS (por núcleo, en panel.html) ----------
+    // ---------- FLYERS (por núcleo) ----------
     match /flyers/{docId} {
-      allow read: if request.auth != null && (
-        getRequester().rango in ['owner_supremo','director_nacional','director_regional'] ||
-        resource.data.nucleo == getRequester().nucleo
-      );
-      allow write: if request.auth != null &&
-        getRequester().rango in ['owner_supremo','director_nacional','director_regional','director_nucleo','admin'];
+      allow read: if activo() && (multiNucleo() || esMiNucleo(resource.data.nucleo));
+      allow create, update: if activo() && (
+        multiNucleo() ||
+        ((esDirNucleo() || esAdmin()) && esMiNucleo(request.resource.data.nucleo)));
+      allow delete: if activo() && (
+        multiNucleo() ||
+        ((esDirNucleo() || esAdmin()) && esMiNucleo(resource.data.nucleo)));
     }
+
+    // ---------- EVENTOS (por núcleo + audiencia) ----------
+    // "audiencia" es una lista de textos: 'todos', 'profesor', 'estudiante' y/o
+    // 'agr:<nombre de la agrupación>'. Los gestores ven todo su núcleo; un
+    // profesor/estudiante solo ve lo dirigido a "todos", a su rol o a su agrupación
+    // (el front hace una consulta por cada una de esas tres posibilidades).
     match /eventos/{docId} {
-      allow read: if request.auth != null && (
-        getRequester().rango in ['owner_supremo','director_nacional','director_regional'] ||
-        resource.data.nucleo == getRequester().nucleo
-      );
-      allow write: if request.auth != null &&
-        getRequester().rango in ['owner_supremo','director_nacional','director_regional','director_nucleo','admin'];
+      allow read: if activo() && (
+        multiNucleo()
+        || (esMiNucleo(resource.data.nucleo) && (
+              esGestor()
+              || 'todos' in resource.data.audiencia
+              || rol() in resource.data.audiencia
+              || ('agr:' + me().get('agrupacion', '')) in resource.data.audiencia
+           )));
+      allow create, update: if activo() && request.resource.data.audiencia is list && (
+        multiNucleo() ||
+        ((esDirNucleo() || esAdmin()) && esMiNucleo(request.resource.data.nucleo)));
+      allow delete: if activo() && (
+        multiNucleo() ||
+        ((esDirNucleo() || esAdmin()) && esMiNucleo(resource.data.nucleo)));
     }
 
-    // ---------- NÚCLEOS (lista maestra: {nombre, estado}) ----------
+    // ---------- NÚCLEOS (lista maestra {nombre, estado}) ----------
     match /nucleos/{docId} {
-      // Cualquier usuario logueado puede leerla (la necesitan los selectores)
-      allow read: if request.auth != null;
-      // Solo roles nacionales/regionales pueden crear o borrar núcleos
-      allow write: if request.auth != null &&
-        getRequester().rango in ['owner_supremo','director_nacional','director_regional'];
+      allow read: if activo();
+      allow create: if activo() && request.resource.data.nombre is string
+        && request.resource.data.nombre.size() >= 2 && request.resource.data.nombre.size() <= 80
+        && (esNacional() || (esRegional() && request.resource.data.estado == me().estado));
+      allow update: if activo() && request.resource.data.nombre is string
+        && request.resource.data.nombre.size() >= 2 && request.resource.data.nombre.size() <= 80
+        && request.resource.data.estado == resource.data.estado
+        && (esNacional() || (esRegional() && resource.data.estado == me().estado));
+      allow delete: if activo() && (esNacional() || (esRegional() && resource.data.estado == me().estado));
     }
 
-    // ---------- AGRUPACIONES: orquestas/coros (por núcleo) ----------
-    // CORREGIDO 2026-09-05: la lectura exigía resource.data.nucleo ==
-    // getRequester().nucleo, pero repertorio.html busca la agrupación por
-    // NOMBRE (where("nombre","==",...)), sin filtrar también por nucleo en
-    // la propia consulta. Firestore rechaza una consulta de LISTA completa
-    // si no puede garantizar, mirando solo los where() de la consulta
-    // misma, que todo lo que devolvería cumple la regla — como el filtro de
-    // nucleo no está en la consulta, no puede probarlo, y la rechaza
-    // ENTERA con "Missing or insufficient permissions", aunque el
-    // documento real sí sea del núcleo correcto. Le pasaba a cualquiera
-    // que no fuera director nacional/regional/owner (para esos tres la
-    // regla no depende de resource.data, así que Firestore sí puede
-    // probarla sin filtro adicional). Arreglo: lectura abierta a cualquier
-    // usuario con sesión (mismo criterio que ya se usa abajo para
-    // /nucleos/ y /formacion_modulos/ — es información de referencia, no
-    // datos personales). La escritura sigue exactamente igual de
-    // restringida por rol y núcleo.
+    // ---------- AGRUPACIONES (por núcleo) ----------
     match /agrupaciones/{docId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null &&
-        getRequester().rango in ['owner_supremo','director_nacional','director_regional','director_nucleo','admin'];
-
-      // Propagación de reglas para proteger subcolecciones, si alguna vez se usan
-      match /{document=**} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null &&
-          getRequester().rango in ['owner_supremo','director_nacional','director_regional','director_nucleo','admin'];
-      }
+      allow read: if activo() && (multiNucleo() || esMiNucleo(resource.data.nucleo));
+      allow create, update: if activo() && request.resource.data.nombre is string
+        && request.resource.data.nombre.size() >= 2 && request.resource.data.nombre.size() <= 80
+        && (multiNucleo() ||
+           ((esDirNucleo() || esAdmin()) && esMiNucleo(request.resource.data.nucleo)));
+      allow delete: if activo() && (
+        multiNucleo() ||
+        ((esDirNucleo() || esAdmin()) && esMiNucleo(resource.data.nucleo)));
     }
 
-    // ---------- PIEZAS: repertorio de cada agrupación (colección raíz,
-    // enlazada por el campo agrupacionId = nombre de la agrupación).
-    // CORREGIDO 2026-09-05: mismo problema que en agrupaciones. repertorio.html
-    // busca las piezas con where("agrupacionId","==",...) — SIN filtrar
-    // también por nucleo — así que la regla anterior (resource.data.nucleo
-    // == getRequester().nucleo) rechazaba la lista COMPLETA para
-    // cualquiera que no fuera director nacional/regional/owner. Esta es
-    // la causa real de "No se pudieron cargar las piezas: Missing or
-    // insufficient permissions" — no tiene que ver con quién puede CREAR
-    // piezas (esa parte ya estaba bien, ver más abajo). Arreglo: lectura
-    // abierta a cualquier usuario con sesión; creación/edición/borrado
-    // siguen exigiendo el rol correcto Y el núcleo correcto — profesor,
-    // admin, director_nucleo (de su propio núcleo), director_regional,
-    // director_nacional y owner_supremo pueden modificar piezas.
+    // ---------- PIEZAS y PARTITURAS (por núcleo) ----------
+    // Escriben: directivos, admin y profesores — cada uno solo en su núcleo.
     match /piezas/{docId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && (
-        getRequester().rango in ['owner_supremo','director_nacional','director_regional'] ||
-        (getRequester().rango in ['director_nucleo','admin','profesor'] && request.resource.data.nucleo == getRequester().nucleo)
-      );
-      allow update, delete: if request.auth != null && (
-        getRequester().rango in ['owner_supremo','director_nacional','director_regional'] ||
-        (getRequester().rango in ['director_nucleo','admin','profesor'] && resource.data.nucleo == getRequester().nucleo)
-      );
+      allow read: if activo() && (multiNucleo() || esMiNucleo(resource.data.nucleo));
+      allow create: if activo() && request.resource.data.titulo is string
+        && request.resource.data.titulo.size() >= 1 && request.resource.data.titulo.size() <= 120
+        && (multiNucleo() ||
+           (rol() in ['director_nucleo', 'admin', 'profesor'] && esMiNucleo(request.resource.data.nucleo)));
+      allow update: if activo() && request.resource.data.nucleo == resource.data.nucleo
+        && (multiNucleo() ||
+           (rol() in ['director_nucleo', 'admin', 'profesor'] && esMiNucleo(resource.data.nucleo)));
+      allow delete: if activo() && (
+        multiNucleo() ||
+        (rol() in ['director_nucleo', 'admin', 'profesor'] && esMiNucleo(resource.data.nucleo)));
     }
-
-    // ---------- PARTITURAS: PDFs subidos por pieza/instrumento.
-    // Mismo criterio que piezas: lectura abierta (repertorio.html también
-    // consulta esta colección con where("agrupacionId","==",...), sin
-    // filtro de nucleo — mismo problema de lista que arriba). Escritura:
-    // profesor, admin y director_nucleo (de su propio núcleo), además de
-    // la directiva nacional/regional, pueden subir, reemplazar y borrar
-    // partituras — son quienes las mantienen día a día.
     match /partituras/{docId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && (
-        getRequester().rango in ['owner_supremo','director_nacional','director_regional'] ||
-        (getRequester().rango in ['director_nucleo','admin','profesor'] && request.resource.data.nucleo == getRequester().nucleo)
-      );
-      allow update, delete: if request.auth != null && (
-        getRequester().rango in ['owner_supremo','director_nacional','director_regional'] ||
-        (getRequester().rango in ['director_nucleo','admin','profesor'] && resource.data.nucleo == getRequester().nucleo)
-      );
+      allow read: if activo() && (multiNucleo() || esMiNucleo(resource.data.nucleo));
+      allow create: if activo() && (
+        multiNucleo() ||
+        (rol() in ['director_nucleo', 'admin', 'profesor'] && esMiNucleo(request.resource.data.nucleo)));
+      allow update: if activo() && request.resource.data.nucleo == resource.data.nucleo
+        && (multiNucleo() ||
+           (rol() in ['director_nucleo', 'admin', 'profesor'] && esMiNucleo(resource.data.nucleo)));
+      allow delete: if activo() && (
+        multiNucleo() ||
+        (rol() in ['director_nucleo', 'admin', 'profesor'] && esMiNucleo(resource.data.nucleo)));
     }
 
-    // ---------- FORMACIÓN: módulos de conceptos/libros (Nivel Nacional) ----------
+    // ---------- FORMACIÓN (nacional: la lee todo el que tenga cuenta activa) ----------
     match /formacion_modulos/{docId} {
-      // Lectura abierta para cualquier usuario logueado en el sistema
-      allow read: if request.auth != null;
-      // Escritura exclusiva para directiva y administración
-      allow write: if request.auth != null &&
-        getRequester().rango in ['owner_supremo','director_nacional','director_regional','director_nucleo','admin'];
+      allow read: if activo();
+      allow write: if activo() && esGestor();
+    }
+    match /formacion_niveles/{docId} {
+      allow read: if activo();
+      allow write: if activo() && esGestor();
     }
 
-    // ---------- v3.0 (P-58) ----------
-    // _limites_uso (límite de pedidos al chat de IA) y _meta (caché del
-    // diagnóstico) las usa ÚNICAMENTE el backend con el Admin SDK, que
-    // ignora estas reglas por completo — hoy ya están seguras "por
-    // accidente" gracias a que Firestore deniega por defecto cualquier
-    // colección no declarada acá. Se declaran igual, de forma explícita,
-    // para que la intención quede documentada en el propio archivo de
-    // reglas y no dependa de que ese comportamiento por defecto no cambie
-    // el día de mañana.
-    match /_limites_uso/{docId} {
-      allow read, write: if false;
-    }
-    match /_meta/{docId} {
-      allow read, write: if false;
-    }
+    // ---------- Colecciones que usa SOLO el backend (el Admin SDK ignora estas reglas) ----------
+    match /_limites_uso/{docId} { allow read, write: if false; }
+    match /_meta/{docId}        { allow read, write: if false; }
   }
 }
